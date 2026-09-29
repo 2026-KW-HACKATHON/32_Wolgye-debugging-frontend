@@ -1,0 +1,7 @@
+import EventRepeatRoundedIcon from '@mui/icons-material/EventRepeatRounded'
+import { Button, Stack, TextField, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
+import { NavButton, PageTitle, SectionTitle, Surface } from '../components/Ui'
+
+export default function DeparturePage() {
+  return <Stack gap={2.25}><PageTitle title="출차 일정 수정" description="주차 위치는 그대로 두고 출차 시간만 바꿔요."/><Surface><Typography variant="caption" color="text.secondary">12가 3456</Typography><Typography variant="subtitle1">필로티 2번 · 주차 중</Typography></Surface><TextField label="출차 날짜" type="date" defaultValue="2026-10-01" slotProps={{inputLabel:{shrink:true}}}/><TextField label="출차 시간" type="time" defaultValue="07:30" slotProps={{inputLabel:{shrink:true}}}/><ToggleButtonGroup exclusive value="07:30" fullWidth size="small">{['06:00','07:30','09:00'].map((value)=><ToggleButton key={value} value={value}>{value}</ToggleButton>)}</ToggleButtonGroup><SectionTitle>반복 설정</SectionTitle><Surface><Stack direction="row" justifyContent="space-between" alignItems="center"><Stack direction="row" gap={1.25} alignItems="center"><EventRepeatRoundedIcon color="primary"/><div><Typography variant="subtitle2">평일 반복</Typography><Typography variant="caption" color="text.secondary">월–금 · 오전 7:30</Typography></div></Stack><NavButton to="repeat" variant="outlined">수정</NavButton></Stack></Surface><Button component="a" href="#vehicle-detail" variant="contained" fullWidth>출차 일정 저장</Button></Stack>
+}
