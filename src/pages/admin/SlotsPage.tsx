@@ -1,11 +1,34 @@
-import EditRoundedIcon from '@mui/icons-material/EditRounded'
-import { Button, IconButton, MenuItem, Stack, Switch, TextField, Typography } from '@mui/material'
-import { PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
+import { useState } from 'react'
+import { Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Stack, Switch, Typography } from '@mui/material'
+import { NavButton, PageTitle, Surface } from '../../components/Ui'
 
-const slots = [
-  ['A-1','일반 주차 · 입구 쪽','available'],['A-2','일반 주차 · 입구 쪽','available'],['B-1','지정 주차 · 중앙','disabled'],['B-2','지정 주차 · 중앙','external'],['C-1','공유 주차 · 후면','available'],
-] as const
+type Slot = { name: string; inUse: boolean; shareable: boolean }
+
+// TODO(logic): 운영팀이 등록한 빌라의 주차 칸 목록을 API에서 불러오기
+const slots: Slot[] = [
+  { name: '필로티 1번', inUse: true, shareable: false },
+  { name: '필로티 2번', inUse: true, shareable: false },
+  { name: '건물 앞 1번', inUse: true, shareable: false },
+  { name: '건물 앞 2번', inUse: false, shareable: false },
+  { name: '골목 1번', inUse: true, shareable: true },
+]
+
+const describe = (slot: Slot) => slot.inUse ? `사용 중 · ${slot.shareable ? '공유 가능' : '공유 안 함'}` : '사용 중지'
 
 export default function SlotsPage() {
-  return <Stack gap={2.25}><PageTitle title="주차 구역 설정" description="칸 이름과 현재 사용 가능 여부를 관리해요."/><SectionTitle>등록된 주차 칸</SectionTitle>{slots.map(([name,desc,status])=><Surface key={name}><Stack direction="row" justifyContent="space-between" alignItems="center"><div><Stack direction="row" gap={0.75} alignItems="center"><Typography variant="subtitle2">{name}</Typography><StatusChip kind={status==='available'?'available':status==='external'?'external':'disabled'}/></Stack><Typography variant="caption" color="text.secondary">{desc}</Typography></div><IconButton aria-label={`${name} 수정`}><EditRoundedIcon/></IconButton></Stack></Surface>)}<SectionTitle>새 주차 칸 추가</SectionTitle><TextField label="칸 번호" placeholder="예: A-3"/><TextField label="위치 설명" placeholder="예: 입구 쪽 두 번째 칸"/><TextField select label="칸 유형" defaultValue="normal"><MenuItem value="normal">일반 주차</MenuItem><MenuItem value="assigned">지정 주차</MenuItem><MenuItem value="shared">공유 주차</MenuItem></TextField><Surface><Stack direction="row" justifyContent="space-between" alignItems="center"><div><Typography variant="subtitle2">사용 가능한 칸</Typography><Typography variant="caption" color="text.secondary">배치도에서 빈자리로 표시합니다.</Typography></div><Switch defaultChecked/></Stack></Surface><Button variant="contained" fullWidth>주차 칸 저장</Button></Stack>
+  const [editing, setEditing] = useState<Slot | null>(null)
+  return <Stack gap={2.25}>
+    <PageTitle title="주차 구역 설정" description="운영팀이 등록한 칸이에요. 관리자는 사용·공유 여부만 바꿀 수 있어요."/>
+    {slots.map((slot)=><Surface key={slot.name}><Stack direction="row" justifyContent="space-between" alignItems="center"><div><Typography variant="subtitle2">{slot.name}</Typography><Typography variant="caption" color={slot.inUse?'text.secondary':'error.main'}>{describe(slot)}</Typography></div><Chip label="수정" clickable onClick={()=>setEditing(slot)}/></Stack></Surface>)}
+    <NavButton to="admin" variant="outlined" fullWidth>대시보드로 돌아가기</NavButton>
+    <Dialog open={editing !== null} onClose={()=>setEditing(null)} fullWidth maxWidth="xs">
+      <DialogTitle>칸 설정 · {editing?.name}</DialogTitle>
+      <DialogContent><Stack gap={1}>
+        <FormControlLabel control={<Switch defaultChecked={editing?.inUse}/>} label={<div><Typography variant="subtitle2">사용 가능</Typography><Typography variant="caption" color="text.secondary">끄면 배치도에서 선택할 수 없어요</Typography></div>} labelPlacement="start" sx={{justifyContent:'space-between',mx:0}}/>
+        <FormControlLabel control={<Switch defaultChecked={editing?.shareable}/>} label={<div><Typography variant="subtitle2">공유 가능</Typography><Typography variant="caption" color="text.secondary">차고지에 묶어 시간제로 열 수 있어요</Typography></div>} labelPlacement="start" sx={{justifyContent:'space-between',mx:0}}/>
+      </Stack></DialogContent>
+      {/* TODO(logic): 칸의 사용 가능·공유 가능 여부 저장 */}
+      <DialogActions sx={{px:3,pb:2.5}}><Button variant="outlined" onClick={()=>setEditing(null)}>취소</Button><Button variant="contained" onClick={()=>setEditing(null)}>저장</Button></DialogActions>
+    </Dialog>
+  </Stack>
 }
