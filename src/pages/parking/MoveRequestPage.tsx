@@ -14,7 +14,6 @@ export default function MoveRequestPage() {
     <SectionTitle>요청 사유</SectionTitle>
     <Surface><Typography variant="body2" color="text.secondary">외출 예정으로 출차가 필요합니다. 차량 이동을 부탁드립니다.</Typography></Surface>
     {/* TODO(logic): '옮겼어요' 응답 전송 후 요청자에게 알림 */}
-    {/* TODO(route): 요청 처리 완료 화면(n31)이 생기면 이동 대상 교체 */}
-    <NavButton to="home" fullWidth>옮겼어요</NavButton>
+    <NavButton to="move-done" fullWidth>옮겼어요</NavButton>
   </Stack>
 }

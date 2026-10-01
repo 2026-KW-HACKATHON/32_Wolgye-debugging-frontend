@@ -21,7 +21,7 @@ export default function VehicleDetailPage() {
       <Typography variant="caption" color="text.secondary">출차 시간을 등록하지 않아 지난 기록으로 추정한 시각이에요.</Typography>
     </Surface>
     <SectionTitle>주차 위치</SectionTitle>
-    <ParkingMap compact/>
+    <ParkingMap compact highlightMine/>
     <NavButton to="departure" fullWidth>출차 일정 수정</NavButton>
   </Stack>
 }

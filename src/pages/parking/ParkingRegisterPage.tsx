@@ -22,8 +22,8 @@ export default function ParkingRegisterPage() {
   const recommended = selected === 'A2'
   return <Stack gap={2.25}>
     <PageTitle title="차 배치 · 출차 등록" description="배치도에서 빈 칸을 탭하면 내 차가 놓여요."/>
-    {/* TODO(logic): 사용 불가 칸을 탭하면 안내 모달 열기 (ParkingMap 공통 컴포넌트 수정 필요) */}
-    <ParkingMap selectable selected={selected} onSelect={setSelected}/>
+    {/* TODO(logic): 탭한 칸의 실제 사용 불가 사유를 모달에 전달 */}
+    <ParkingMap selectable selected={selected} onSelect={setSelected} onUnavailable={()=>setUnavailableOpen(true)}/>
     <Stack direction="row" gap={0.75}><StatusChip kind="recommended" label="★ 추천"/><StatusChip kind="available" label="빈 칸"/><ButtonBase onClick={()=>setUnavailableOpen(true)} sx={{borderRadius:4}}><StatusChip kind="disabled" label="사용 불가"/></ButtonBase></Stack>
     <Surface sx={{bgcolor:'#F7F9FC'}}><Stack direction="row" gap={1.5} alignItems="center"><Box sx={{width:40,height:40,flexShrink:0,borderRadius:3,display:'grid',placeItems:'center',bgcolor:'#E8F0FF',color:'primary.main'}}><StarRoundedIcon/></Box><Box><Typography variant="subtitle2">선택한 칸 · {selectedLabel}{recommended && ' ★추천'}</Typography><Typography variant="caption" color="text.secondary">{recommended ? '지금 선 차들보다 늦게 나가서 안쪽이 좋아요 · 다른 칸을 탭하면 바뀝니다' : '입구와 가까워요 · 다른 칸을 탭하면 바뀝니다'}</Typography></Box></Stack></Surface>
     <BottomSheet><Stack gap={2.25}>

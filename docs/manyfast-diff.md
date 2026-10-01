@@ -30,11 +30,13 @@
 
 - 없음. `UnavailablePage`는 기획상 모달이라 페이지 안에서 모달 형태로 표시함.
 
-## 담당 폴더 밖이라 이번에 반영하지 않은 것
+## 담당 폴더 밖 공통 파일 반영 (2026-10-01, 담당자 승인 후)
 
-- `src/components/ParkingMap.tsx`: 사용 불가 칸 탭 → 모달, 번호판 라벨, 입주민/외부/미확인 색 구분, 내 칸 강조.
-- `src/types/navigation.ts`: 출차 일정 화면 제목("등록" → "수정"), 알림 센터·요청 처리 완료 라우트.
-- `src/components/AppShell.tsx`: 하단 "알림" 탭이 이동 요청 수신(`move`)으로 연결됨.
+- `src/components/ParkingMap.tsx`: 선택 prop 추가 — `onUnavailable`(사용 불가 칸 탭 → 모달), `variant="admin"`(번호판 라벨 + 입주민/외부/미확인 색 구분), `highlightMine`(내 칸만 강조). 기존 사용처는 동작 동일.
+- `src/types/navigation.ts`: 출차 일정 화면 제목 "출차 일정 수정", 라우트 `notifications`(알림 센터, n26)·`move-done`(요청 처리 완료, n31) 추가.
+- `src/pages/index.tsx`: 위 두 라우트의 lazy import 추가.
+- `src/components/AppShell.tsx`: 하단 "알림" 탭 → `notifications`.
+- 알림 센터와 요청 처리 완료는 와이어프레임이 없어 유저플로우를 기준으로 구성함.
 
 ## 기획 충돌·공백에 대한 결정 (2026-10-01)
 

@@ -10,7 +10,9 @@ export type PageId =
   | 'repeat'
   | 'vehicle-detail'
   | 'unavailable'
+  | 'notifications'
   | 'move'
+  | 'move-done'
   | 'share'
   | 'garage-detail'
   | 'request-result'
@@ -41,11 +43,13 @@ export const pages: PageMeta[] = [
   { id: 'vehicle-register', title: '차량 등록', group: '시작하기', backTo: 'alley' },
   { id: 'home', title: '홈', group: '주차', tab: '배치도' },
   { id: 'parking-register', title: '주차 배치 등록', group: '주차', tab: '배치도', backTo: 'home' },
-  { id: 'departure', title: '출차 일정 등록', group: '주차', tab: '배치도', backTo: 'vehicle-detail' },
+  { id: 'departure', title: '출차 일정 수정', group: '주차', tab: '배치도', backTo: 'vehicle-detail' },
   { id: 'repeat', title: '반복 일정 설정', group: '주차', tab: '배치도', backTo: 'parking-register' },
   { id: 'vehicle-detail', title: '차량 상세', group: '주차', tab: '배치도', backTo: 'home' },
   { id: 'unavailable', title: '사용 불가 안내', group: '주차', tab: '배치도', backTo: 'parking-register' },
-  { id: 'move', title: '이동 요청', group: '주차', tab: '알림', backTo: 'home' },
+  { id: 'notifications', title: '알림 센터', group: '주차', tab: '알림' },
+  { id: 'move', title: '이동 요청', group: '주차', tab: '알림', backTo: 'notifications' },
+  { id: 'move-done', title: '요청 처리 완료', group: '주차', tab: '알림', backTo: 'notifications' },
   { id: 'share', title: '공유 주차 탐색', group: '공유 주차', tab: '공유 주차' },
   { id: 'garage-detail', title: '차고지 상세', group: '공유 주차', tab: '공유 주차', backTo: 'share' },
   { id: 'request-result', title: '요청 결과', group: '공유 주차', tab: '공유 주차', backTo: 'garage-detail' },

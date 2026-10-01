@@ -25,11 +25,11 @@ export default function AdminPage() {
       <Stack direction="row" gap={1}><Button variant="outlined" color="error" fullWidth>거절</Button><Button variant="contained" fullWidth>수락</Button></Stack>
     </Stack></Surface>
     <SectionTitle action={<StatusChip kind="available" label="주차 가능 5곳"/>}>● 관리 구역 · 실시간</SectionTitle>
-    <ParkingMap compact/>
+    <ParkingMap compact variant="admin"/>
     <Surface><Stack gap={1.25}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}><Box><Typography variant="caption" color="text.secondary">외부 차량 · 공유 이용자 (앱 가입)</Typography><Typography variant="subtitle2">123가 4634 · 골목 1번</Typography></Box>{/* TODO(logic): 외부 차량 이용자에게 이동 요청 전송 */}<Button size="small" variant="contained">이동 요청</Button></Stack>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}><Box><Typography variant="caption" color="text.secondary">외부 차량 · 공유 이용자 (앱 가입)</Typography><Typography variant="subtitle2">123가 4634 · 필로티 4번</Typography></Box>{/* TODO(logic): 외부 차량 이용자에게 이동 요청 전송 */}<Button size="small" variant="contained">이동 요청</Button></Stack>
       <Divider/>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}><Box><Typography variant="caption" color="text.secondary">미확인 차량 (관리자 등록)</Typography><Typography variant="subtitle2">45다 6789 · 건물 앞 1번</Typography></Box><Typography variant="caption" color="text.secondary">앱으로 연락 불가</Typography></Stack>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}><Box><Typography variant="caption" color="text.secondary">미확인 차량 (관리자 등록)</Typography><Typography variant="subtitle2">45다 6789 · 필로티 5번</Typography></Box><Typography variant="caption" color="text.secondary">앱으로 연락 불가</Typography></Stack>
     </Stack></Surface>
     <Stack direction="row" gap={0.75} flexWrap="wrap"><StatusChip kind="recommended" label="입주민 차량"/><StatusChip kind="external" label="외부 차량"/><StatusChip kind="danger" label="미확인 차량"/><StatusChip kind="available" label="빈 칸"/></Stack>
     <Surface>
