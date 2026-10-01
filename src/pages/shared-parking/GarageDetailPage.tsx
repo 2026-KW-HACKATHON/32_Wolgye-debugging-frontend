@@ -2,8 +2,8 @@ import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded'
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import PlaceRoundedIcon from '@mui/icons-material/PlaceRounded'
 import { Alert, Button, Divider, Stack, Typography } from '@mui/material'
-import { GarageVisual } from '../components/Illustrations'
-import { InfoRow, PageTitle, SectionTitle, StatusChip, Surface } from '../components/Ui'
+import { GarageVisual } from '../../components/Illustrations'
+import { InfoRow, PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
 
 const spots = [
   ['A-1 구역','available','입구 쪽'],['A-2 구역','soon','오후 2:30 출차'],['B-1 구역','disabled','오후 9:00까지'],['B-2 구역','disabled','오후 6:30까지'],['C-1 구역','available','건물 후면'],

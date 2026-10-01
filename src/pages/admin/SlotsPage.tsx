@@ -1,6 +1,6 @@
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import { Button, IconButton, MenuItem, Stack, Switch, TextField, Typography } from '@mui/material'
-import { PageTitle, SectionTitle, StatusChip, Surface } from '../components/Ui'
+import { PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
 
 const slots = [
   ['A-1','일반 주차 · 입구 쪽','available'],['A-2','일반 주차 · 입구 쪽','available'],['B-1','지정 주차 · 중앙','disabled'],['B-2','지정 주차 · 중앙','external'],['C-1','공유 주차 · 후면','available'],

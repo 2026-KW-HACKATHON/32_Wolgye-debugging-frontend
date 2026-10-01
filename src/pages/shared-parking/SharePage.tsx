@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import { Box, InputAdornment, Stack, Tab, Tabs, TextField, Typography } from '@mui/material'
-import { AreaMap, GarageVisual } from '../components/Illustrations'
-import { PageTitle, StatusChip, Surface } from '../components/Ui'
-import { garages } from '../data/mockData'
+import { AreaMap, GarageVisual } from '../../components/Illustrations'
+import { PageTitle, StatusChip, Surface } from '../../components/Ui'
+import { garages } from '../../data/mockData'
 
 export default function SharePage() {
   const [filter, setFilter] = useState(0)

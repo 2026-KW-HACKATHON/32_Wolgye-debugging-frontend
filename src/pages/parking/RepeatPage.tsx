@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button, MenuItem, Stack, TextField, ToggleButton, ToggleButtonGroup } from '@mui/material'
-import { PageTitle, SectionTitle } from '../components/Ui'
+import { PageTitle, SectionTitle } from '../../components/Ui'
 
 export default function RepeatPage() {
   const [days, setDays] = useState<string[]>(['월','화','수','목','금'])

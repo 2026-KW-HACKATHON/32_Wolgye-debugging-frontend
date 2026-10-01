@@ -2,8 +2,8 @@ import DirectionsCarRoundedIcon from '@mui/icons-material/DirectionsCarRounded'
 import NotificationsActiveRoundedIcon from '@mui/icons-material/NotificationsActiveRounded'
 import ShareLocationRoundedIcon from '@mui/icons-material/ShareLocationRounded'
 import { Box, Stack, Typography } from '@mui/material'
-import ParkingMap from '../components/ParkingMap'
-import { NavButton, PageTitle, Surface } from '../components/Ui'
+import ParkingMap from '../../components/ParkingMap'
+import { NavButton, PageTitle, Surface } from '../../components/Ui'
 
 const benefits = [
   { icon: <DirectionsCarRoundedIcon />, title: '한눈에 보는 주차 현황', text: '우리 빌라의 빈자리와 출차 시간을 바로 확인해요.' },
