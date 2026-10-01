@@ -3,7 +3,7 @@ import DirectionsCarRoundedIcon from '@mui/icons-material/DirectionsCarRounded'
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded'
 import SecurityRoundedIcon from '@mui/icons-material/SecurityRounded'
 import { Avatar, Button, Stack, Switch, TextField, Typography } from '@mui/material'
-import { PageTitle, SectionTitle, Surface } from '../components/Ui'
+import { PageTitle, SectionTitle, Surface } from '../../components/Ui'
 
 export default function ProfilePage() {
   const menuItems = [

@@ -3,8 +3,8 @@ import DirectionsCarRoundedIcon from '@mui/icons-material/DirectionsCarRounded'
 import ErrorRoundedIcon from '@mui/icons-material/ErrorRounded'
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded'
 import { Box, Button, Chip, Divider, Stack, Typography } from '@mui/material'
-import ParkingMap from '../components/ParkingMap'
-import { NavButton, PageTitle, SectionTitle, StatusChip, Surface } from '../components/Ui'
+import ParkingMap from '../../components/ParkingMap'
+import { NavButton, PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
 
 export default function HomePage() {
   return <Stack gap={2.25}>

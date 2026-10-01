@@ -1,7 +1,7 @@
 import DirectionsCarRoundedIcon from '@mui/icons-material/DirectionsCarRounded'
 import ErrorRoundedIcon from '@mui/icons-material/ErrorRounded'
 import { Button, Stack, Typography } from '@mui/material'
-import { InfoRow, NavButton, PageTitle, StatusChip, Surface } from '../components/Ui'
+import { InfoRow, NavButton, PageTitle, StatusChip, Surface } from '../../components/Ui'
 
 export default function MoveRequestPage() {
   return <Stack gap={2.25}><PageTitle eyebrow="긴급 알림" title="차량 이동 요청" description="301동 이웃이 출차를 위해 차량 이동을 요청했어요." action={<StatusChip kind="danger" label="오후 2:34"/>}/><Surface sx={{bgcolor:'#FFF7F2',borderColor:'#FFD9BE'}}><Stack direction="row" gap={1.25} alignItems="center"><ErrorRoundedIcon color="warning"/><div><Typography variant="subtitle1">내 차량을 이동해 주세요</Typography><Typography variant="caption" color="text.secondary">출차 필요 시각 · 오후 3:00</Typography></div></Stack></Surface><Surface><Typography variant="subtitle2" mb={1}>요청 차량</Typography><InfoRow label="차량 번호" value="12가 3456"/><InfoRow label="차량 위치" value="B구역 3번 칸"/><InfoRow label="주차 시각" value="오후 12:10"/></Surface><Surface><Typography variant="subtitle2" mb={1}>막힌 차량</Typography><InfoRow label="차량 번호" value="78나 9012"/><InfoRow label="차량 위치" value="B구역 2번 칸"/></Surface><Surface><Stack direction="row" gap={1}><DirectionsCarRoundedIcon color="primary"/><div><Typography variant="subtitle2">요청 사유</Typography><Typography variant="body2" color="text.secondary" mt={0.5}>외출 예정으로 출차가 필요합니다. 차량 이동을 부탁드립니다.</Typography></div></Stack></Surface><Stack direction="row" gap={1}><NavButton to="home" variant="outlined" fullWidth>확인했어요</NavButton><Button component="a" href="#home" variant="contained" fullWidth>곧 이동할게요</Button></Stack></Stack>

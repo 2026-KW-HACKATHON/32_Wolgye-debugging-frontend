@@ -1,7 +1,7 @@
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import { Box, InputAdornment, Stack, Tab, Tabs, TextField, Typography } from '@mui/material'
-import { requesters } from '../data/mockData'
-import { PageTitle, StatusChip, Surface } from '../components/Ui'
+import { requesters } from '../../data/mockData'
+import { PageTitle, StatusChip, Surface } from '../../components/Ui'
 
 export default function RequestsPage() {
   return <Stack gap={2.25}><PageTitle title="공유 요청 관리" description="대기 요청을 확인하고 이용 가능 여부를 결정해요."/><Box sx={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:1}}>{[['대기 중','4건'],['수락됨','7건'],['거절됨','2건']].map(([label,value],index)=><Surface key={label} sx={{boxShadow:'none',bgcolor:index===0?'#FFF9E8':'#fff'}}><Typography variant="caption" color="text.secondary">{label}</Typography><Typography variant="h6" mt={0.25}>{value}</Typography></Surface>)}</Box><TextField placeholder="요청자 또는 차량번호 검색" slotProps={{input:{startAdornment:<InputAdornment position="start"><SearchRoundedIcon/></InputAdornment>}}}/><Tabs value={0} variant="scrollable" scrollButtons={false} sx={{minHeight:38,'.MuiTab-root':{minHeight:38,minWidth:'auto',px:1.5}}}><Tab label="전체"/><Tab label="대기 중"/><Tab label="수락됨"/><Tab label="거절됨"/></Tabs>{requesters.map(([name,plate,slot,status])=><Surface key={plate}><Box component="a" href={status==='수락됨'?'#request-accepted':status==='거절됨'?'#request-rejected':'#request-result'} sx={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:1,color:'inherit'}}><div><Typography variant="subtitle2">{name} · {plate}</Typography><Typography variant="caption" color="text.secondary">요청 구역 {slot} · 오늘 13:00–18:00</Typography></div><StatusChip kind={status==='수락됨'?'accepted':status==='거절됨'?'rejected':'pending'}/></Box></Surface>)}</Stack>
