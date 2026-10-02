@@ -1,31 +1,82 @@
+import { useState } from 'react'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import ErrorRoundedIcon from '@mui/icons-material/ErrorRounded'
-import ScheduleRoundedIcon from '@mui/icons-material/ScheduleRounded'
-import { Box, Button, Divider, Stack, Typography } from '@mui/material'
+import { Alert, Box, Button, CircularProgress, Divider, Stack, Typography } from '@mui/material'
+import { isApiError } from '../../api/client'
+import { createMoveRequest, getHome, listMyMoveRequests, listNotifications, readAllNotifications, readNotification } from '../../api/parking'
+import { useApi } from '../../api/useApi'
 import { NavButton, PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
+import type { MoveRequestStatus, NotificationItem } from '../../types/parking'
+import { toHash } from '../../types/navigation'
+
+const timeOf = (at: string) => new Date(at).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Seoul' })
+const dateTimeOf = (at: string) => new Date(at).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Seoul' })
+const errorText = (e: unknown) => isApiError(e) ? e.message : '잠시 후 다시 시도해 주세요.'
+const moveStatusChip: Record<MoveRequestStatus, { kind: 'pending' | 'accepted' | 'rejected'; label: string }> = { PENDING: { kind: 'pending', label: '응답 대기' }, MOVED: { kind: 'accepted', label: '처리 완료' }, DECLINED: { kind: 'rejected', label: '거절됨' } }
+
+// 알림의 link.screen → 이동할 화면. null 이면 이동 없음
+function linkOf(item: NotificationItem) {
+  if (!item.link) return null
+  if (item.link.screen === 'MOVE_REQUEST' && item.link.id !== null) return toHash('move', { id: item.link.id })
+  if (item.link.screen === 'SHARE_REQUEST' && item.link.id !== null) return toHash('request-result', { id: item.link.id })
+  if (item.link.screen === 'HOME') return toHash('home')
+  return null
+}
 
 // 알림 센터(n26). 와이어프레임이 없어 유저플로우(막힘 사전 알림 목록 → 이동 요청 전송, 이동 요청 수신)를 기준으로 구성했다.
-// TODO(logic): 내 알림 목록(막힘 사전 알림, 받은 이동 요청, 일반 알림)을 API에서 불러오기
+// 막힘 카드는 GET /me/home 의 block_alert, 받은 이동 요청은 GET /me/move-requests?box=received, 최근 알림은 GET /notifications
 export default function NotificationsPage() {
+  const notices = useApi(() => listNotifications(), 'notifications')
+  const home = useApi(() => getHome(), 'home')
+  const received = useApi(() => listMyMoveRequests({ box: 'received' }), 'move-requests-received')
+  const [busy, setBusy] = useState(false)
+  const [sent, setSent] = useState(false)
+  const [notice, setNotice] = useState<{ severity: 'error' | 'info' | 'success'; message: string } | null>(null)
+  const run = async (action: () => Promise<void>) => {
+    setBusy(true)
+    setNotice(null)
+    try { await action() } catch (e) { setNotice({ severity: 'error', message: errorText(e) }) } finally { setBusy(false) }
+  }
+  const sendMoveRequest = (blockingParkingId: number, neededAt: string) => run(async () => {
+    try {
+      await createMoveRequest({ target_parking_id: blockingParkingId, needed_at: neededAt })
+      setSent(true)
+      setNotice({ severity: 'success', message: '이동 요청을 보냈어요. 전화번호는 공유되지 않아요.' })
+    } catch (e) {
+      if (!isApiError(e) || e.code !== 'MOVE_REQUEST_ALREADY_PENDING') throw e
+      setSent(true)
+      setNotice({ severity: 'info', message: e.message })
+      home.reload()
+    }
+  })
+  const open = (item: NotificationItem) => run(async () => {
+    if (!item.is_read) await readNotification(item.id)
+    const to = linkOf(item)
+    if (to) window.location.hash = to
+    else notices.reload()
+  })
+  const readAll = () => run(async () => { await readAllNotifications(); notices.reload() })
+  const error = notices.error ?? home.error ?? received.error
+  const retry = () => { if (notices.error) notices.reload(); if (home.error) home.reload(); if (received.error) received.reload() }
+  if (error) return <Stack gap={2.25}><PageTitle title="알림" description="막힘 알림과 이동 요청을 한곳에서 확인해요."/><Alert severity="error" action={<Button color="inherit" size="small" onClick={retry}>다시 시도</Button>}>{error.message}</Alert></Stack>
+  if (!notices.data || !home.data || !received.data) return <Box display="grid" minHeight="40vh" sx={{placeItems:'center'}}><CircularProgress size={30}/></Box>
+  const { block_alert: blockAlert, my_parking: myParking } = home.data
+  const items = notices.data.items
+  const hasUnread = items.some((item) => !item.is_read)
   return <Stack gap={2.25}>
     <PageTitle title="알림" description="막힘 알림과 이동 요청을 한곳에서 확인해요."/>
-    <SectionTitle action={<StatusChip kind="danger" label="2건"/>}>막힘 사전 알림</SectionTitle>
-    <Surface sx={{bgcolor:'#FFF7F2',borderColor:'#FFD9BE'}}><Stack gap={1.25}>
+    {notice && <Alert severity={notice.severity}>{notice.message}</Alert>}
+    <SectionTitle action={blockAlert && <StatusChip kind="danger" label="1건"/>}>막힘 사전 알림</SectionTitle>
+    {blockAlert ? <Surface sx={{bgcolor:'#FFF7F2',borderColor:'#FFD9BE'}}><Stack gap={1.25}>
       <Stack direction="row" gap={1} alignItems="center"><ErrorRoundedIcon color="error"/><Typography variant="subtitle2">내 차량이 막혀 있어요</Typography></Stack>
-      <Typography variant="body2" color="text.secondary">P1 차량(123가 4634)이 내 차량(P2) 앞에 있어요. 내 출차 예정은 오늘 18:30이에요.</Typography>
-      {/* TODO(logic): 막고 있는 차량 차주에게 이동 요청 전송 (전화번호 노출 없이) */}
-      <Button variant="contained" fullWidth>이동 요청 보내기</Button>
-    </Stack></Surface>
-    <Surface><Stack gap={1.25}>
-      <Stack direction="row" gap={1} alignItems="center"><ScheduleRoundedIcon color="warning"/><Typography variant="subtitle2">내 차량이 이웃 차를 막고 있어요</Typography></Stack>
-      <Typography variant="body2" color="text.secondary">78나 9012 차량이 내일 06:00에 출차할 예정이에요. 오늘 밤에 미리 옮겨 주세요.</Typography>
-      {/* TODO(logic): 미리 옮겼다고 응답 (요청 없이 선제 응답) */}
-      <Button variant="outlined" fullWidth>옮겼어요</Button>
-    </Stack></Surface>
+      <Typography variant="body2" color="text.secondary">{blockAlert.message}{myParking?.expected_exit_at && ` 내 출차 예정은 ${timeOf(myParking.expected_exit_at)}이에요.`}</Typography>
+      {/* TODO(logic): 상시 주차(출차 시간 없음)일 때 이동 요청의 needed_at 을 무엇으로 보낼지 정해지지 않아 버튼을 막아 둔다 */}
+      <Button variant="contained" fullWidth disabled={busy || sent || !myParking?.expected_exit_at} onClick={() => myParking?.expected_exit_at && sendMoveRequest(blockAlert.blocking_parking_id, myParking.expected_exit_at)}>{sent ? '이동 요청을 보냈어요' : '이동 요청 보내기'}</Button>
+    </Stack></Surface> : <Typography variant="caption" color="text.secondary">지금 내 차를 막고 있는 차량이 없어요.</Typography>}
     <SectionTitle>받은 이동 요청</SectionTitle>
-    <Surface><Box component="a" href="#move" sx={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:1,color:'inherit'}}><Box><Typography variant="subtitle2">301동 입주민의 이동 요청</Typography><Typography variant="caption" color="text.secondary">출차 필요 오후 3:00 · 오후 2:34</Typography></Box><Stack direction="row" gap={0.5} alignItems="center"><StatusChip kind="pending" label="응답 대기"/><ArrowForwardRoundedIcon color="action" fontSize="small"/></Stack></Box></Surface>
-    <SectionTitle>최근 알림</SectionTitle>
-    <Surface><Stack divider={<Divider flexItem/>} gap={1.25}>{[['주차 요청 도착','101동 입주민 · 방금 전'],['출차 완료 안내','P8 비어 있음 · 10분 전']].map(([title,desc])=><Stack key={title} direction="row" justifyContent="space-between" alignItems="center" gap={1}><Box><Typography variant="subtitle2">{title}</Typography><Typography variant="caption" color="text.secondary">{desc}</Typography></Box>{/* TODO(logic): 알림 읽음 처리 */}<Button size="small" variant="outlined">확인</Button></Stack>)}</Stack></Surface>
+    {received.data.items.length ? <Surface><Stack divider={<Divider flexItem/>} gap={1.25}>{received.data.items.map((request)=><Box key={request.id} component="a" href={toHash('move', { id: request.id })} sx={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:1,color:'inherit'}}><Box><Typography variant="subtitle2">{request.counterpart_label}의 이동 요청</Typography><Typography variant="caption" color="text.secondary">출차 필요 {timeOf(request.needed_at)} · {timeOf(request.requested_at)}</Typography></Box><Stack direction="row" gap={0.5} alignItems="center"><StatusChip kind={moveStatusChip[request.status].kind} label={moveStatusChip[request.status].label}/><ArrowForwardRoundedIcon color="action" fontSize="small"/></Stack></Box>)}</Stack></Surface> : <Typography variant="caption" color="text.secondary">받은 이동 요청이 없어요.</Typography>}
+    <SectionTitle action={<Button size="small" disabled={busy || !hasUnread} onClick={readAll}>모두 읽음</Button>}>최근 알림</SectionTitle>
+    {items.length ? <Surface><Stack divider={<Divider flexItem/>} gap={1.25}>{items.map((item)=><Stack key={item.id} direction="row" justifyContent="space-between" alignItems="center" gap={1}><Box><Stack direction="row" gap={0.75} alignItems="center">{!item.is_read && <Box sx={{width:7,height:7,borderRadius:'50%',bgcolor:'error.main',flexShrink:0}}/>}<Typography variant="subtitle2">{item.title}</Typography></Stack><Typography variant="caption" color="text.secondary">{item.body} · {dateTimeOf(item.created_at)}</Typography></Box>{(!item.is_read || item.link) && <Button size="small" variant="outlined" disabled={busy} onClick={() => open(item)}>{item.link ? '보기' : '확인'}</Button>}</Stack>)}</Stack></Surface> : <Typography variant="caption" color="text.secondary">받은 알림이 없어요.</Typography>}
     <NavButton to="home" variant="text" fullWidth>배치도로 돌아가기</NavButton>
   </Stack>
 }
