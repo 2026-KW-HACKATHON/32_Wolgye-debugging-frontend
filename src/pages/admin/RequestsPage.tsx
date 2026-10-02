@@ -1,32 +1,92 @@
+import { useEffect, useState } from 'react'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
-import { Box, Button, Chip, Divider, InputAdornment, Stack, TextField, Typography } from '@mui/material'
+import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, InputAdornment, Stack, TextField, Typography } from '@mui/material'
 import { PageTitle, StatusChip, Surface } from '../../components/Ui'
+import { decideShareRequest, listAdminShareRequests } from '../../api/admin'
+import { isApiError } from '../../api/client'
+import { getHome } from '../../api/parking'
+import { useApi } from '../../api/useApi'
+import type { ShareRequestStatus } from '../../types/admin'
 
-type RequestStatus = '대기 중' | '수락됨' | '거절됨'
+type Filter = 'all' | ShareRequestStatus
+type Notice = { severity: 'success' | 'warning' | 'error'; message: string }
 
-// TODO(logic): 공유 요청 목록과 상태별 건수를 API에서 불러오기
-const requests: { name: string; plate: string; unit: string; slot: string; time: string; manner: string; status: RequestStatus }[] = [
-  { name: '홍길동', plate: '12가 3456', unit: '101동 201호', slot: 'P3', time: '2026.10.05 13:00 ~ 18:00', manner: '38.5℃', status: '대기 중' },
-  { name: '이수진', plate: '34나 7890', unit: '102동 302호', slot: 'P3', time: '2026.10.05 06:00 ~ 12:00', manner: '36.9℃', status: '대기 중' },
-  { name: '박민준', plate: '56다 1234', unit: '103동 101호', slot: 'P7', time: '2026.10.04 09:00 ~ 12:00', manner: '41.2℃', status: '대기 중' },
-  { name: '김지영', plate: '78라 5678', unit: '101동 403호', slot: 'P3', time: '2026.10.04 14:00 ~ 17:00', manner: '35.4℃', status: '대기 중' },
-  { name: '최성우', plate: '90마 2345', unit: '102동 202호', slot: 'P3', time: '2026.10.02 10:00 ~ 13:00', manner: '39.0℃', status: '수락됨' },
-  { name: '정다은', plate: '23바 6789', unit: '103동 304호', slot: 'P7', time: '2026.10.02 16:00 ~ 20:00', manner: '33.1℃', status: '거절됨' },
-]
+const filters: [Filter, string][] = [['all', '전체'], ['PENDING', '대기 중'], ['APPROVED', '수락됨'], ['REJECTED', '거절됨']]
+const statusKind = { PENDING: 'pending', APPROVED: 'accepted', REJECTED: 'rejected' } as const
+const REJECT_REASONS = ['주차 구역 용량 초과', '시간 불가', '기타']
+// 처리 중 상태가 바뀐 요청. 안내 후 다시 불러온다
+const DECIDE_CONFLICTS = ['INSUFFICIENT_TOKENS', 'GARAGE_TIME_CONFLICT', 'ALREADY_DECIDED']
 
-const statusKind = { '대기 중': 'pending', '수락됨': 'accepted', '거절됨': 'rejected' } as const
+const errorMessage = (e: unknown) => isApiError(e) ? e.message : '잠시 후 다시 시도해 주세요'
+const pad = (value: number) => String(value).padStart(2, '0')
+// "2026-10-05", 13, 18 → "2026.10.05 13:00 ~ 18:00"
+const requestTime = (date: string, start: number, end: number) => `${date.replaceAll('-', '.')} ${pad(start)}:00 ~ ${pad(end)}:00`
+
+function Loading() {
+  return <Box display="grid" py={6} sx={{placeItems:'center'}}><CircularProgress size={30}/></Box>
+}
+
+function LoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return <Alert severity="error" action={<Button color="inherit" size="small" onClick={onRetry}>다시 시도</Button>}>{message}</Alert>
+}
+
+function RejectDialog({ open, busy, onClose, onReject }: { open: boolean; busy: boolean; onClose: () => void; onReject: (reason: string) => void }) {
+  const [reason, setReason] = useState(REJECT_REASONS[0])
+  return <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
+    <DialogTitle>요청을 거절할까요?</DialogTitle>
+    <DialogContent><Typography variant="body2" color="text.secondary" mb={1.25}>거절 사유를 골라 주세요. 요청자에게 함께 전달돼요.</Typography><Stack direction="row" gap={0.75} flexWrap="wrap">{REJECT_REASONS.map((label)=><Chip key={label} label={label} clickable color={reason===label?'primary':'default'} variant={reason===label?'filled':'outlined'} onClick={() => setReason(label)}/>)}</Stack></DialogContent>
+    <DialogActions><Button onClick={onClose} disabled={busy}>취소</Button><Button variant="contained" color="error" disabled={busy} onClick={() => onReject(reason)}>거절</Button></DialogActions>
+  </Dialog>
+}
 
 export default function RequestsPage() {
+  const { data: home, error, reload } = useApi(() => getHome(), 'home')
+  if (error) return <Stack gap={2.25}><PageTitle title="공유 요청 관리" description="대기 요청을 확인하고 이용 가능 여부를 결정해요."/><LoadError message={error.message} onRetry={reload}/></Stack>
+  if (!home) return <Loading/>
+  return <RequestsView buildingId={home.building.id}/>
+}
+
+function RequestsView({ buildingId }: { buildingId: number }) {
+  const [filter, setFilter] = useState<Filter>('all')
+  const [input, setInput] = useState('')
+  const [q, setQ] = useState('')
+  const list = useApi(() => listAdminShareRequests(buildingId, { status: filter, ...(q ? { q } : {}) }), `share-requests-${buildingId}-${filter}-${q}`)
+  const [busy, setBusy] = useState(false)
+  const [notice, setNotice] = useState<Notice | null>(null)
+  const [rejectingId, setRejectingId] = useState<number | null>(null)
+  // 입력이 멈추면 검색한다
+  useEffect(() => { const timer = setTimeout(() => setQ(input.trim()), 300); return () => clearTimeout(timer) }, [input])
+
+  async function decide(id: number, decision: { status: 'APPROVED' } | { status: 'REJECTED'; reject_reason: string }) {
+    setBusy(true)
+    setNotice(null)
+    try {
+      await decideShareRequest(id, decision)
+      setNotice({ severity: 'success', message: decision.status === 'APPROVED' ? '요청을 수락했어요. 요청자의 토큰이 정산돼요.' : '요청을 거절했어요.' })
+      setRejectingId(null)
+      list.reload()
+    } catch (e) {
+      if (isApiError(e) && DECIDE_CONFLICTS.includes(e.code)) {
+        setNotice({ severity: 'warning', message: e.message })
+        setRejectingId(null)
+        list.reload()
+      } else setNotice({ severity: 'error', message: errorMessage(e) })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const counts = list.data?.counts
   return <Stack gap={2.25}>
     <PageTitle title="공유 요청 관리" description="대기 요청을 확인하고 이용 가능 여부를 결정해요."/>
-    <Box sx={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:1}}>{[['대기 중','4건'],['수락됨','7건'],['거절됨','2건']].map(([label,value],index)=><Surface key={label} sx={{boxShadow:'none',bgcolor:index===0?'#FFF9E8':'#fff'}}><Typography variant="caption" color="text.secondary">{label}</Typography><Typography variant="h6" mt={0.25}>{value}</Typography></Surface>)}</Box>
-    {/* TODO(logic): 요청자 이름·차량번호 검색, 상태 필터 적용 */}
-    <TextField placeholder="요청자 또는 차량번호 검색" slotProps={{input:{startAdornment:<InputAdornment position="start"><SearchRoundedIcon/></InputAdornment>}}}/>
-    <Stack direction="row" gap={0.75} flexWrap="wrap">{['전체','대기 중','수락됨','거절됨'].map((label,index)=><Chip key={label} label={label} clickable color={index===0?'primary':'default'} variant={index===0?'filled':'outlined'}/>)}</Stack>
-    {requests.map((request)=><Surface key={request.plate}><Stack gap={1.25}>
-      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={1}><Box minWidth={0}><Typography variant="subtitle2">{request.name}{request.status==='대기 중' && <Typography component="span" variant="caption" color="primary" fontWeight={800}> · 매너 {request.manner}</Typography>}</Typography><Typography variant="caption" color="text.secondary" display="block">{request.plate} · {request.unit}</Typography><Typography variant="caption" color="text.secondary" display="block">요청 구역: {request.slot} · {request.time}</Typography></Box><StatusChip kind={statusKind[request.status]}/></Stack>
-      {/* TODO(logic): 공유 요청 수락·거절 처리 후 목록·건수 갱신 */}
-      {request.status==='대기 중' && <><Divider/><Stack direction="row" gap={1}><Button size="small" variant="outlined" color="error" fullWidth>거절</Button><Button size="small" variant="contained" fullWidth>수락</Button></Stack></>}
-    </Stack></Surface>)}
+    <Box sx={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:1}}>{([['PENDING','대기 중'],['APPROVED','수락됨'],['REJECTED','거절됨']] as const).map(([status,label],index)=><Surface key={status} sx={{boxShadow:'none',bgcolor:index===0?'#FFF9E8':'#fff'}}><Typography variant="caption" color="text.secondary">{label}</Typography><Typography variant="h6" mt={0.25}>{counts ? `${counts[status]}건` : '-'}</Typography></Surface>)}</Box>
+    <TextField placeholder="요청자 또는 차량번호 검색" value={input} onChange={(event) => setInput(event.target.value)} slotProps={{input:{startAdornment:<InputAdornment position="start"><SearchRoundedIcon/></InputAdornment>}}}/>
+    <Stack direction="row" gap={0.75} flexWrap="wrap">{filters.map(([value,label])=><Chip key={value} label={label} clickable color={filter===value?'primary':'default'} variant={filter===value?'filled':'outlined'} onClick={() => setFilter(value)}/>)}</Stack>
+    {notice && <Alert severity={notice.severity} onClose={() => setNotice(null)}>{notice.message}</Alert>}
+    {list.error ? <LoadError message={list.error.message} onRetry={list.reload}/> : !list.data ? <Loading/> : list.data.items.length ? list.data.items.map((request)=><Surface key={request.id}><Stack gap={1.25}>
+      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={1}><Box minWidth={0}><Typography variant="subtitle2">{request.requester.name}</Typography><Typography variant="caption" color="text.secondary" display="block">{[request.plate, request.requester.unit].filter(Boolean).join(' · ')}</Typography><Typography variant="caption" color="text.secondary" display="block">요청 칸: {request.slot_label} · {requestTime(request.request_date, request.start_hour, request.end_hour)}</Typography></Box><StatusChip kind={statusKind[request.status]}/></Stack>
+      {request.status==='PENDING' && <><Divider/><Stack direction="row" gap={1}><Button size="small" variant="outlined" color="error" fullWidth disabled={busy} onClick={() => setRejectingId(request.id)}>거절</Button><Button size="small" variant="contained" fullWidth disabled={busy} onClick={() => decide(request.id, { status: 'APPROVED' })}>수락</Button></Stack></>}
+    </Stack></Surface>) : <Typography variant="caption" color="text.secondary">{q || filter !== 'all' ? '조건에 맞는 요청이 없어요.' : '받은 공유 요청이 없어요.'}</Typography>}
+    <RejectDialog key={rejectingId ?? 'none'} open={rejectingId !== null} busy={busy} onClose={() => setRejectingId(null)} onReject={(reason) => rejectingId !== null && decide(rejectingId, { status: 'REJECTED', reject_reason: reason })}/>
   </Stack>
 }
