@@ -43,8 +43,8 @@ parking 폴더 안에 보조 파일 2개도 추가했다: `UnavailableNotice.tsx
 ### 주차 배치 등록의 SVG 배치도 (2026-10-02)
 
 - 기준: Figma `월계디버깅` 파일의 `주차 배치도 SVG` 프레임(node `125:2`). 실제 빌라 사진을 바탕으로 만든 평면도다.
-- `src/pages/parking/parkingLot.ts`: 평면 좌표(건물, 벽, 통로, 입구, 칸 P1~P8), 막힘 관계 `BLOCKED_BY`, 칸 데이터 타입 `LotSlot`
-- `src/pages/parking/ParkingLotMap.tsx`: `view="top"`(평면) / `view="iso"`(2.5D 입체) 두 시점을 제공한다. 화면에서 토글로 바꾼다. 라이브러리 없이 SVG만 쓴다.
+- `src/components/parkingLotGeometry.ts`: 건물·벽·통로·입구 좌표(FE 상수)와 API 응답 → `LotSlot` 변환 `toLotSlots(layout, status)`
+- `src/components/ParkingLotMap.tsx`: `view="iso"`(2.5D, 기본) / `view="top"`(평면). 화면에서 토글로 바꾼다. 라이브러리 없이 SVG만 쓴다.
 - 칸 이름은 **P1~P8** (API `label`, `docs/decisions.md` D1).
 - 막힘: 2026-10-02부터 **백엔드가 판정해서 보내 준다.** FE의 `BLOCKED_BY` 상수는 삭제했고, 칸 데이터의 `blockedBy`(API `blocked_by`)를 표시만 한다.
 - 2026-10-02: 홈·차량 상세·관리자 대시보드도 `ParkingLotMap`(2.5D)으로 바꿨다. 공통 `ParkingMap`은 효재 `WelcomePage`만 쓴다.

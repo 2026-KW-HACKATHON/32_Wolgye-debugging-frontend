@@ -26,7 +26,7 @@ FE GitHub 이슈 #4~#18 본문은 Manyfast 기준으로 쓰였다. 이 문서와
 | "옮겼어요" 후 | 요청자에게 알림 없음 (완료 화면 문구도 맞춘다) |
 | 공유 시간 | 정시 단위, 요일은 칩 여러 개 |
 | 배치도 | 모든 화면에서 `ParkingLotMap`(SVG 2.5D). 구조는 [`tech-stack.md`](./tech-stack.md) 4장 |
-| 배치도 건물·벽·입구 (D3) | FE 상수로 둔다 (`src/pages/parking/parkingLot.ts`). API는 칸 좌표·상태만 준다 |
+| 배치도 건물·벽·입구 (D3) | FE 상수로 둔다 (`src/components/parkingLotGeometry.ts`). API는 칸 좌표·상태만 준다 |
 | 화면 간 id 전달 (D5) | 해시 쿼리: `#move?id=44`. 만들 때 `toHash('move', { id: 44 })`, 읽을 때 `hashParams().get('id')` (`src/types/navigation.ts`) |
 | 토큰·빌라 id (D6) | 토큰 저장·갱신은 `src/api/auth.ts`(효재)가 맡고 `getAccessToken()`, `refreshTokens()`, `getMyBuildingId()`를 export한다. `src/api/client.ts`(민솔)는 이 함수만 불러 헤더를 붙이고 401이면 한 번 갱신 후 재시도한다. 저장소는 `localStorage` 키 `chagok.auth` |
 | 외부 차량 이동 요청 (D8) | 대시보드 응답의 외부 차량에는 칸 번호(`slot_id`)만 있고, 이동 요청 API는 주차 번호(`parking_id`)가 필요하다. → 백엔드 변경 없이 **FE가 `/buildings/{id}/status`에서 같은 `slot_id`의 `parking.id`를 찾아 쓴다** |
