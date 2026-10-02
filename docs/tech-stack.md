@@ -59,15 +59,19 @@
 
 | 컴포넌트 | 위치 | 방식 | 쓰는 화면 |
 |---|---|---|---|
-| `ParkingMap` | `src/components/ParkingMap.tsx` | MUI `ButtonBase` 3×2 격자. 평면 카드 | 홈, 차량 상세, 관리자 대시보드, 서비스 소개(효재) |
-| `ParkingLotMap` | `src/pages/parking/ParkingLotMap.tsx` + 좌표 `parkingLot.ts` | **SVG + 직접 만든 등각 투영**. `view="top"`(평면) / `view="iso"`(2.5D) | 주차 배치 등록만 |
+| `ParkingLotMap` | `src/pages/parking/ParkingLotMap.tsx` + 좌표·목데이터 `parkingLot.ts` | **SVG + 직접 만든 등각 투영**. `view="iso"`(2.5D, 기본) / `view="top"`(평면) | 홈, 주차 배치 등록, 차량 상세, 관리자 대시보드 |
+| `ParkingMap` (구) | `src/components/ParkingMap.tsx` | MUI `ButtonBase` 3×2 격자 | 서비스 소개(효재 `WelcomePage`)만. 새 화면에 쓰지 않는다 |
+
+`ParkingLotMap` props: `slots: LotSlot[]`(필수), `view`, `variant: 'resident' | 'admin'`, `selected`, `recommendedId`, `focusId`(이 칸만 진하게), `onSelect`(넘기면 칸 탭 가능), `onUnavailable`. 칩 색 범례는 `LotLegend`. 화면별 쓰임은 `docs/figma-wireframe.md` 6장
 
 ### `ParkingLotMap`의 2.5D 방식
 - 라이브러리 없이 SVG `<path>`로 그린다. 평면 좌표 `(x, y)`와 높이 `z`를 `isoPoint(x, y, z) = [(x − y)·0.78, (x + y)·0.42 − z]`로 화면 좌표로 바꾼다
 - 건물·벽·차는 `IsoBox`(보이는 세 면: 윗면, 남쪽 면, 동쪽 면)로 그린다. 차는 차체(높이 20) + 캐빈(20~36)
 - 겹치는 순서는 `x + y`가 작은 것(먼 것)부터 그린다 (painter's algorithm)
+- 칸마다 짧은 이름 칩 하나만 그리고 상태는 칩 색으로 나눈다 (내 차 파랑, 막힘 빨강, 곧 출차 노랑, 빈 칸 흰색+민트 테두리, 사용 불가 회색, 관리자 화면은 입주민 파랑·외부 주황·미확인 빨강). 360px 폭에서 SVG 글자 크기 34 ≈ 화면 11px
+- 막힘은 판정하지 않는다. `LotSlot.blockedBy`(API `blocked_by`)를 받아 표시만 한다
 - 칸은 `role="button"` + `tabIndex` + Enter/Space 키 처리로 접근성을 지원한다. 차·라벨 레이어는 `pointerEvents="none"`이라 칸을 탭하는 데 방해되지 않는다
-- 좌표 단위는 Figma 프레임의 px(사이트 800×610)이다. **API는 칸 좌표를 건물 기준 미터(`rect.x0..y1`)로 준다** → 좌표 변환이 필요하다 (`docs/spec-gap.md` 3장)
+- 좌표 단위는 Figma 프레임의 px(사이트 800×610)이다. **API는 칸 좌표를 건물 기준 미터(`rect.x0..y1`)로 준다** → 좌표 변환이 필요하다 (`decisions.md` D1·D3)
 
 ### 2.5D 모델링 원칙
 1. **기본은 지금의 SVG 등각 투영을 확장한다.** 의존성이 없고, 번들이 작고, 탭 판정·접근성·MUI 테마 색을 그대로 쓸 수 있다. 칸 8~수십 개 규모에서는 충분하다
@@ -91,7 +95,7 @@ npm run dev                                    # http://localhost:5173/#home
 - API 명세: 백엔드 저장소 `docs/openapi-mock.yaml` (OpenAPI 3.1, 엔드포인트 45개, 예시 값은 모두 가짜). 확정 결정은 백엔드 이슈 #4 결정 댓글
 - 인증: `Authorization: Bearer <access_token>`, access 30분 / refresh 14일, `POST /auth/refresh`
 - 에러: `{ "error": { "code", "message", "detail" } }`, 시간은 KST(`+09:00`) ISO 8601, 페이지네이션은 `?cursor=&limit=` → `{ items, next_cursor }`
-- 프론트와 다른 점은 `docs/spec-gap.md`에 정리했다
+- 프론트와 다른 점은 `docs/decisions.md`에 정리했다
 
 ## 7. 정리가 필요한 것 (이슈 #17 대상)
 - 루트 `test.py` (프로젝트와 무관)

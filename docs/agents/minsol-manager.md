@@ -5,11 +5,13 @@
 ## 0. 시작할 때 할 일
 
 1. 아래 문서를 읽는다.
-   - `docs/spec-gap.md`: **기준 문서 간 불일치와 결정 상태 (가장 먼저)**
+   - `docs/README.md`: 문서 목록과 읽는 순서 (가장 먼저)
+   - `docs/decisions.md`: 결정 사항
+   - `docs/backend-api.md`: 백엔드 API
    - `docs/tech-stack.md`: 스택·코드 규칙·2.5D 배치도 방식
    - `docs/figma-wireframe.md`: Figma 화면 목록과 노드 ID
-   - `docs/handoff-parking-admin.md`: 공통 용어, 작업 규칙, TODO 규칙 (4장 공통 값은 spec-gap 1장이 우선)
-   - `docs/manyfast-diff.md`: 기획 결정 근거
+   - `docs/handoff-parking-admin.md`: 공통 용어, 작업 규칙, TODO 규칙 (4장 공통 값은 decisions.md이 우선)
+   - `docs/archive/manyfast-diff.md`: 기획 결정 근거
    - `docs/api-layer.md`: S2(#6) 완료 후 생기는 API 레이어 규칙
 2. 이슈 현황을 확인한다. 진행 상태는 GitHub 이슈를 기준으로 한다.
    ```bash
@@ -25,7 +27,7 @@
 flowchart LR
   S1["#5 S1 PR 머지<br/>(사람)"] --> S2["#6 S2 API 레이어<br/>(작업자 1명)"]
   Q["#4 Q1·Q2 결정"] -.-> S2
-  S2 --> M1["#8 M1 ParkingMap props<br/>(작업자 1명)"]
+  S2 --> M1["#8 M1 배치도 공통화<br/>(작업자 1명)"]
   M1 --> M2["#9 M2"] & M3["#10 M3"] & M4["#11 M4"] & M5["#12 M5"] & M6["#13 M6"]
   M2 & M3 & M4 & M5 & M6 --> V["관리자 검증·커밋"] --> E1["#17 E1 통합 QA<br/>(효재와 함께)"]
 ```
@@ -34,7 +36,7 @@ flowchart LR
 |---|---|---|---|
 | #5 S1 | **사람이 직접** (push·PR·머지) | — | — |
 | #6 S2 | 작업자 1명, 순차 | `src/api/{client,parking,admin}.ts`, `src/types/{parking,admin}.ts`, `src/mocks/{parking,admin}.ts`, `docs/api-layer.md` | #5 머지, #4 Q1 승인 |
-| #8 M1 | 작업자 1명, 순차 | `src/components/ParkingMap.tsx`, `src/mocks/*`, `src/types/parking.ts` | #6 완료 |
+| #8 M1 | 작업자 1명, 순차 | `src/pages/parking/{ParkingLotMap.tsx,parkingLot.ts}` → `src/components/`·`src/mocks/parking.ts`로 이동, `src/types/parking.ts`, 이 파일을 import하는 parking·admin 화면의 import 줄 | #6 완료 |
 | #9 M2 | **병렬** | `parking/{HomePage,VehicleDetailPage,DeparturePage,RepeatPage}.tsx` | #8 완료 |
 | #10 M3 | **병렬** | `parking/{ParkingRegisterPage,UnavailablePage,UnavailableNotice}.tsx` | #8 완료 (상시 주차는 #4 Q3 결정 후) |
 | #11 M4 | **병렬** | `parking/{NotificationsPage,MoveRequestPage,MoveDonePage}.tsx` | #8 완료 |
@@ -62,7 +64,7 @@ flowchart LR
 수정 가능한 파일 (이 밖의 파일은 읽기만):
 - <파일 목록>
 
-참고 문서: docs/handoff-parking-admin.md 4·6·7장, docs/api-layer.md
+참고 문서: docs/README.md 순서대로 (decisions → backend-api → figma-wireframe → tech-stack → handoff 6·7장), docs/api-layer.md(#6 이후)
 대상 TODO: grep -rn "TODO(logic)" <파일 목록>
 
 완료 조건:
@@ -79,7 +81,7 @@ flowchart LR
 1. `git diff --stat`으로 **허용 범위 밖 파일이 바뀌지 않았는지** 확인한다. 바뀌었으면 되돌리고 작업자에게 다시 맡긴다.
 2. `npx tsc -b && npm run lint && npm run build`
 3. `grep -rn "TODO(logic)" <범위>`로 남은 TODO가 보고 내용과 맞는지 확인한다.
-4. 인수인계 문서 4장의 공통 값이 그대로인지 diff에서 확인한다: "월계 햇빛빌라", "관리자", "필로티 N번", 김지수·101동 203호·12가 3456·18:30, 06:00부터 30분 단위.
+4. `docs/decisions.md` 확정 값이 그대로인지 diff에서 확인한다: "월계 한빛빌라", "관리자", 칸 이름 P1~P8, 김지수·101동 202호·12가 3456·18:30, 요금 토큰, 이웃 익명
 5. 통과하면 이슈별로 커밋한다. 커밋 메시지 끝에 `(#이슈번호)`를 붙인다.
 
 ## 5. 하지 말 것 / 사람에게 물을 것

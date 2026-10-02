@@ -6,7 +6,7 @@ import { halfHourOptions } from './timeOptions'
 // TODO(logic): 현재 차량의 배치 칸과 등록된 출차 일정을 불러와 기본값으로 채우기
 export default function DeparturePage() {
   return <Stack gap={2.25}>
-    <PageTitle title="출차 일정 수정" description="12가 3456 · 필로티 안쪽 2번에 주차 중 — 배치는 그대로 두고 출차 일정만 바꿉니다"/>
+    <PageTitle title="출차 일정 수정" description="12가 3456 · P2에 주차 중 — 배치는 그대로 두고 출차 일정만 바꿉니다"/>
     <Divider/>
     <SectionTitle>출차 일시</SectionTitle>
     {/* TODO(logic): '날짜 직접 선택'을 고르면 날짜 선택기 열기 */}

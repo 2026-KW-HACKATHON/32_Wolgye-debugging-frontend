@@ -6,14 +6,14 @@ type Slot = { name: string; inUse: boolean; shareable: boolean }
 
 // TODO(logic): 운영팀이 등록한 빌라의 주차 칸 목록을 API에서 불러오기
 const slots: Slot[] = [
-  { name: '필로티 1번', inUse: true, shareable: false },
-  { name: '필로티 2번', inUse: true, shareable: false },
-  { name: '건물 앞 1번', inUse: true, shareable: false },
-  { name: '건물 앞 2번', inUse: false, shareable: false },
-  { name: '골목 1번', inUse: true, shareable: true },
+  { name: 'P4', inUse: true, shareable: false },
+  { name: 'P2', inUse: true, shareable: false },
+  { name: 'P7', inUse: true, shareable: false },
+  { name: 'P8', inUse: false, shareable: false },
+  { name: 'P3', inUse: true, shareable: true },
 ]
 
-const describe = (slot: Slot) => slot.inUse ? `사용 중 · ${slot.shareable ? '공유 가능' : '공유 안 함'}` : '사용 중지'
+const describe = (slot: Slot) => slot.inUse ? `사용 중 · ${slot.shareable ? '공유 중' : '공유 안 함'}` : '사용 중지'
 
 export default function SlotsPage() {
   const [editing, setEditing] = useState<Slot | null>(null)
@@ -25,9 +25,9 @@ export default function SlotsPage() {
       <DialogTitle>칸 설정 · {editing?.name}</DialogTitle>
       <DialogContent><Stack gap={1}>
         <FormControlLabel control={<Switch defaultChecked={editing?.inUse}/>} label={<div><Typography variant="subtitle2">사용 가능</Typography><Typography variant="caption" color="text.secondary">끄면 배치도에서 선택할 수 없어요</Typography></div>} labelPlacement="start" sx={{justifyContent:'space-between',mx:0}}/>
-        <FormControlLabel control={<Switch defaultChecked={editing?.shareable}/>} label={<div><Typography variant="subtitle2">공유 가능</Typography><Typography variant="caption" color="text.secondary">차고지에 묶어 시간제로 열 수 있어요</Typography></div>} labelPlacement="start" sx={{justifyContent:'space-between',mx:0}}/>
+        <Typography variant="caption" color="text.secondary">{editing?.shareable ? '공유 중인 칸이에요. 공유 조건은 차고지 등록에서 바꿔요.' : '공유하려면 차고지 등록에서 이 칸을 고르세요.'}</Typography>
       </Stack></DialogContent>
-      {/* TODO(logic): 칸의 사용 가능·공유 가능 여부 저장 */}
+      {/* TODO(logic): 칸 사용 가능 여부 저장 (PATCH /admin/slots/{slot_id} { is_active }). 공유 여부는 share_offer_id 유무로 표시 */}
       <DialogActions sx={{px:3,pb:2.5}}><Button variant="outlined" onClick={()=>setEditing(null)}>취소</Button><Button variant="contained" onClick={()=>setEditing(null)}>저장</Button></DialogActions>
     </Dialog>
   </Stack>

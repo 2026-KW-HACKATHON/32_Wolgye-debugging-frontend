@@ -15,7 +15,7 @@ const CUSTOM_TIME = '직접 입력'
 
 // 배치 전 화면이라 내 차(P2)는 아직 칸에 없다.
 // TODO(logic): 빌라 현황(GET /buildings/{id}/status)과 추천 결과(GET /buildings/{id}/slots/recommendations)를 불러오기. 출차 시간을 바꿀 때마다 추천을 다시 받는다
-const lotSlots: LotSlot[] = lotStatus.map((slot) => slot.car?.mine ? { id: slot.id, short: slot.short, label: slot.label, state: 'empty' } : { ...slot, blockedBy: undefined })
+const lotSlots: LotSlot[] = lotStatus.map((slot) => slot.car?.mine ? { id: slot.id, label: slot.label, state: 'empty' } : { ...slot, blockedBy: undefined })
 const RECOMMENDED: SlotId = 'P2'
 const RECOMMEND_REASON = '지금 선 차들보다 늦게 나가서 안쪽이 좋아요'
 // 이 칸에 두면 막게 되는 칸 (API will_block)
@@ -44,7 +44,7 @@ export default function ParkingRegisterPage() {
     <BottomSheet><Stack gap={2.25}>
       <SectionTitle>내 차량</SectionTitle>
       <Stack direction="row" justifyContent="space-between" alignItems="center"><Stack direction="row" gap={1.25} alignItems="center"><Box sx={{width:46,height:46,borderRadius:3,display:'grid',placeItems:'center',bgcolor:'#E8F0FF',color:'primary.main'}}><DirectionsCarRoundedIcon/></Box><Box><Typography variant="subtitle2">12가 3456</Typography><Typography variant="caption" color="text.secondary">흰색</Typography></Box></Stack><NavButton to="vehicles" variant="outlined">차량 변경</NavButton></Stack>
-      {/* TODO(logic): 상시 주차가 켜져 있을 때 출차 시간 입력을 생략할지 결정 후 반영 */}
+      {/* TODO(logic): 상시 주차가 켜져 있으면 출차 시간 없이 배치한다 (POST /parkings is_long_term: true, expected_exit_at 생략 — FE #4 Q3) */}
       <FormControlLabel control={<Switch defaultChecked/>} label="상시 주차 여부" sx={{justifyContent:'space-between',mx:0}} labelPlacement="start"/>
       <Typography variant="caption" color="text.secondary" textAlign="center">↓ 스크롤해서 출차 시간도 함께 등록</Typography>
       <SectionTitle action={<Chip size="small" icon={<EventRoundedIcon/>} label="10/2 (금) · 날짜 변경" clickable/>}>내일 몇 시에 나가요?</SectionTitle>

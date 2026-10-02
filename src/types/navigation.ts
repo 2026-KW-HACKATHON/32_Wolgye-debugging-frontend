@@ -2,7 +2,7 @@ export type PageId =
   | 'welcome'
   | 'signup'
   | 'login'
-  | 'alley'
+  | 'join-building'
   | 'vehicle-register'
   | 'home'
   | 'parking-register'
@@ -39,8 +39,8 @@ export const pages: PageMeta[] = [
   { id: 'welcome', title: '서비스 소개', group: '시작하기' },
   { id: 'signup', title: '회원가입', group: '시작하기', backTo: 'welcome' },
   { id: 'login', title: '로그인', group: '시작하기', backTo: 'welcome' },
-  { id: 'alley', title: '골목 등록', group: '시작하기', backTo: 'signup' },
-  { id: 'vehicle-register', title: '차량 등록', group: '시작하기', backTo: 'alley' },
+  { id: 'join-building', title: '건물 합류', group: '시작하기', backTo: 'signup' },
+  { id: 'vehicle-register', title: '차량 등록', group: '시작하기', backTo: 'join-building' },
   { id: 'home', title: '홈', group: '주차', tab: '배치도' },
   { id: 'parking-register', title: '주차 배치 등록', group: '주차', tab: '배치도', backTo: 'home' },
   { id: 'departure', title: '출차 일정 수정', group: '주차', tab: '배치도', backTo: 'vehicle-detail' },
@@ -63,9 +63,12 @@ export const pages: PageMeta[] = [
   { id: 'profile', title: '프로필·설정', group: '설정', tab: '프로필' },
 ]
 
-export const toHash = (id: PageId) => `#${id}`
+// 화면 간 값 전달은 해시 쿼리로 한다: #move?id=44 (docs/decisions.md D5)
+export const toHash = (id: PageId, params?: Record<string, string | number>) => `#${id}${params ? `?${new URLSearchParams(Object.entries(params).map(([key, value]) => [key, String(value)]))}` : ''}`
+
+export const hashParams = (hash = window.location.hash) => new URLSearchParams(hash.split('?')[1] ?? '')
 
 export function pageFromHash(hash = window.location.hash): PageId {
-  const id = hash.replace('#', '')
+  const id = hash.replace('#', '').split('?')[0]
   return pages.some((page) => page.id === id) ? (id as PageId) : 'home'
 }

@@ -6,12 +6,12 @@ type RequestStatus = '대기 중' | '수락됨' | '거절됨'
 
 // TODO(logic): 공유 요청 목록과 상태별 건수를 API에서 불러오기
 const requests: { name: string; plate: string; unit: string; slot: string; time: string; manner: string; status: RequestStatus }[] = [
-  { name: '홍길동', plate: '12가 3456', unit: '101동 201호', slot: '골목 1번', time: '2026.10.05 13:00 ~ 18:00', manner: '38.5℃', status: '대기 중' },
-  { name: '이수진', plate: '34나 7890', unit: '102동 302호', slot: '골목 1번', time: '2026.10.05 06:00 ~ 12:00', manner: '36.9℃', status: '대기 중' },
-  { name: '박민준', plate: '56다 1234', unit: '103동 101호', slot: '건물 앞 1번', time: '2026.10.04 09:00 ~ 12:00', manner: '41.2℃', status: '대기 중' },
-  { name: '김지영', plate: '78라 5678', unit: '101동 403호', slot: '골목 1번', time: '2026.10.04 14:00 ~ 17:00', manner: '35.4℃', status: '대기 중' },
-  { name: '최성우', plate: '90마 2345', unit: '102동 202호', slot: '골목 1번', time: '2026.10.02 10:00 ~ 13:00', manner: '39.0℃', status: '수락됨' },
-  { name: '정다은', plate: '23바 6789', unit: '103동 304호', slot: '건물 앞 1번', time: '2026.10.02 16:00 ~ 20:00', manner: '33.1℃', status: '거절됨' },
+  { name: '홍길동', plate: '12가 3456', unit: '101동 201호', slot: 'P3', time: '2026.10.05 13:00 ~ 18:00', manner: '38.5℃', status: '대기 중' },
+  { name: '이수진', plate: '34나 7890', unit: '102동 302호', slot: 'P3', time: '2026.10.05 06:00 ~ 12:00', manner: '36.9℃', status: '대기 중' },
+  { name: '박민준', plate: '56다 1234', unit: '103동 101호', slot: 'P7', time: '2026.10.04 09:00 ~ 12:00', manner: '41.2℃', status: '대기 중' },
+  { name: '김지영', plate: '78라 5678', unit: '101동 403호', slot: 'P3', time: '2026.10.04 14:00 ~ 17:00', manner: '35.4℃', status: '대기 중' },
+  { name: '최성우', plate: '90마 2345', unit: '102동 202호', slot: 'P3', time: '2026.10.02 10:00 ~ 13:00', manner: '39.0℃', status: '수락됨' },
+  { name: '정다은', plate: '23바 6789', unit: '103동 304호', slot: 'P7', time: '2026.10.02 16:00 ~ 20:00', manner: '33.1℃', status: '거절됨' },
 ]
 
 const statusKind = { '대기 중': 'pending', '수락됨': 'accepted', '거절됨': 'rejected' } as const

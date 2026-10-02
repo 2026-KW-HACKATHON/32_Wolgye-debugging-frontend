@@ -36,10 +36,8 @@ export type Occupant = 'resident' | 'external' | 'unknown'
 
 export type LotSlot = {
   id: SlotId
-  /** 칸 이름. API label("필로티 안쪽 1번")을 그대로 쓴다. 카드·안내 문구에 쓴다 */
+  /** 칸 이름. API label(빌라 안 순번 P1, P2 …)을 그대로 쓴다 */
   label: string
-  /** 배치도 칩에 쓰는 짧은 이름 (Figma 배치도의 P1~P8) */
-  short: string
   state: LotSlotState
   car?: { plate: string; mine: boolean; occupant: Occupant; exitAt?: string }
   /** 이 칸의 차를 막고 있는 칸. 막힘 판정은 백엔드가 하고 FE는 표시만 한다 (API blocked_by) */
@@ -49,14 +47,14 @@ export type LotSlot = {
 // TODO(logic): P1~P8 ↔ 주차 구역·번호 매핑이 정해지지 않아 label은 Figma 와이어프레임 문구에 맞춘 임시 값이다 (docs/spec-gap.md D1)
 // TODO(logic): 빌라 현황을 API GET /buildings/{id}/status 로 불러오기
 export const lotStatus: LotSlot[] = [
-  { id: 'P1', short: 'P1', label: '필로티 외부 1번', state: 'occupied', car: { plate: '123가 4634', mine: false, occupant: 'external', exitAt: '17:00' } },
-  { id: 'P2', short: 'P2', label: '필로티 안쪽 2번', state: 'occupied', car: { plate: '12가 3456', mine: true, occupant: 'resident', exitAt: '18:30' }, blockedBy: ['P1'] },
-  { id: 'P3', short: 'P3', label: '골목 1번', state: 'empty' },
-  { id: 'P4', short: 'P4', label: '필로티 안쪽 1번', state: 'soon_exit', car: { plate: '27가 4821', mine: false, occupant: 'resident', exitAt: '15:10' } },
-  { id: 'P5', short: 'P5', label: '골목 2번', state: 'empty' },
-  { id: 'P6', short: 'P6', label: '건물 앞 3번', state: 'occupied', car: { plate: '45다 6789', mine: false, occupant: 'unknown' } },
-  { id: 'P7', short: 'P7', label: '건물 앞 1번', state: 'soon_exit', car: { plate: '34나 5678', mine: false, occupant: 'resident', exitAt: '15:30' } },
-  { id: 'P8', short: 'P8', label: '건물 앞 2번', state: 'unavailable' },
+  { id: 'P1', label: 'P1', state: 'occupied', car: { plate: '123가 4634', mine: false, occupant: 'external', exitAt: '17:00' } },
+  { id: 'P2', label: 'P2', state: 'occupied', car: { plate: '12가 3456', mine: true, occupant: 'resident', exitAt: '18:30' }, blockedBy: ['P1'] },
+  { id: 'P3', label: 'P3', state: 'empty' },
+  { id: 'P4', label: 'P4', state: 'soon_exit', car: { plate: '27가 4821', mine: false, occupant: 'resident', exitAt: '15:10' } },
+  { id: 'P5', label: 'P5', state: 'empty' },
+  { id: 'P6', label: 'P6', state: 'occupied', car: { plate: '45다 6789', mine: false, occupant: 'unknown' } },
+  { id: 'P7', label: 'P7', state: 'soon_exit', car: { plate: '34나 5678', mine: false, occupant: 'resident', exitAt: '15:30' } },
+  { id: 'P8', label: 'P8', state: 'unavailable' },
 ]
 
 export const slotById = (slots: LotSlot[], id: SlotId) => slots.find((slot) => slot.id === id)

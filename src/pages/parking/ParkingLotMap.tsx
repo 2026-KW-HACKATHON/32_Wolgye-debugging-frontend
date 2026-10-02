@@ -105,7 +105,7 @@ export default function ParkingLotMap({ slots, view = 'iso', variant = 'resident
   const font = FONT[view]
   const interactive = Boolean(onSelect)
   // 내 차를 막고 있는 칸 (빨간 테두리로 표시)
-  const blockers = new Set(slots.filter((slot) => slot.car?.mine).flatMap((slot) => slot.blockedBy ?? []))
+  const blockers = new Set(admin ? [] : slots.filter((slot) => slot.car?.mine).flatMap((slot) => slot.blockedBy ?? []))
   const tap = (slot: LotSlot) => slot.state === 'empty' ? onSelect?.(slot.id) : onUnavailable?.(slot)
   const onKey = (event: KeyboardEvent, slot: LotSlot) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); tap(slot) } }
   const center = (r: Rect) => iso ? isoPoint(r.x + r.w / 2, r.y + r.h / 2) : [r.x + r.w / 2, r.y + r.h / 2] as [number, number]
@@ -148,10 +148,10 @@ export default function ParkingLotMap({ slots, view = 'iso', variant = 'resident
 
   // 칸마다 칸 이름 칩 하나. 상태는 칩 색으로 나누고, 뜻은 화면의 범례와 아래 카드가 설명한다 (글자를 넣으면 이웃 칸 칩과 겹친다)
   const chip = (slot: LotSlot): { text: string; color: string; bg: string; stroke?: string } => {
-    const label = slot.short
+    const { label } = slot
     if (admin && slot.car) return { text: label, color: occupantColor[slot.car.occupant].tagText, bg: occupantColor[slot.car.occupant].tagBg, stroke: occupantColor[slot.car.occupant].car }
     if (slot.car?.mine) return { text: label, color: '#FFFFFF', bg: slot.blockedBy?.length ? tones.red : tones.blue }
-    if (!admin && blockers.has(slot.id)) return { text: label, color: '#B82D3B', bg: '#FFFFFF', stroke: tones.red }
+    if (blockers.has(slot.id)) return { text: label, color: '#B82D3B', bg: '#FFFFFF', stroke: tones.red }
     if (slot.state === 'soon_exit') return { text: label, color: colors.soonText, bg: colors.soonBg, stroke: '#F5C451' }
     if (slot.state === 'empty' && slot.id === selected) return { text: label, color: '#FFFFFF', bg: tones.blue }
     if (slot.state === 'empty' && slot.id === recommendedId) return { text: `★${label}`, color: '#FFFFFF', bg: '#12B76A' }

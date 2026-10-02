@@ -7,14 +7,11 @@ const dayOptions = ['매일','평일','주말','월~금','토~일']
 const maxHourOptions = ['1시간','2시간','3시간','4시간','제한 없음']
 
 // TODO(logic): 공유 가능으로 설정된 칸 목록을 API에서 불러오기
-const shareableSlots = ['골목 1번 · 골목 후면','건물 앞 1번 · 건물 정면','필로티 1번 · 입구 쪽']
+const shareableSlots = ['P1','P3','P5']
 
 export default function GarageRegisterPage() {
   return <Stack gap={2.25}>
-    <PageTitle title="차고지 등록" description="이웃과 공유할 주차 공간의 정보를 입력해 주세요."/>
-    <SectionTitle>기본 정보</SectionTitle>
-    <TextField label="차고지 이름" placeholder="예: 햇빛빌라 골목 1번"/>
-    <TextField label="상세 위치 안내" multiline rows={3} placeholder="예: 건물 뒤편 좌측"/>
+    <PageTitle title="차고지 등록" description="공유할 칸을 고르고 이용 조건을 정해 주세요. 칸마다 공유 조건이 하나씩 등록돼요."/>
     <SectionTitle>공유할 칸 선택</SectionTitle>
     <Surface><Stack>{shareableSlots.map((label,index)=><FormControlLabel key={label} control={<Checkbox defaultChecked={index===0}/>} label={<Typography variant="body2">{label}</Typography>}/>)}</Stack></Surface>
     <Divider/>
@@ -23,13 +20,13 @@ export default function GarageRegisterPage() {
     <TextField select label="이용 가능 요일" defaultValue="매일">{dayOptions.map((value)=><MenuItem key={value} value={value}>{value}</MenuItem>)}</TextField>
     <Divider/>
     <SectionTitle>이용 조건</SectionTitle>
-    <TextField label="시간당 요금" defaultValue="1,000" helperText="0이면 무료로 공개돼요" slotProps={{input:{endAdornment:<InputAdornment position="end">원</InputAdornment>}}}/>
+    <TextField label="시간당 요금 (토큰)" defaultValue="2" helperText="0이면 무료로 공개돼요" slotProps={{input:{endAdornment:<InputAdornment position="end">토큰</InputAdornment>}}}/>
     <TextField select label="최대 이용 시간" defaultValue="4시간">{maxHourOptions.map((value)=><MenuItem key={value} value={value}>{value}</MenuItem>)}</TextField>
     <TextField label="메모 (이용자에게 전달할 사항)" multiline rows={3}/>
     <Divider/>
     <SectionTitle>공개 설정</SectionTitle>
     <Surface><Stack direction="row" justifyContent="space-between" alignItems="center"><div><Typography variant="subtitle2">차고지 공개</Typography><Typography variant="caption" color="text.secondary">공유 주차 목록에 표시합니다.</Typography></div><Switch defaultChecked/></Stack></Surface>
-    {/* TODO(logic): 차고지 등록 요청 (필수값: 이름, 공유할 칸 1개 이상, 시작 < 종료, 요금 0 이상) */}
+    {/* TODO(logic): 차고지 등록 요청 (필수값: 공유할 칸 1개 이상(slot_ids), 시작 < 종료, 요금 0 이상) */}
     <NavButton to="admin" fullWidth>차고지 등록 완료</NavButton>
   </Stack>
 }

@@ -8,7 +8,7 @@ tools: Read, Edit, Write, Bash
 
 ## 시작
 1. `gh issue view <번호>`로 이슈 본문을 읽는다.
-2. `docs/handoff-parking-admin.md`의 4장(공통 값), 6장(작업 규칙), 7장(TODO 규칙)을 읽는다. `docs/api-layer.md`가 있으면 그것도 읽는다.
+2. `docs/README.md`의 순서대로 읽는다: `decisions.md`(확정 값 — 이슈 본문보다 우선) → `backend-api.md`(필드·에러) → `figma-wireframe.md`(내 화면의 Figma 노드) → `tech-stack.md` → `handoff-parking-admin.md` 6·7장. 이슈 댓글의 "2026-10-03 기준 변경"도 읽는다. `docs/api-layer.md`가 있으면 그것도 읽는다.
 
 ## 규칙
 - 프롬프트에 적힌 **수정 가능한 파일만** 고친다. 다른 파일은 읽기만 한다. 범위 밖 변경이 필요하면 고치지 말고 보고한다.
