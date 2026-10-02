@@ -57,13 +57,13 @@ if (!home.my_parking) return <Surface>주차 중인 차가 없어요</Surface>  
 
 - 쓰기 후에는 관련 조회를 다시 부른다 (예: `decideShareRequest` → `listAdminShareRequests`). 목도 상태를 바꾸므로 결과가 반영된다.
 - 응답은 복사본이라 화면에서 바꿔도 목 상태에 영향 없다.
-- 배치도: `getBuildingLayout`(캐싱) + `getBuildingStatus` 를 합쳐 `LotSlot` 으로 바꾼다. `rect` 는 미터, `SLOT_RECTS` px = 미터 × 50.
+- 배치도: `getBuildingLayout`(캐싱) + `getBuildingStatus` 를 합쳐 `LotSlot` 으로 바꾼다. `rect` 는 미터, `toLotSlots`가 `PX_PER_METER`(50)로 px 변환 = 미터 × 50.
 
 ## 6. 목 시나리오 (기준 시각 2026-09-30 14:40 KST, `MOCK_NOW`)
 
 | 칸 | slot_id | 상태 | 차 | 비고 |
 |---|---|---|---|---|
-| P1 | 1001 | OCCUPIED | 외부 `123가 4634` 17:00 (parking 558) | P2를 막음. 공유 조건 403 |
+| P1 | 1001 | OCCUPIED | 외부 `123가 4634` 20:00 (parking 558) | P2를 막음. 공유 조건 403 |
 | P2 | 1002 | OCCUPIED | **내 차** `12가 3456` 흰색 18:30 (parking 556, 08:30 입차) | `front_slot_id` 1001 |
 | P3 | 1003 | EMPTY | | 공유 조건 401 |
 | P4 | 1004 | SOON_EXIT | 입주민 `27가 4821` 15:10 반복 | `front_slot_id` 1003 |

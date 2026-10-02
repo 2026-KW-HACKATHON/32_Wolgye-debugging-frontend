@@ -6,8 +6,8 @@ import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded'
 import { Avatar, Box, Button, Divider, IconButton, Stack, Typography } from '@mui/material'
 import { NavButton, PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
 import { tones } from '../../theme'
-import ParkingLotMap from '../parking/ParkingLotMap'
-import { lotStatus } from '../parking/parkingLot'
+import ParkingLotMap from '../../components/ParkingLotMap'
+import { lotStatus } from '../../mocks/parking'
 
 // 2026년 9월 일별 '가장 붐빈 시간의 점유 칸 수' (총 8칸) 임시 값
 const dailyPeak = [6,4,7,8,6,5,3,7,4,8,7,6,5,3,7,4,8,6,7,5,3,7,4,8,7,6,5,3,7,4]

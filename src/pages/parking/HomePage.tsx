@@ -4,8 +4,9 @@ import ErrorRoundedIcon from '@mui/icons-material/ErrorRounded'
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded'
 import { Box, Button, Chip, Divider, Stack, Typography } from '@mui/material'
 import { NavButton, PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
-import ParkingLotMap, { LotLegend } from './ParkingLotMap'
-import { lotStatus, slotById } from './parkingLot'
+import ParkingLotMap, { LotLegend } from '../../components/ParkingLotMap'
+import { slotById } from '../../components/parkingLotGeometry'
+import { lotStatus } from '../../mocks/parking'
 
 // TODO(logic): 로그인한 차곡이의 빌라 기준으로 칸 상태 집계, 내 차량, 막힘 여부, 최근 알림을 API에서 불러와 아래 하드코딩 값을 교체
 export default function HomePage() {

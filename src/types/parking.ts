@@ -26,6 +26,29 @@ export type SlotParking = { id: number; is_mine: boolean; plate: string; occupan
 export type SlotStatus = { slot_id: number; state: SlotState; parking: SlotParking | null; blocked_by: number[]; blocking: number[] }
 export type BuildingStatus = { updated_at: DateTime; slots: SlotStatus[] }
 
+// ── 배치도 화면용 칸 (layout + status 를 합친 값. src/components/parkingLotGeometry.ts 의 toLotSlots) ──
+/** 칸 키. API label(빌라 안 순번 P1, P2 …). 빌라 안에서 겹치지 않는다 */
+export type SlotId = string
+/** 배치도 평면 좌표(px, Figma site-surface 800×610 기준) = API rect(미터) × 50 */
+export type LotRect = { x: number; y: number; w: number; h: number }
+/** API SlotState(EMPTY·SOON_EXIT·OCCUPIED·UNAVAILABLE)와 같은 값 */
+export type LotSlotState = 'empty' | 'soon_exit' | 'occupied' | 'unavailable'
+/** API OccupantType(RESIDENT·EXTERNAL·UNKNOWN)과 같은 값 */
+export type Occupant = 'resident' | 'external' | 'unknown'
+export type LotSlot = {
+  id: SlotId
+  /** API slot_id */
+  slotId: number
+  /** 칸 이름. API label(빌라 안 순번 P1, P2 …)을 그대로 쓴다 */
+  label: string
+  rect: LotRect
+  state: LotSlotState
+  /** exitAt 은 "HH:mm" (KST). 출차 시간이 없으면 생략 */
+  car?: { parkingId: number; plate: string; mine: boolean; occupant: Occupant; exitAt?: string }
+  /** 이 칸의 차를 막고 있는 칸. 막힘 판정은 백엔드가 하고 FE는 표시만 한다 (API blocked_by) */
+  blockedBy?: SlotId[]
+}
+
 // ── 알림 ──
 export type NotificationLink = { screen: NotificationScreen; id: number | null }
 export type NotificationItem = { id: number; type: NotificationType; title: string; body: string; link: NotificationLink | null; is_read: boolean; created_at: DateTime }

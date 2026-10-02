@@ -1,7 +1,8 @@
 import type { BuildingRole, DateTime, Weekday } from '../types/api'
-import type { BuildingLayout, ExitSource, LayoutSlot, MoveRequestDetail, MoveRequestBox, NotificationItem, OccupantType, ParkingState, RecurringSchedule, SlotStatus } from '../types/parking'
+import { toLotSlots } from '../components/parkingLotGeometry'
+import type { BuildingLayout, ExitSource, LayoutSlot, LotSlot, MoveRequestDetail, MoveRequestBox, NotificationItem, OccupantType, ParkingState, RecurringSchedule, SlotStatus } from '../types/parking'
 
-// 목데이터 (docs/decisions.md 확정 값). 칸 상태는 src/pages/parking/parkingLot.ts 의 lotStatus 와 같은 시나리오
+// 목데이터 (docs/decisions.md 확정 값). 배치도 화면용 lotStatus 는 맨 아래에서 layout + slotStatuses() 로 만든다
 // api/*.ts 의 쓰기 함수가 이 값을 직접 바꾼다 (새로고침하면 처음 값으로 돌아감)
 
 /** 목 기준 시각 (2026-09-30 수요일 14:40 KST) */
@@ -12,7 +13,7 @@ export const MY_VEHICLE_ID = 7
 export const me: { name: string; unit: string; role: BuildingRole; label: string } = { name: '김지수', unit: '101동 202호', role: 'RESIDENT', label: '101동 입주민' }
 export const myVehicle = { id: MY_VEHICLE_ID, plate: '12가 3456', color: '흰색' as const }
 
-// rect = parkingLot.ts SLOT_RECTS(px) / 50. front_slot_id = 출구(통로) 쪽 앞 칸
+// rect = 배치도 px / 50 (src/components/parkingLotGeometry.ts PX_PER_METER). front_slot_id = 출구(통로) 쪽 앞 칸
 // TODO(logic): 주차 구역(zone) 이름·묶음은 화면에 쓰지 않아 배치도 줄 단위 임시 값이다 (명세 example 의 구역 구성과 다름)
 export const layout: BuildingLayout = {
   building_id: MY_BUILDING_ID,
@@ -57,7 +58,7 @@ export const WEEKDAYS_MON_FRI: Weekday[] = ['MON', 'TUE', 'WED', 'THU', 'FRI']
 
 export type MockMoveRequest = MoveRequestDetail & { box: MoveRequestBox; target_parking_id: number; responded_at: DateTime | null }
 
-// TODO(logic): 시나리오상 P2(내 차)는 막는 칸이 없다. 받은 이동 요청 44의 막힌 차량(P4)은 화면 시연용 임시 값
+// TODO(logic): 받은 이동 요청 44의 막힌 차량(P4)은 화면 시연용 임시 값 (P2 뒤에는 칸이 없어 실제로는 내 차가 막을 차가 없다)
 export const moveRequests: MockMoveRequest[] = [
   { id: 44, box: 'received', target_parking_id: 556, status: 'PENDING', requested_at: '2026-09-30T14:34:00+09:00', requester: { label: '101동 입주민' }, my_vehicle: { plate: '12가 3456', slot_label: 'P2', parked_at: '2026-09-30T08:30:00+09:00' }, blocked_vehicle: { plate: '27가 4821', slot_label: 'P4', needed_at: '2026-09-30T15:00:00+09:00' }, reason: '외출 예정으로 출차가 필요합니다. 차량 이동을 부탁드립니다.', responded_at: null },
 ]
@@ -93,3 +94,7 @@ export function slotStatuses(): SlotStatus[] {
     }
   })
 }
+
+// ── 화면용 파생 목 ──
+// TODO(logic): 화면이 GET /buildings/{id}/layout + /status 를 불러 toLotSlots 로 바꾸게 되면 지운다 (#9~#13). 모듈을 처음 읽을 때의 상태라 쓰기 함수 결과는 반영되지 않는다
+export const lotStatus: LotSlot[] = toLotSlots(layout, { updated_at: MOCK_NOW, slots: slotStatuses() })

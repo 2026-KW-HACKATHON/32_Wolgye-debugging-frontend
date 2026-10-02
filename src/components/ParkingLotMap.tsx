@@ -1,7 +1,8 @@
 import type { KeyboardEvent, ReactNode } from 'react'
 import { Box } from '@mui/material'
-import { tones } from '../../theme'
-import { AISLE, BUILDING, BUILDING_DOOR, ENTRANCE, SITE, SLOT_RECTS, WALLS, type LotSlot, type Occupant, type Rect, type SlotId } from './parkingLot'
+import { tones } from '../theme'
+import type { LotRect as Rect, LotSlot, Occupant, SlotId } from '../types/parking'
+import { AISLE, BUILDING, BUILDING_DOOR, ENTRANCE, SITE, WALLS } from './parkingLotGeometry'
 
 export type LotView = 'top' | 'iso'
 
@@ -127,7 +128,7 @@ export default function ParkingLotMap({ slots, view = 'iso', variant = 'resident
   }
 
   const slotLayer = slots.map((slot) => {
-    const rect = SLOT_RECTS[slot.id]
+    const rect = slot.rect
     const style = slotStyle(slot)
     const strokeWidth = iso ? style.width : style.width + 1
     const shape = iso ? <path className="slot-outline" d={isoRect(rect)} fill={style.fill} stroke={style.stroke} strokeWidth={strokeWidth} strokeDasharray={style.dash}/> : <rect className="slot-outline" x={rect.x} y={rect.y} width={rect.w} height={rect.h} rx={6} fill={style.fill} stroke={style.stroke} strokeWidth={strokeWidth} strokeDasharray={style.dash}/>
@@ -137,9 +138,9 @@ export default function ParkingLotMap({ slots, view = 'iso', variant = 'resident
 
   // 차량과 라벨은 탭 대상(칸) 위에 그리되 포인터 이벤트를 막아 칸 탭을 방해하지 않게 한다.
   // 입체 시점에서는 먼 칸(x+y가 작은 칸)부터 그려 겹침 순서를 맞춘다.
-  const ordered = [...slots].sort((a, b) => (SLOT_RECTS[a.id].x + SLOT_RECTS[a.id].y) - (SLOT_RECTS[b.id].x + SLOT_RECTS[b.id].y))
+  const ordered = [...slots].sort((a, b) => (a.rect.x + a.rect.y) - (b.rect.x + b.rect.y))
   const carLayer = ordered.map((slot) => {
-    const rect = SLOT_RECTS[slot.id]
+    const rect = slot.rect
     const ghost = slot.state === 'empty' && slot.id === selected
     if (!occupied(slot) && !ghost) return null
     const color = ghost ? colors.mineCar : carColor(slot)
@@ -160,7 +161,7 @@ export default function ParkingLotMap({ slots, view = 'iso', variant = 'resident
     return { text: label, color: '#475467', bg: '#FFFFFF', stroke: colors.slotLine }
   }
   const labelLayer = ordered.map((slot) => {
-    const [cx, cy] = center(SLOT_RECTS[slot.id])
+    const [cx, cy] = center(slot.rect)
     const hasCar = occupied(slot) || slot.id === selected
     // 입체: 차가 있으면 차 지붕 위, 없으면 칸 가운데
     const y = iso ? cy - (hasCar ? 58 : 0) : cy + font.tag * 0.3

@@ -2,8 +2,8 @@ import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
 import DirectionsCarRoundedIcon from '@mui/icons-material/DirectionsCarRounded'
 import { Box, Chip, Divider, Stack, Typography } from '@mui/material'
 import { InfoRow, NavButton, PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
-import ParkingLotMap from './ParkingLotMap'
-import { lotStatus } from './parkingLot'
+import ParkingLotMap from '../../components/ParkingLotMap'
+import { lotStatus } from '../../mocks/parking'
 
 // TODO(logic): 차량 ID로 차량 정보, 현재 주차 상태, 출차 일정(직접 등록 / AI 추정 구분)을 불러와 하드코딩 값 교체
 // TODO(logic): 경과 시간을 입차 시각 기준으로 계산

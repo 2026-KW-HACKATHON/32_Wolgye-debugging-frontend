@@ -3,8 +3,10 @@ import DirectionsCarRoundedIcon from '@mui/icons-material/DirectionsCarRounded'
 import EventRoundedIcon from '@mui/icons-material/EventRounded'
 import { Box, Button, Chip, Dialog, DialogContent, FormControlLabel, Stack, Switch, TextField, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
 import { NavButton, PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
-import ParkingLotMap, { type LotView } from './ParkingLotMap'
-import { lotStatus, slotById, type LotSlot, type SlotId } from './parkingLot'
+import ParkingLotMap, { type LotView } from '../../components/ParkingLotMap'
+import { slotById } from '../../components/parkingLotGeometry'
+import { lotStatus } from '../../mocks/parking'
+import type { LotSlot, SlotId } from '../../types/parking'
 import UnavailableNotice from './UnavailableNotice'
 
 function BottomSheet({ children }: { children: React.ReactNode }) {
@@ -15,7 +17,7 @@ const CUSTOM_TIME = '직접 입력'
 
 // 배치 전 화면이라 내 차(P2)는 아직 칸에 없다.
 // TODO(logic): 빌라 현황(GET /buildings/{id}/status)과 추천 결과(GET /buildings/{id}/slots/recommendations)를 불러오기. 출차 시간을 바꿀 때마다 추천을 다시 받는다
-const lotSlots: LotSlot[] = lotStatus.map((slot) => slot.car?.mine ? { id: slot.id, label: slot.label, state: 'empty' } : { ...slot, blockedBy: undefined })
+const lotSlots: LotSlot[] = lotStatus.map((slot) => slot.car?.mine ? { id: slot.id, slotId: slot.slotId, label: slot.label, rect: slot.rect, state: 'empty' } : { ...slot, blockedBy: undefined })
 const RECOMMENDED: SlotId = 'P2'
 const RECOMMEND_REASON = '지금 선 차들보다 늦게 나가서 안쪽이 좋아요'
 // 이 칸에 두면 막게 되는 칸 (API will_block)
