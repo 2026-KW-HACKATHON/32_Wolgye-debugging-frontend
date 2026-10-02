@@ -12,7 +12,7 @@ export default function NotificationsPage() {
     <SectionTitle action={<StatusChip kind="danger" label="2건"/>}>막힘 사전 알림</SectionTitle>
     <Surface sx={{bgcolor:'#FFF7F2',borderColor:'#FFD9BE'}}><Stack gap={1.25}>
       <Stack direction="row" gap={1} alignItems="center"><ErrorRoundedIcon color="error"/><Typography variant="subtitle2">내 차량이 막혀 있어요</Typography></Stack>
-      <Typography variant="body2" color="text.secondary">302호 차량(34나 5678)이 내 차량(필로티 3번) 앞에 있어요. 내 출차 예정은 오늘 18:30이에요.</Typography>
+      <Typography variant="body2" color="text.secondary">필로티 외부 1번 차량(123가 4634)이 내 차량(필로티 안쪽 2번) 앞에 있어요. 내 출차 예정은 오늘 18:30이에요.</Typography>
       {/* TODO(logic): 막고 있는 차량 차주에게 이동 요청 전송 (전화번호 노출 없이) */}
       <Button variant="contained" fullWidth>이동 요청 보내기</Button>
     </Stack></Surface>
@@ -25,7 +25,7 @@ export default function NotificationsPage() {
     <SectionTitle>받은 이동 요청</SectionTitle>
     <Surface><Box component="a" href="#move" sx={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:1,color:'inherit'}}><Box><Typography variant="subtitle2">301동 입주민의 이동 요청</Typography><Typography variant="caption" color="text.secondary">출차 필요 오후 3:00 · 오후 2:34</Typography></Box><Stack direction="row" gap={0.5} alignItems="center"><StatusChip kind="pending" label="응답 대기"/><ArrowForwardRoundedIcon color="action" fontSize="small"/></Stack></Box></Surface>
     <SectionTitle>최근 알림</SectionTitle>
-    <Surface><Stack divider={<Divider flexItem/>} gap={1.25}>{[['주차 요청 도착','201호 김민준 · 방금 전'],['출차 완료 안내','필로티 1번 비어 있음 · 10분 전']].map(([title,desc])=><Stack key={title} direction="row" justifyContent="space-between" alignItems="center" gap={1}><Box><Typography variant="subtitle2">{title}</Typography><Typography variant="caption" color="text.secondary">{desc}</Typography></Box>{/* TODO(logic): 알림 읽음 처리 */}<Button size="small" variant="outlined">확인</Button></Stack>)}</Stack></Surface>
+    <Surface><Stack divider={<Divider flexItem/>} gap={1.25}>{[['주차 요청 도착','101동 입주민 · 방금 전'],['출차 완료 안내','건물 앞 2번 비어 있음 · 10분 전']].map(([title,desc])=><Stack key={title} direction="row" justifyContent="space-between" alignItems="center" gap={1}><Box><Typography variant="subtitle2">{title}</Typography><Typography variant="caption" color="text.secondary">{desc}</Typography></Box>{/* TODO(logic): 알림 읽음 처리 */}<Button size="small" variant="outlined">확인</Button></Stack>)}</Stack></Surface>
     <NavButton to="home" variant="text" fullWidth>배치도로 돌아가기</NavButton>
   </Stack>
 }

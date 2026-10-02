@@ -2,6 +2,8 @@
 
 다른 FE 팀원의 AI 에이전트가 이 브랜치 위에서 작업할 때 먼저 읽을 문서입니다. 기준일 2026-10-01.
 
+> ⚠️ **2026-10-02부터 화면 기준은 Figma 와이어프레임이다.** 이 문서의 4장 공통 값(빌라 이름, 호수, 칸 이름, 요금 단위)은 Manyfast 기준이라 API 명세와 다르다. 먼저 [`docs/spec-gap.md`](./spec-gap.md)와 [`docs/tech-stack.md`](./tech-stack.md)를 읽고, 다르면 그쪽을 따른다.
+
 ## 1. 한 줄 요약
 
 `src/pages/parking/`, `src/pages/admin/` 화면을 Manyfast 와이어프레임에 맞춰 **UI만** 수정했다. 로직은 없고, 필요한 곳에 `TODO(logic)` 주석을 남겼다. 이 작업을 위해 공통 파일 4개에 **하위 호환되는 변경**을 했다.

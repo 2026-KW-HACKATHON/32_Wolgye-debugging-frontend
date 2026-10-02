@@ -4,9 +4,10 @@ import ChevronLeftRoundedIcon from '@mui/icons-material/ChevronLeftRounded'
 import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded'
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded'
 import { Avatar, Box, Button, Divider, IconButton, Stack, Typography } from '@mui/material'
-import ParkingMap from '../../components/ParkingMap'
 import { NavButton, PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
 import { tones } from '../../theme'
+import ParkingLotMap from '../parking/ParkingLotMap'
+import { lotStatus } from '../parking/parkingLot'
 
 // 2026년 9월 일별 '가장 붐빈 시간의 점유 칸 수' (총 8칸) 임시 값
 const dailyPeak = [6,4,7,8,6,5,3,7,4,8,7,6,5,3,7,4,8,6,7,5,3,7,4,8,7,6,5,3,7,4]
@@ -17,19 +18,19 @@ const TOTAL_SLOTS = 8
 // TODO(logic): 관리 중인 빌라의 대기 요청, 실시간 칸 현황, 외부·미확인 차량, 월별 혼잡도, AI 분석 문구를 API에서 불러오기
 export default function AdminPage() {
   return <Stack gap={2.25}>
-    <PageTitle eyebrow="관리자" title="월계 햇빛빌라" action={<NavButton to="requests" variant="text" startIcon={<NotificationsRoundedIcon/>}>알림</NavButton>}/>
+    <PageTitle eyebrow="관리자" title="월계 한빛빌라" action={<NavButton to="requests" variant="text" startIcon={<NotificationsRoundedIcon/>}>알림</NavButton>}/>
     <Surface sx={{bgcolor:'#F8FAFD'}}><Stack gap={1.25}>
-      <Stack direction="row" gap={1.25} alignItems="center"><Avatar sx={{bgcolor:'#E8F0FF',color:'primary.main',fontWeight:800}}>박</Avatar><Box flex={1} minWidth={0}><Typography variant="caption" color="text.secondary">공유 사용 요청 · 방금</Typography><Typography variant="subtitle2">박○○ 님 · 매너 38.5℃</Typography><Typography variant="caption" color="text.secondary">10/5(월) 06~17시 · 골목 1번</Typography></Box><StatusChip kind="pending"/></Stack>
+      <Stack direction="row" gap={1.25} alignItems="center"><Avatar sx={{bgcolor:'#E8F0FF',color:'primary.main',fontWeight:800}}>박</Avatar><Box flex={1} minWidth={0}><Typography variant="caption" color="text.secondary">공유 사용 요청 · 방금</Typography><Typography variant="subtitle2">박○○ 님 · 매너 38.5℃</Typography><Typography variant="caption" color="text.secondary">9/28(월) 06~17시 · 골목 1번</Typography></Box><StatusChip kind="pending"/></Stack>
       <Divider/>
       {/* TODO(logic): 공유 요청 수락·거절 처리 (수락 시 해당 시간 칸을 이용 불가로 표시) */}
       <Stack direction="row" gap={1}><Button variant="outlined" color="error" fullWidth>거절</Button><Button variant="contained" fullWidth>수락</Button></Stack>
     </Stack></Surface>
     <SectionTitle action={<StatusChip kind="available" label="주차 가능 5곳"/>}>● 관리 구역 · 실시간</SectionTitle>
-    <ParkingMap compact variant="admin"/>
+    <Box sx={{borderRadius:4,bgcolor:'#F8FAFC',border:'1px solid',borderColor:'divider',p:1}}><ParkingLotMap slots={lotStatus} variant="admin"/></Box>
     <Surface><Stack gap={1.25}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}><Box><Typography variant="caption" color="text.secondary">외부 차량 · 공유 이용자 (앱 가입)</Typography><Typography variant="subtitle2">123가 4634 · 필로티 4번</Typography></Box>{/* TODO(logic): 외부 차량 이용자에게 이동 요청 전송 */}<Button size="small" variant="contained">이동 요청</Button></Stack>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}><Box><Typography variant="caption" color="text.secondary">외부 차량 · 공유 이용자 (앱 가입)</Typography><Typography variant="subtitle2">123가 4634 · 필로티 외부 1번</Typography></Box>{/* TODO(logic): 외부 차량 이용자에게 이동 요청 전송 */}<Button size="small" variant="contained">이동 요청</Button></Stack>
       <Divider/>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}><Box><Typography variant="caption" color="text.secondary">미확인 차량 (관리자 등록)</Typography><Typography variant="subtitle2">45다 6789 · 필로티 5번</Typography></Box><Typography variant="caption" color="text.secondary">앱으로 연락 불가</Typography></Stack>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}><Box><Typography variant="caption" color="text.secondary">미확인 차량 (관리자 등록)</Typography><Typography variant="subtitle2">45다 6789 · 건물 앞 3번</Typography></Box><Typography variant="caption" color="text.secondary">앱으로 연락 불가</Typography></Stack>
     </Stack></Surface>
     <Stack direction="row" gap={0.75} flexWrap="wrap"><StatusChip kind="recommended" label="입주민 차량"/><StatusChip kind="external" label="외부 차량"/><StatusChip kind="danger" label="미확인 차량"/><StatusChip kind="available" label="빈 칸"/></Stack>
     <Surface>
