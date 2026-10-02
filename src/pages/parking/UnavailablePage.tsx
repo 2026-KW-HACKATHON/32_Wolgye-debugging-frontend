@@ -1,8 +1,11 @@
-import BlockRoundedIcon from '@mui/icons-material/BlockRounded'
-import { Box, Stack, Typography } from '@mui/material'
-import { NavButton } from '../../components/Ui'
-import { tones } from '../../theme'
+import { Box } from '@mui/material'
+import { NavButton, Surface } from '../../components/Ui'
+import UnavailableNotice from './UnavailableNotice'
 
+// 기획상 모달 화면이라 어두운 배경 위에 안내 카드를 띄운 형태로 보여준다.
 export default function UnavailablePage() {
-  return <Stack alignItems="center" textAlign="center" justifyContent="center" gap={2} minHeight="62vh"><Box sx={{width:80,height:80,borderRadius:'50%',display:'grid',placeItems:'center',bgcolor:tones.redSoft,color:'error.main'}}><BlockRoundedIcon sx={{fontSize:44}}/></Box><div><Typography variant="h5">사용할 수 없는 자리예요</Typography><Typography variant="body2" color="text.secondary" mt={1}>현재 주차 중이거나 관리자에게 제한된 칸입니다.<br/>다른 빈자리를 선택해 주세요.</Typography></div><NavButton to="parking-register">다른 자리 선택하기</NavButton></Stack>
+  // TODO(logic): 사용자가 선택한 칸의 실제 사용 불가 사유(예약됨, 관리자 사용 중지 등)를 받아 표시
+  return <Box sx={{minHeight:'62vh',borderRadius:4,bgcolor:'rgba(23,35,60,.48)',display:'grid',placeItems:'center',px:2,py:4}}>
+    <Surface sx={{width:'100%'}}><UnavailableNotice reason="예약된 상태" actions={<><NavButton to="parking-register" fullWidth>다른 칸 선택</NavButton><NavButton to="parking-register" variant="outlined" fullWidth>취소</NavButton></>}/></Surface>
+  </Box>
 }

@@ -11,7 +11,7 @@ import { pages, toHash } from '../types/navigation'
 
 const tabItems: { label: TabId; id: PageId; icon: ReactNode }[] = [
   { label: '배치도', id: 'home', icon: <MapRoundedIcon /> },
-  { label: '알림', id: 'move', icon: <NotificationsRoundedIcon /> },
+  { label: '알림', id: 'notifications', icon: <NotificationsRoundedIcon /> },
   { label: '공유 주차', id: 'share', icon: <LocalParkingRoundedIcon /> },
   { label: '관리', id: 'admin', icon: <DashboardRoundedIcon /> },
   { label: '프로필', id: 'profile', icon: <PersonRoundedIcon /> },
