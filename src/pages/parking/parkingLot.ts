@@ -47,7 +47,7 @@ export type LotSlot = {
 // TODO(logic): P1~P8 ↔ 주차 구역·번호 매핑이 정해지지 않아 label은 Figma 와이어프레임 문구에 맞춘 임시 값이다 (docs/spec-gap.md D1)
 // TODO(logic): 빌라 현황을 API GET /buildings/{id}/status 로 불러오기
 export const lotStatus: LotSlot[] = [
-  { id: 'P1', label: 'P1', state: 'occupied', car: { plate: '123가 4634', mine: false, occupant: 'external', exitAt: '17:00' } },
+  { id: 'P1', label: 'P1', state: 'occupied', car: { plate: '123가 4634', mine: false, occupant: 'external', exitAt: '20:00' } },
   { id: 'P2', label: 'P2', state: 'occupied', car: { plate: '12가 3456', mine: true, occupant: 'resident', exitAt: '18:30' }, blockedBy: ['P1'] },
   { id: 'P3', label: 'P3', state: 'empty' },
   { id: 'P4', label: 'P4', state: 'soon_exit', car: { plate: '27가 4821', mine: false, occupant: 'resident', exitAt: '15:10' } },
