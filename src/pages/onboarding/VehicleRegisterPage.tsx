@@ -1,6 +1,14 @@
-import { Button, FormControlLabel, MenuItem, Stack, Switch, TextField } from '@mui/material'
+import { Button, MenuItem, Stack, TextField } from '@mui/material'
 import { PageTitle } from '../../components/Ui'
 
+const colors = ['검정', '흰색', '은색', '회색', '파랑', '빨강', '기타'] as const
+
+// TODO(logic): POST /me/vehicles { plate, color } 성공 후 홈으로 이동. 번호판 검증·중복 차량 오류 처리.
 export default function VehicleRegisterPage() {
-  return <Stack component="form" gap={2.25}><PageTitle eyebrow="3 / 3" title="차량 등록" description="주차 위치와 이동 요청에 사용할 차량이에요."/><TextField label="차량 번호" defaultValue="12가 3456"/><TextField label="차종" defaultValue="아반떼" helperText="예: 아반떼, 쏘나타"/><TextField select label="차량 색상" defaultValue="white"><MenuItem value="white">흰색</MenuItem><MenuItem value="black">검정색</MenuItem><MenuItem value="silver">은색</MenuItem></TextField><FormControlLabel control={<Switch defaultChecked/>} label="대표 차량으로 설정"/><FormControlLabel control={<Switch defaultChecked/>} label="이동 요청 알림 받기"/><Button component="a" href="#home" variant="contained" fullWidth>차량 등록 완료</Button></Stack>
+  return <Stack component="form" gap={2.25} onSubmit={(event) => event.preventDefault()}>
+    <PageTitle eyebrow="2단계 중 2단계" title="차량 정보 등록" description="본인 차량의 번호판과 색상을 입력해 주세요." />
+    <TextField label="번호판" placeholder="예: 12가 3456" autoComplete="off" />
+    <TextField select label="색상" defaultValue="" helperText="차량 색상을 선택해 주세요.">{colors.map((color) => <MenuItem key={color} value={color}>{color}</MenuItem>)}</TextField>
+    <Button component="a" href="#home" variant="contained" fullWidth>완료</Button>
+  </Stack>
 }

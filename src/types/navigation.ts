@@ -24,6 +24,7 @@ export type PageId =
   | 'requests'
   | 'vehicles'
   | 'profile'
+  | 'role-guide'
 
 export type TabId = '배치도' | '알림' | '공유 주차' | '관리' | '프로필'
 
@@ -61,6 +62,7 @@ export const pages: PageMeta[] = [
   { id: 'requests', title: '공유 요청 관리', group: '관리', tab: '관리', backTo: 'admin' },
   { id: 'vehicles', title: '차량 관리', group: '설정', tab: '프로필', backTo: 'profile' },
   { id: 'profile', title: '프로필·설정', group: '설정', tab: '프로필' },
+  { id: 'role-guide', title: '역할 및 권한', group: '설정', tab: '프로필', backTo: 'profile' },
 ]
 
 // 화면 간 값 전달은 해시 쿼리로 한다: #move?id=44 (docs/decisions.md D5)

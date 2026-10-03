@@ -29,4 +29,5 @@ export const pageComponents: Record<PageId, LazyPage> = {
   requests: lazy(() => import('./admin/RequestsPage')),
   vehicles: lazy(() => import('./settings/VehiclesPage')),
   profile: lazy(() => import('./settings/ProfilePage')),
+  'role-guide': lazy(() => import('./settings/RoleGuidePage')),
 }
