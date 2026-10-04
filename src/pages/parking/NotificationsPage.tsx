@@ -12,6 +12,8 @@ import { toHash } from '../../types/navigation'
 const timeOf = (at: string) => new Date(at).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Seoul' })
 const dateTimeOf = (at: string) => new Date(at).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Seoul' })
 const errorText = (e: unknown) => isApiError(e) ? e.message : '잠시 후 다시 시도해 주세요.'
+// 현재 시각 → "2026-09-30T14:40:00+09:00"
+const kstNow = () => `${new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 19)}+09:00`
 const moveStatusChip: Record<MoveRequestStatus, { kind: 'pending' | 'accepted' | 'rejected'; label: string }> = { PENDING: { kind: 'pending', label: '응답 대기' }, MOVED: { kind: 'accepted', label: '처리 완료' }, DECLINED: { kind: 'rejected', label: '거절됨' } }
 
 // 알림의 link.screen → 이동할 화면. null 이면 이동 없음
@@ -70,8 +72,8 @@ export default function NotificationsPage() {
     {blockAlert ? <Surface sx={{bgcolor:'#FFF7F2',borderColor:'#FFD9BE'}}><Stack gap={1.25}>
       <Stack direction="row" gap={1} alignItems="center"><ErrorRoundedIcon color="error"/><Typography variant="subtitle2">내 차량이 막혀 있어요</Typography></Stack>
       <Typography variant="body2" color="text.secondary">{blockAlert.message}{myParking?.expected_exit_at && ` 내 출차 예정은 ${timeOf(myParking.expected_exit_at)}이에요.`}</Typography>
-      {/* TODO(logic): 상시 주차(출차 시간 없음)일 때 이동 요청의 needed_at 을 무엇으로 보낼지 정해지지 않아 버튼을 막아 둔다 */}
-      <Button variant="contained" fullWidth disabled={busy || sent || !myParking?.expected_exit_at} onClick={() => myParking?.expected_exit_at && sendMoveRequest(blockAlert.blocking_parking_id, myParking.expected_exit_at)}>{sent ? '이동 요청을 보냈어요' : '이동 요청 보내기'}</Button>
+      {/* needed_at = 내 출차 예정, 상시 주차면 지금 */}
+      <Button variant="contained" fullWidth disabled={busy || sent || !myParking} onClick={() => myParking && sendMoveRequest(blockAlert.blocking_parking_id, myParking.expected_exit_at ?? kstNow())}>{sent ? '이동 요청을 보냈어요' : '이동 요청 보내기'}</Button>
     </Stack></Surface> : <Typography variant="caption" color="text.secondary">지금 내 차를 막고 있는 차량이 없어요.</Typography>}
     <SectionTitle>받은 이동 요청</SectionTitle>
     {received.data.items.length ? <Surface><Stack divider={<Divider flexItem/>} gap={1.25}>{received.data.items.map((request)=><Box key={request.id} component="a" href={toHash('move', { id: request.id })} sx={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:1,color:'inherit'}}><Box><Typography variant="subtitle2">{request.counterpart_label}의 이동 요청</Typography><Typography variant="caption" color="text.secondary">출차 필요 {timeOf(request.needed_at)} · {timeOf(request.requested_at)}</Typography></Box><Stack direction="row" gap={0.5} alignItems="center"><StatusChip kind={moveStatusChip[request.status].kind} label={moveStatusChip[request.status].label}/><ArrowForwardRoundedIcon color="action" fontSize="small"/></Stack></Box>)}</Stack></Surface> : <Typography variant="caption" color="text.secondary">받은 이동 요청이 없어요.</Typography>}

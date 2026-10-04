@@ -4,7 +4,7 @@ import { Alert, Box, Button, Chip, CircularProgress, Divider, Stack, Typography 
 import { InfoRow, PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
 import ParkingLotMap from '../../components/ParkingLotMap'
 import { toLotSlots } from '../../components/parkingLotGeometry'
-import { getBuildingLayout, getBuildingStatus, getHome, getMyVehicle } from '../../api/parking'
+import { getBuildingLayout, getBuildingStatus, getHome, getMyVehicle, listMyVehicles } from '../../api/parking'
 import { useApi } from '../../api/useApi'
 import { hashParams, toHash } from '../../types/navigation'
 import type { ExitSource } from '../../types/parking'
@@ -18,13 +18,13 @@ function dayTime(dateTime: string) {
   const day = date === kstDate() ? '오늘' : date === kstDate(1) ? '내일' : date === kstDate(-1) ? '어제' : `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`
   return `${day} ${dateTime.slice(11, 16)}`
 }
+const defaultVehicleId = async () => { const { items } = await listMyVehicles(); return (items.find((item) => item.is_default) ?? items[0])?.id }
 const elapsed = (minutes: number) => minutes < 60 ? `${minutes}분` : `${Math.floor(minutes / 60)}시간${minutes % 60 ? ` ${minutes % 60}분` : ''}`
 
-// 차량 id 는 #vehicle-detail?id=7. 없으면(화면 목록에서 직접 연 경우) 홈의 내 주차 차량을 쓴다
+// 차량 id 는 #vehicle-detail?id=7. 없으면(화면 목록에서 직접 연 경우) 홈의 내 주차 차량, 주차 중이 아니면 기본 차량(없으면 첫 차)을 쓴다
 async function loadDetail(paramId: number) {
   const home = await getHome()
-  // TODO(logic): 주차 중이 아니면 홈에서 차량 id를 얻을 수 없다. 차량 목록 API(GET /me/vehicles, #16)가 붙으면 그 차량으로 연결
-  const vehicleId = paramId || home.my_parking?.vehicle.id
+  const vehicleId = paramId || home.my_parking?.vehicle.id || await defaultVehicleId()
   const [vehicle, layout, status] = await Promise.all([vehicleId ? getMyVehicle(vehicleId) : null, getBuildingLayout(home.building.id), getBuildingStatus(home.building.id)])
   return { vehicle, slots: toLotSlots(layout, status) }
 }
