@@ -6,10 +6,11 @@ import { pageFromHash, pages } from './types/navigation'
 import './App.css'
 
 export default function App() {
-  const [pageId, setPageId] = useState(pageFromHash)
+  const [hash, setHash] = useState(() => window.location.hash)
+  const pageId = pageFromHash(hash)
 
   useEffect(() => {
-    const handleHashChange = () => setPageId(pageFromHash())
+    const handleHashChange = () => setHash(window.location.hash)
     window.addEventListener('hashchange', handleHashChange)
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [])
@@ -17,5 +18,5 @@ export default function App() {
   const Page = pageComponents[pageId]
   const current = pages.find((page) => page.id === pageId) ?? pages[0]
 
-  return <AppShell current={current}><Suspense fallback={<Box minHeight="60vh" display="grid" sx={{placeItems:'center'}}><CircularProgress size={30}/></Box>}><Page /></Suspense></AppShell>
+  return <AppShell current={current}><Suspense fallback={<Box minHeight="60vh" display="grid" sx={{placeItems:'center'}}><CircularProgress size={30}/></Box>}><Page key={hash} /></Suspense></AppShell>
 }
