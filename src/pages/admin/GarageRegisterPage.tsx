@@ -109,6 +109,7 @@ function GarageForm({ buildingId, slots, offers }: { buildingId: number; slots: 
     <Divider/>
     <SectionTitle>공개 설정</SectionTitle>
     <Surface><Stack direction="row" justifyContent="space-between" alignItems="center"><div><Typography variant="subtitle2">차고지 공개</Typography><Typography variant="caption" color="text.secondary">공유 주차 목록에 표시합니다.</Typography></div><Switch checked={isPublic} onChange={(event)=>set('isPublic', event.target.checked)}/></Stack></Surface>
+    {editing?.is_public && !isPublic && <Alert severity="warning">공개를 끄고 저장하면 {editing.slot_label} 공유가 중단돼요. 공유 주차 목록에서 사라지고 이웃이 새로 요청할 수 없어요.</Alert>}
     {saveError && <Alert severity="error">{saveError}</Alert>}
     <Button variant="contained" fullWidth disabled={saving} onClick={submit}>{editing ? '조건 수정하기' : '차고지 등록 완료'}</Button>
   </Stack>

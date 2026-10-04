@@ -24,6 +24,8 @@ const WEEKDAY = '일월화수목금토'
 const errorMessage = (e: unknown) => isApiError(e) ? e.message : '잠시 후 다시 시도해 주세요'
 // 실제 현재 시각 기준 KST 날짜 "YYYY-MM-DD"
 const kstDate = (offsetDays = 0) => new Date(Date.now() + 9 * 3600000 + offsetDays * 86400000).toISOString().slice(0, 10)
+// 실제 현재 시각 기준 KST "HH:mm"
+const kstClock = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(11, 16)
 const monthDay = (date: string) => `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`
 const weekday = (date: string) => WEEKDAY[new Date(`${date}T00:00:00Z`).getUTCDay()]
 const dayTitle = (date: string) => date === kstDate() ? '오늘' : date === kstDate(1) ? '내일' : `${monthDay(date)}에`
@@ -70,8 +72,10 @@ function RegisterView({ home, vehicle, reloadBase }: { home: Home; vehicle: Vehi
   const [parkedError, setParkedError] = useState(false)
 
   const exitTime = time === CUSTOM_TIME ? customTime : time
-  // TODO(logic): 오늘 날짜에 이미 지난 시각을 골라도 막지 않는다 (막을지 기획에 없음)
-  const expectedExitAt = longTerm || !isTime(exitTime) ? undefined : `${date}T${exitTime}:00+09:00`
+  // 오늘 이미 지난 시각은 고를 수 없다 (2026-10-04 결정)
+  const isPast = (value: string) => date === kstDate() && isTime(value) && value <= kstClock()
+  const pastTime = !longTerm && isPast(exitTime)
+  const expectedExitAt = longTerm || !isTime(exitTime) || pastTime ? undefined : `${date}T${exitTime}:00+09:00`
   const canQuery = longTerm || expectedExitAt !== undefined
   const lot = useApi(() => loadLot(buildingId), `lot-${buildingId}`)
   const rec = useApi(() => canQuery ? getSlotRecommendations(buildingId, { vehicle_id: vehicle.id, ...(expectedExitAt ? { expected_exit_at: expectedExitAt } : {}) }) : Promise.resolve(null), `rec-${buildingId}-${vehicle.id}-${longTerm ? 'long' : expectedExitAt ?? 'none'}`)
@@ -144,8 +148,9 @@ function RegisterView({ home, vehicle, reloadBase }: { home: Home; vehicle: Vehi
       {longTerm ? <Typography variant="caption" color="text.secondary">상시 주차는 출차 시간 없이 배치해요.</Typography> : <>
         <Typography variant="caption" color="text.secondary" textAlign="center">↓ 스크롤해서 출차 시간도 함께 등록</Typography>
         <SectionTitle action={<Chip size="small" icon={<EventRoundedIcon/>} label={`${monthDay(date)} (${weekday(date)}) · 날짜 변경`} clickable onClick={()=>setDateOpen(true)}/>}>{dayTitle(date)} 몇 시에 나가요?</SectionTitle>
-        <ToggleButtonGroup exclusive value={time} onChange={(_,value)=>value&&setTime(value)} fullWidth size="small">{['06:00','07:30','09:00',CUSTOM_TIME].map((value)=><ToggleButton key={value} value={value}>{value}</ToggleButton>)}</ToggleButtonGroup>
-        {time === CUSTOM_TIME && <TextField label="출차 시간" type="time" value={customTime} onChange={(event)=>setCustomTime(event.target.value)} error={!isTime(customTime)} helperText={isTime(customTime) ? undefined : '출차 시간을 입력해 주세요'} slotProps={{inputLabel:{shrink:true}}}/>}
+        <ToggleButtonGroup exclusive value={time} onChange={(_,value)=>value&&setTime(value)} fullWidth size="small">{['06:00','07:30','09:00',CUSTOM_TIME].map((value)=><ToggleButton key={value} value={value} disabled={value !== CUSTOM_TIME && isPast(value)}>{value}</ToggleButton>)}</ToggleButtonGroup>
+        {pastTime && time !== CUSTOM_TIME && <Typography variant="caption" color="error">이미 지난 시각이에요. 이후 시각을 골라 주세요</Typography>}
+        {time === CUSTOM_TIME && <TextField label="출차 시간" type="time" value={customTime} onChange={(event)=>setCustomTime(event.target.value)} error={!isTime(customTime) || pastTime} helperText={!isTime(customTime) ? '출차 시간을 입력해 주세요' : pastTime ? '이미 지난 시각이에요. 이후 시각을 골라 주세요' : undefined} slotProps={{inputLabel:{shrink:true}}}/>}
         <Stack direction="row" justifyContent="space-between" alignItems="center"><Box><Typography variant="subtitle2">평일 같은 시간 반복</Typography><Typography variant="caption" color="text.secondary">월–금 {isTime(exitTime) ? exitTime : '--:--'}</Typography></Box><Switch checked={repeat} onChange={(_,checked)=>setRepeat(checked)}/></Stack>
         <Button component="a" href={toHash('repeat', { id: vehicle.id })} variant="outlined" fullWidth>반복 요일 자세히 설정</Button>
       </>}
