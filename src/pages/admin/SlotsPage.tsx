@@ -21,13 +21,21 @@ export default function SlotsPage() {
   const [active, setActive] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState(false)
   const open = (slot: AdminSlot) => { setEditing(slot); setActive(slot.is_active); setSaveError(null) }
   const close = () => { if (!saving) setEditing(null) }
 
-  // 주차 중인 칸을 꺼도 API가 막지 않아 그대로 보낸다
-  async function save() {
+  // 주차 중인 칸을 끌 때만 한 번 더 확인한다. 꺼도 그 차는 그대로 있다
+  function save() {
     if (!editing) return
     if (active === editing.is_active) return setEditing(null)
+    if (!active && editing.occupied) return setConfirming(true)
+    void apply()
+  }
+
+  async function apply() {
+    if (!editing) return
+    setConfirming(false)
     setSaving(true)
     setSaveError(null)
     try {
@@ -56,6 +64,11 @@ export default function SlotsPage() {
         {saveError && <Alert severity="error">{saveError}</Alert>}
       </Stack></DialogContent>
       <DialogActions sx={{px:3,pb:2.5}}><Button variant="outlined" disabled={saving} onClick={close}>취소</Button><Button variant="contained" disabled={saving} onClick={save}>저장</Button></DialogActions>
+    </Dialog>
+    <Dialog open={confirming} onClose={()=>setConfirming(false)} fullWidth maxWidth="xs">
+      <DialogTitle>주차 중인 칸이에요</DialogTitle>
+      <DialogContent><Typography variant="body2" color="text.secondary">지금 {editing?.label}에 주차 중인 차가 있어요. 사용 중지해도 그 차는 그대로 있어요. 중지할까요?</Typography></DialogContent>
+      <DialogActions sx={{px:3,pb:2.5}}><Button variant="outlined" onClick={()=>setConfirming(false)}>취소</Button><Button variant="contained" color="error" onClick={apply}>중지</Button></DialogActions>
     </Dialog>
   </Stack>
 }
