@@ -55,12 +55,11 @@
 
 ## 4. 주차 배치도 렌더링 (2.5D)
 
-현재 배치도 구현은 두 개다.
+배치도 구현은 `ParkingLotMap` 하나다. 구 `ParkingMap`(MUI 3×2 격자)은 2026-10-04에 삭제했다.
 
 | 컴포넌트 | 위치 | 방식 | 쓰는 화면 |
 |---|---|---|---|
-| `ParkingLotMap` | `src/components/ParkingLotMap.tsx` + 건물·벽·입구 상수와 `toLotSlots` `src/components/parkingLotGeometry.ts`, 타입 `src/types/parking.ts`, 목 `lotStatus` `src/mocks/parking.ts` | **SVG + 직접 만든 등각 투영**. `view="iso"`(2.5D, 기본) / `view="top"`(평면) | 홈, 주차 배치 등록, 차량 상세, 관리자 대시보드 |
-| `ParkingMap` (구) | `src/components/ParkingMap.tsx` | MUI `ButtonBase` 3×2 격자 | 서비스 소개(효재 `WelcomePage`)만. 새 화면에 쓰지 않는다 |
+| `ParkingLotMap` | `src/components/ParkingLotMap.tsx` + 건물·벽·입구 상수와 `toLotSlots` `src/components/parkingLotGeometry.ts`, 타입 `src/types/parking.ts`, 목 `lotStatus` `src/mocks/parking.ts` | **SVG + 직접 만든 등각 투영**. `view="iso"`(2.5D, 기본) / `view="top"`(평면) | 홈, 주차 배치 등록, 차량 상세, 관리자 대시보드, 서비스 소개(효재 `WelcomePage`, 목 `lotStatus`) |
 
 `ParkingLotMap` props: `slots: LotSlot[]`(필수), `view`, `variant: 'resident' | 'admin'`, `selected`, `recommendedId`, `focusId`(이 칸만 진하게), `onSelect`(넘기면 칸 탭 가능), `onUnavailable`. 칩 색 범례는 `LotLegend`. 화면별 쓰임은 `docs/figma-wireframe.md` 6장
 
