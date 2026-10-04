@@ -1,0 +1,109 @@
+import { ApiError, mockDelay } from './client'
+import { accounts } from '../mocks/auth'
+import type { AuthTokens, JoinBuildingResponse, LoginRequest, SignupRequest, UpdateMeRequest, UserMe } from '../types/auth'
+
+export { DEMO_EMAIL, DEMO_PASSWORD } from '../mocks/auth'
+const KEY = 'chagok.auth'
+type Session = { tokens: AuthTokens; profile: UserMe; accessExpiresAt: number; refreshExpiresAt: number }
+let session: Session | null = readSession()
+if (session) {
+  const restoredAccount = accounts.get(session.profile.email)
+  if (restoredAccount) restoredAccount.user = structuredClone(session.profile)
+}
+function readSession(): Session | null {
+  try {
+    const value = JSON.parse(localStorage.getItem(KEY) ?? 'null') as Session | null
+    if (!value || !value.tokens?.access_token || !value.tokens?.refresh_token || !value.profile?.id || !Number.isFinite(value.accessExpiresAt) || !Number.isFinite(value.refreshExpiresAt) || !['JOIN_BUILDING', 'REGISTER_VEHICLE', 'DONE'].includes(value.profile.onboarding_step) || value.refreshExpiresAt <= Date.now()) return null
+    return value
+  } catch { return null }
+}
+function persist() {
+  if (session) {
+    session.tokens.user = { id: session.profile.id, nickname: session.profile.nickname, onboarding_step: session.profile.onboarding_step }
+    const account = accounts.get(session.profile.email)
+    if (account) account.user = structuredClone(session.profile)
+  }
+  try { if (session) localStorage.setItem(KEY, JSON.stringify(session)); else localStorage.removeItem(KEY) } catch { /* 저장소 제한 시 현재 탭 세션 유지 */ }
+}
+export function clearSession() { session = null; persist() }
+function unauthorized(): never { clearSession(); throw new ApiError(401, 'UNAUTHORIZED', '로그인이 필요합니다. 다시 로그인해 주세요.') }
+export function requireMockSession(): void {
+  if (!session || session.refreshExpiresAt <= Date.now()) unauthorized()
+  if (session.accessExpiresAt <= Date.now()) {
+    session.tokens.access_token = `mock.access.${crypto.randomUUID()}`
+    session.accessExpiresAt = Date.now() + 30 * 60_000
+    persist()
+  }
+}
+export function getAccessToken(): string | null { return session && session.accessExpiresAt > Date.now() ? session.tokens.access_token : null }
+export function getMyBuildingId(): number | null { return session?.profile.building?.building_id ?? null }
+export function getMockUserId(): number { requireMockSession(); return session!.profile.id }
+function startSession(profile: UserMe): AuthTokens {
+  session = { profile: structuredClone(profile), tokens: { access_token: `mock.access.${crypto.randomUUID()}`, refresh_token: `mock.refresh.${crypto.randomUUID()}`, user: { id: profile.id, nickname: profile.nickname, onboarding_step: profile.onboarding_step } }, accessExpiresAt: Date.now() + 30 * 60_000, refreshExpiresAt: Date.now() + 14 * 86400_000 }
+  persist()
+  return structuredClone(session.tokens)
+}
+const emailKey = (email: string) => email.trim().toLowerCase()
+function invalid(message: string, field: string): never { throw new ApiError(400, 'INVALID_INPUT', message, { field }) }
+// TODO(api): POST /auth/signup
+export async function signup(body: SignupRequest): Promise<AuthTokens> {
+  await mockDelay(undefined)
+  const email = emailKey(body.email)
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) invalid('이메일 형식을 확인해 주세요.', 'email')
+  if (body.password.length < 8 || body.password.length > 128) invalid('비밀번호는 8~128자로 입력해 주세요.', 'password')
+  if (!body.nickname.trim() || body.nickname.trim().length > 50) invalid('닉네임은 1~50자로 입력해 주세요.', 'nickname')
+  if (!body.agree_terms) invalid('이용약관에 동의해 주세요.', 'agree_terms')
+  if (accounts.has(email) || session?.profile.email === email) throw new ApiError(409, 'EMAIL_EXISTS', '이미 가입된 이메일입니다.')
+  const user: UserMe = { id: Math.max(1, ...Array.from(accounts.values(), a => a.user.id), session?.profile.id ?? 1) + 1, email, nickname: body.nickname.trim(), name: null, phone: null, temperature: 36.5, token_balance: 500_000, onboarding_step: 'JOIN_BUILDING', building: null }
+  accounts.set(email, { password: body.password, user })
+  return startSession(user)
+}
+// TODO(api): POST /auth/login
+export async function login(body: LoginRequest): Promise<AuthTokens> {
+  await mockDelay(undefined)
+  const account = accounts.get(emailKey(body.email))
+  if (!account || account.password !== body.password) throw new ApiError(401, 'INVALID_CREDENTIALS', '이메일 또는 비밀번호가 올바르지 않습니다.')
+  return startSession(account.user)
+}
+// TODO(api): POST /auth/refresh (서버 응답은 두 토큰만 반환)
+export async function refreshToken(body: { refresh_token: string }): Promise<Pick<AuthTokens, 'access_token' | 'refresh_token'>> {
+  await mockDelay(undefined)
+  if (!session || body.refresh_token !== session.tokens.refresh_token || session.refreshExpiresAt <= Date.now()) unauthorized()
+  const tokens = startSession(session.profile)
+  return { access_token: tokens.access_token, refresh_token: tokens.refresh_token }
+}
+export async function refreshTokens(): Promise<AuthTokens> {
+  if (!session) unauthorized()
+  await refreshToken({ refresh_token: session.tokens.refresh_token })
+  return structuredClone(session!.tokens)
+}
+// TODO(api): GET /users/me
+export async function getMe(): Promise<UserMe> { await mockDelay(undefined); requireMockSession(); return structuredClone(session!.profile) }
+// TODO(api): PATCH /users/me
+export async function updateMe(body: UpdateMeRequest): Promise<UserMe> {
+  await mockDelay(undefined); requireMockSession()
+  const profile = session!.profile
+  if (body.name !== undefined && (!body.name.trim() || body.name.trim().length > 50)) invalid('이름은 1~50자로 입력해 주세요.', 'name')
+  if (body.unit !== undefined && !profile.building) invalid('건물에 먼저 합류해 주세요.', 'unit')
+  if (body.unit !== undefined && body.unit.trim().length > 50) invalid('동·호수는 50자 이하로 입력해 주세요.', 'unit')
+  const digits = body.phone?.replace(/[-\s]/g, '')
+  if (digits !== undefined && !/^01\d\d{7,8}$/.test(digits)) invalid('연락처 형식을 확인해 주세요.', 'phone')
+  if (body.name !== undefined) profile.name = body.name.trim()
+  if (body.unit !== undefined && profile.building) profile.building.unit = body.unit.trim() || null
+  if (digits !== undefined) profile.phone = `${digits.slice(0, 3)}-****-${digits.slice(-4)}`
+  persist(); return structuredClone(profile)
+}
+// TODO(api): POST /buildings/join
+export async function joinBuilding(body: { invite_code: string }): Promise<JoinBuildingResponse> {
+  await mockDelay(undefined); requireMockSession()
+  if (session!.profile.building) throw new ApiError(409, 'ALREADY_IN_BUILDING', '이미 건물에 합류했어요.')
+  const code = body.invite_code.replace(/\s/g, '').toUpperCase()
+  if (!code || code.length > 12) invalid('초대코드는 1~12자로 입력해 주세요.', 'invite_code')
+  if (code !== 'HANBIT01') throw new ApiError(404, 'INVALID_INVITE_CODE', '초대코드를 다시 확인해 주세요.')
+  const result: JoinBuildingResponse = { building_id: 3, name: '월계 한빛빌라', address: '서울특별시 노원구 광운로19가길 12', alley: { id: 1, name: '광운로19가길' }, role: 'RESIDENT', onboarding_step: 'REGISTER_VEHICLE' }
+  session!.profile.building = { building_id: result.building_id, name: result.name, alley: result.alley, role: result.role, unit: null }
+  session!.profile.onboarding_step = result.onboarding_step
+  persist(); return structuredClone(result)
+}
+// 목에서 차량 API가 첫 차량 등록 성공 후 호출. 실제 서버는 onboarding_step을 갱신한다.
+export function completeVehicleOnboarding(): void { requireMockSession(); if (session!.profile.building) { session!.profile.onboarding_step = 'DONE'; persist() } }

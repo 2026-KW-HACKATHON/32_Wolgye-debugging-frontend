@@ -9,7 +9,8 @@
 | `src/api/client.ts` | `ApiError`, `isApiError`, `mockDelay`, `mockFail`, `Page<T>` 재export. 서버 연결 시 `request()` 를 여기에 | 민솔 |
 | `src/api/parking.ts` | 홈·배치도·주차·출차·차량 상세·반복 일정·이동 요청·알림 | 민솔 |
 | `src/api/admin.ts` | 대시보드·공유 요청·칸 설정·공유 조건(차고지 등록) | 민솔 |
-| `src/api/auth.ts`, 차량 목록·공유 탐색 | 인증, `/me/vehicles` 목록·등록·수정·삭제, `/garages`, `/share-requests` | 효재 (#16) |
+| `src/api/auth.ts`, `src/api/vehicles.ts`, `src/api/sharedParking.ts` | 인증·프로필·건물 합류, 차량 CRUD, 공유 탐색·요청·결과 | 효재 (#16, 목 연결 완료) |
+| `src/types/{auth,vehicles,sharedParking}.ts`, `src/mocks/{auth,vehicles,sharedParking}.ts` | 효재 도메인 요청·응답 타입과 사용자별 목 상태 | 효재 |
 | `src/types/api.ts` | 공통: `ErrorCode`, `Page`, `Weekday`, `Hour`, `DateTime`, `BuildingRole` … | |
 | `src/types/parking.ts`, `src/types/admin.ts` | 요청·응답 타입 | |
 | `src/mocks/parking.ts`, `src/mocks/admin.ts` | 목 상태 (쓰기 함수가 직접 바꾼다. 새로고침하면 처음 값) | |
@@ -42,7 +43,7 @@
 | 403·404 | 빈 상태 + 안내 문구 |
 | 그 밖의 오류 (네트워크 등) | "잠시 후 다시 시도해 주세요" |
 
-목이 흉내 내는 에러: 다른 빌라 id → 403, 없는 id → 404, 사용 불가 칸 → `SLOT_UNAVAILABLE`, 사용 중 칸 → `SLOT_OCCUPIED`, 이미 주차 중 → `VEHICLE_ALREADY_PARKED`, 미확인 차량 이동 요청 → 400, 대기 중 이동 요청 중복 → 409, 처리된 요청 → `ALREADY_DECIDED`, 수락 시간 겹침 → `GARAGE_TIME_CONFLICT`, 요일 0개·시간 범위·요금 음수·비활성 칸 공유 → `INVALID_INPUT`. **토큰 부족(`INSUFFICIENT_TOKENS`)은 흉내 내지 않는다.**
+목이 흉내 내는 에러: 다른 빌라 id → 403, 없는 id → 404, 사용 불가 칸 → `SLOT_UNAVAILABLE`, 사용 중 칸 → `SLOT_OCCUPIED`, 이미 주차 중 → `VEHICLE_ALREADY_PARKED`, 미확인 차량 이동 요청 → 400, 대기 중 이동 요청 중복 → 409, 처리된 요청 → `ALREADY_DECIDED`, 수락 시간 겹침 → `GARAGE_TIME_CONFLICT`, 요일 0개·시간 범위·요금 음수·비활성 칸 공유 → `INVALID_INPUT`. 관리자 API의 토큰 부족은 흉내 내지 않는다. 효재 공유 요청 API는 `INSUFFICIENT_TOKENS`를 검증한다.
 
 ## 5. 화면에서 쓰기 (로딩·에러·빈 상태)
 
@@ -75,3 +76,12 @@ if (!home.my_parking) return <Surface>주차 중인 차가 없어요</Surface>  
 - 사용자: 김지수 · 월계 한빛빌라(building_id 3) 101동 202호 · `RESIDENT` · 차량 id 7. 관리자 API 는 목에서 역할을 확인하지 않는다
 - 받은 이동 요청 44 (대기), 알림 5건 (안 읽음 2), 공유 요청 301~306 (대기 4·수락 1·거절 1), 9월 혼잡도 30일치
 - 내 차가 P2에 있으므로 `createParking` 은 먼저 `exitParking(556)` 을 해야 성공한다 (`VEHICLE_ALREADY_PARKED`)
+
+## 7. 효재 목 API (#16, 2026-10-04)
+
+- 화면은 도메인 API 함수만 호출한다. 가입 → 건물 합류 → 차량 등록은 `onboarding_step`으로 이어지며, 프로필·차량 CRUD·공유 요청 상태 조회가 연결되어 있다.
+- 체험 계정: `kim@kw.ac.kr` / `chagok1234`, 초대코드: `HANBIT01` (공백 제거·대소문자 무시).
+- `auth.ts`는 D6의 `getAccessToken()`, `refreshTokens()`, `getMyBuildingId()`를 제공한다. 세션은 `chagok.auth`에 저장하고 비밀번호는 저장하지 않는다. 지금 토큰은 목 값이며 HTTP 요청·401 자동 재시도는 client 연결 단계에 남아 있다.
+- 계정·차량·공유 요청 목 상태는 메모리이며 새로고침하면 초기화된다. 세션 프로필은 유지되므로 신규 가입자가 차량 등록 후 새로고침하면 `DONE`과 빈 차량 목록이 함께 나타날 수 있다. 신규 계정의 재로그인도 새로고침 후 지원하지 않는다. 한 탭에서 가입부터 요청까지 시연하거나 체험 계정을 사용한다.
+- 효재 공유 요청과 관리자 요청 목록은 별도 목이다. 새 요청은 `PENDING`에 남고 관리자 수락·거절과 연동되지 않는다. 체험 계정의 기존 상태별 요청으로 결과 화면을 검증한다.
+- 민솔 parking API의 차량·사용자 데이터도 고정 목이므로 새 차량의 상세/주차와 연결하는 통합 작업은 #17에서 확인한다. 실제 서버 전환 시 이 제한을 없앤다.
