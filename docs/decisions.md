@@ -41,9 +41,9 @@ FE GitHub 이슈 #4~#18 본문은 Manyfast 기준으로 쓰였다. 이 문서와
 
 ## 결정 대기
 
-| 항목 | 지금 동작 | 묻는 것 |
+| 항목 | 지금 동작 | 상태 |
 |---|---|---|
-| 반복을 끄고 배치할 때 기존 반복 일정 | 지우지 않음 | 백엔드 `repeat_weekdays:false`의 의미 확인 |
-| 처리 완료 화면 응답 시각 | 요청 시각으로 대신 표시 | 백엔드 `MoveRequestDetail`에 `responded_at` 추가 요청 |
-| 대시보드 `month` | 서버 시각 기준 판단 | 백엔드 응답에 조회 `month` 추가 요청 |
-| 출차 일정 메모 | 빈 칸으로 시작 | 저장된 메모를 돌려주는 조회 API 요청 |
+| 반복을 끄고 배치할 때 기존 반복 일정 | 지우지 않음 (사람 결정: 일단 유지) | 백엔드 확인 요청 [backend #33](https://github.com/2026-KW-HACKATHON/32_Wolgye-debugging-backend/issues/33) |
+| 처리 완료 화면 응답 시각 | 요청 시각으로 대신 표시 | `MoveRequestDetail.responded_at` 추가 요청함 [backend #33](https://github.com/2026-KW-HACKATHON/32_Wolgye-debugging-backend/issues/33) |
+| 대시보드 `month` | 서버 시각 기준 판단 | 응답에 `month` 추가 요청함 [backend #33](https://github.com/2026-KW-HACKATHON/32_Wolgye-debugging-backend/issues/33) |
+| 출차 일정 메모 | 빈 칸으로 시작 | `VehicleDetail.schedule.memo` 추가 요청함 [backend #33](https://github.com/2026-KW-HACKATHON/32_Wolgye-debugging-backend/issues/33) |
