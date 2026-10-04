@@ -44,27 +44,28 @@ export type MockParking = { id: number; slot_id: number; vehicle_id: number | nu
 
 export const parkings: MockParking[] = [
   { id: 558, slot_id: 1001, vehicle_id: null, plate: '123가 4634', occupant_type: 'EXTERNAL', state: 'PARKED', entered_at: '2026-09-30T13:00:00+09:00', expected_exit_at: '2026-09-30T20:00:00+09:00', exit_source: 'NONE', memo: null },
-  { id: 556, slot_id: 1002, vehicle_id: MY_VEHICLE_ID, plate: '12가 3456', occupant_type: 'RESIDENT', state: 'PARKED', entered_at: '2026-09-30T08:30:00+09:00', expected_exit_at: '2026-09-30T18:30:00+09:00', exit_source: 'MANUAL', memo: null },
+  // 시연은 내 차가 주차 안 한 상태에서 시작한다 (2026-10-04 결정). 오늘 아침 P2에 있다가 출차한 기록만 남긴다
+  { id: 556, slot_id: 1002, vehicle_id: MY_VEHICLE_ID, plate: '12가 3456', occupant_type: 'RESIDENT', state: 'EXITED', entered_at: '2026-09-30T08:30:00+09:00', expected_exit_at: '2026-09-30T18:30:00+09:00', exit_source: 'MANUAL', memo: null },
   { id: 557, slot_id: 1004, vehicle_id: null, plate: '27가 4821', occupant_type: 'RESIDENT', state: 'PARKED', entered_at: '2026-09-30T09:20:00+09:00', expected_exit_at: '2026-09-30T15:10:00+09:00', exit_source: 'RECURRING', memo: null },
   { id: 559, slot_id: 1006, vehicle_id: null, plate: '45다 6789', occupant_type: 'UNKNOWN', state: 'PARKED', entered_at: '2026-09-29T21:00:00+09:00', expected_exit_at: null, exit_source: 'NONE', memo: null },
   { id: 555, slot_id: 1007, vehicle_id: null, plate: '34나 5678', occupant_type: 'RESIDENT', state: 'PARKED', entered_at: '2026-09-30T12:10:00+09:00', expected_exit_at: '2026-09-30T15:30:00+09:00', exit_source: 'MANUAL', memo: null },
 ]
 
 /** 막힘 관계 [막는 칸, 막힌 칸]. 판정은 백엔드 몫이라 목에서는 시나리오 값을 그대로 둔다 */
-export const blocks: [number, number][] = [[1001, 1002]]
+export const blocks: [number, number][] = []
 
 export const recurring: { schedule: RecurringSchedule | null } = { schedule: { days: ['MON', 'TUE', 'WED', 'THU', 'FRI'], time: '07:30', memo: '출근 일정' } }
 export const WEEKDAYS_MON_FRI: Weekday[] = ['MON', 'TUE', 'WED', 'THU', 'FRI']
 
 export type MockMoveRequest = MoveRequestDetail & { box: MoveRequestBox; target_parking_id: number; responded_at: DateTime | null }
 
-// TODO(logic): 받은 이동 요청 44의 막힌 차량(P4)은 화면 시연용 임시 값 (P2 뒤에는 칸이 없어 실제로는 내 차가 막을 차가 없다)
+// TODO(logic): 받은 이동 요청 44는 화면 시연용 임시 값. 내 차가 P2에 있을 때 받은 요청이고, 막힌 차량(P4)도 P2 뒤가 아니라 실제와 맞지 않는다
 export const moveRequests: MockMoveRequest[] = [
   { id: 44, box: 'received', target_parking_id: 556, status: 'PENDING', requested_at: '2026-09-30T14:34:00+09:00', requester: { label: '101동 입주민' }, my_vehicle: { plate: '12가 3456', slot_label: 'P2', parked_at: '2026-09-30T08:30:00+09:00' }, blocked_vehicle: { plate: '27가 4821', slot_label: 'P4', needed_at: '2026-09-30T15:00:00+09:00' }, reason: '외출 예정으로 출차가 필요합니다. 차량 이동을 부탁드립니다.', responded_at: null },
 ]
 
 export const notifications: NotificationItem[] = [
-  { id: 92, type: 'BLOCK_ALERT', title: '막힘 알림', body: '내 차량이 P1 차량에 의해 막혀 있습니다.', link: { screen: 'HOME', id: null }, is_read: false, created_at: '2026-09-30T14:20:00+09:00' },
+  { id: 92, type: 'BLOCK_ALERT', title: '막힘 알림', body: '내 차량이 P1 차량에 의해 막혀 있습니다.', link: { screen: 'HOME', id: null }, is_read: true, created_at: '2026-09-30T14:20:00+09:00' },
   { id: 91, type: 'MOVE_REQUEST', title: '주차 요청 도착', body: '101동 입주민', link: { screen: 'MOVE_REQUEST', id: 44 }, is_read: false, created_at: '2026-09-30T14:34:00+09:00' },
   { id: 90, type: 'EXIT_DONE', title: '출차 완료 안내', body: 'P5 비어 있음', link: null, is_read: true, created_at: '2026-09-30T14:30:00+09:00' },
   { id: 85, type: 'BLOCK_ALERT', title: '내일 출차 안내', body: '내 차량이 내일 07:30 출차하는 차량을 막고 있어요', link: { screen: 'HOME', id: null }, is_read: true, created_at: '2026-09-29T22:30:00+09:00' },

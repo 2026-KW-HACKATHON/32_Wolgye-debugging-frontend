@@ -8,7 +8,7 @@ import { NavButton, PageTitle, SectionTitle, StatusChip, Surface } from '../../c
 import ParkingLotMap, { LotLegend } from '../../components/ParkingLotMap'
 import { toLotSlots } from '../../components/parkingLotGeometry'
 import { isApiError } from '../../api/client'
-import { createMoveRequest, getBuildingLayout, getBuildingStatus, getHome, readNotification } from '../../api/parking'
+import { createMoveRequest, getBuildingLayout, getBuildingStatus, getHome, listMyVehicles, readNotification } from '../../api/parking'
 import { useApi } from '../../api/useApi'
 import { toHash } from '../../types/navigation'
 import type { Home } from '../../types/parking'
@@ -16,6 +16,10 @@ import type { Home } from '../../types/parking'
 type Notice = { severity: 'success' | 'info' | 'error'; message: string }
 
 const errorMessage = (e: unknown) => isApiError(e) ? e.message : '잠시 후 다시 시도해 주세요'
+// 현재 시각 → "2026-09-30T14:40:00+09:00"
+const kstNow = () => `${new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 19)}+09:00`
+// 주차 중이 아닐 때 차량 상세로 갈 내 차: 기본 차량, 없으면 첫 차
+const loadMyVehicle = async () => { const { items } = await listMyVehicles(); return items.find((item) => item.is_default) ?? items[0] ?? null }
 // KST ISO 8601 → "오후 6:30"
 const ampm = (dateTime: string) => { const hour = Number(dateTime.slice(11, 13)); return `${hour < 12 ? '오전' : '오후'} ${hour % 12 || 12}:${dateTime.slice(14, 16)}` }
 function timeAgo(dateTime: string) {
@@ -42,12 +46,12 @@ export default function HomePage() {
 function HomeView({ home, reload }: { home: Home; reload: () => void }) {
   const buildingId = home.building.id
   const lot = useApi(() => loadLot(buildingId), `lot-${buildingId}`)
+  const { summary, my_parking: mine, block_alert: blockAlert } = home
+  const myVehicle = useApi(() => mine ? Promise.resolve(null) : loadMyVehicle(), `my-vehicle-${mine ? 'parked' : 'out'}`)
   const [moveNotice, setMoveNotice] = useState<Notice | null>(null)
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
   const [readError, setReadError] = useState<string | null>(null)
-  const { summary, my_parking: mine, block_alert: blockAlert } = home
-  // TODO(logic): 주차 중이 아니면 홈 응답에 차량 id가 없어 차량 상세로 갈 수 없다. 차량 목록 API(GET /me/vehicles, #16)가 붙으면 그 차량으로 연결
   const links: [string, string, string][] = []
   if (mine) links.push(['내 차량 상세', [mine.vehicle.plate, mine.vehicle.color].filter(Boolean).join(' · '), toHash('vehicle-detail', { id: mine.vehicle.id })])
   if (home.admin) links.push(['관리자 대시보드', `대기 요청 ${home.admin.pending_share_requests}건`, toHash('admin')])
@@ -85,8 +89,8 @@ function HomeView({ home, reload }: { home: Home; reload: () => void }) {
     <Stack direction="row" gap={0.75} flexWrap="wrap"><StatusChip kind="available" label={`가능 ${summary.available}`}/><StatusChip kind="soon" label={`곧 출차 ${summary.soon_exit}`}/><StatusChip kind="danger" label={`막힘 ${summary.blocked}`}/><Chip size="small" variant="outlined" label={`빈칸 ${summary.empty}`}/></Stack>
     <Box sx={{borderRadius:4,bgcolor:'#F8FAFC',border:'1px solid',borderColor:'divider',p:1}}>{lot.error ? <LoadError message={lot.error.message} onRetry={lot.reload}/> : lot.data ? <><ParkingLotMap slots={lot.data}/><LotLegend/></> : <Loading/>}</Box>
     {mine ? <Surface sx={{background:'linear-gradient(135deg,#246BFD 0%,#4988FF 100%)',color:'#fff',border:'none'}}><Box component="a" href={toHash('vehicle-detail', { id: mine.vehicle.id })} sx={{display:'flex',justifyContent:'space-between',alignItems:'center',color:'inherit'}}><Box><Typography variant="caption" sx={{opacity:.82}}>내 차량 · {mine.vehicle.plate}</Typography><Typography variant="h6" mt={0.4}>{mine.slot_label}</Typography><Stack direction="row" gap={0.75} mt={1}><Chip size="small" label={mine.state === 'PARKED' ? '주차 중' : '출차'} sx={{bgcolor:'rgba(255,255,255,.18)',color:'#fff'}}/><Chip size="small" label={mine.expected_exit_at ? `출차 예정 ${ampm(mine.expected_exit_at)}` : '상시 주차'} sx={{bgcolor:'#fff',color:'primary.main'}}/></Stack></Box><DirectionsCarRoundedIcon sx={{fontSize:58,opacity:.9}}/></Box></Surface>
-      : <Surface><Typography variant="caption" color="text.secondary">주차 중인 내 차량이 없어요.</Typography></Surface>}
-    {blockAlert && <Surface sx={{bgcolor:'#FFF7F2',borderColor:'#FFD9BE'}}><Stack gap={1.25}><Stack direction="row" justifyContent="space-between" alignItems="center"><Stack direction="row" gap={1} alignItems="center"><ErrorRoundedIcon color="error"/><Typography variant="subtitle2">막힘 알림</Typography></Stack><Button component="a" href="#notifications" size="small" endIcon={<ArrowForwardRoundedIcon/>}>알림 센터</Button></Stack><Typography variant="body2" color="text.secondary">{blockAlert.message}</Typography>{moveNotice && <Alert severity={moveNotice.severity}>{moveNotice.message}</Alert>}<Stack direction="row" gap={1}>{/* TODO(logic): 상시 주차(출차 시간 없음)일 때 이동 요청의 needed_at 을 무엇으로 보낼지 정해지지 않아 버튼을 막아 둔다 */}<Button variant="contained" fullWidth disabled={sending || sent || !mine?.expected_exit_at} onClick={() => mine?.expected_exit_at && sendMoveRequest(blockAlert.blocking_parking_id, mine.expected_exit_at)}>{sent ? '이동 요청을 보냈어요' : '이동 요청 보내기'}</Button><NavButton to="notifications" variant="outlined" fullWidth>상세 보기</NavButton></Stack></Stack></Surface>}
+      : <Surface>{myVehicle.data ? <Box component="a" href={toHash('vehicle-detail', { id: myVehicle.data.id })} sx={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:1,color:'inherit'}}><Box><Typography variant="caption" color="text.secondary">주차 중인 내 차량이 없어요.</Typography><Typography variant="subtitle2">내 차량 · {[myVehicle.data.plate, myVehicle.data.color].filter(Boolean).join(' · ')}</Typography></Box><ArrowForwardRoundedIcon color="action" fontSize="small"/></Box> : <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}><Typography variant="caption" color="text.secondary">주차 중인 내 차량이 없어요.</Typography>{myVehicle.error ? <Button size="small" onClick={myVehicle.reload}>다시 시도</Button> : myVehicle.loading && <CircularProgress size={16}/>}</Stack>}</Surface>}
+    {blockAlert && <Surface sx={{bgcolor:'#FFF7F2',borderColor:'#FFD9BE'}}><Stack gap={1.25}><Stack direction="row" justifyContent="space-between" alignItems="center"><Stack direction="row" gap={1} alignItems="center"><ErrorRoundedIcon color="error"/><Typography variant="subtitle2">막힘 알림</Typography></Stack><Button component="a" href="#notifications" size="small" endIcon={<ArrowForwardRoundedIcon/>}>알림 센터</Button></Stack><Typography variant="body2" color="text.secondary">{blockAlert.message}</Typography>{moveNotice && <Alert severity={moveNotice.severity}>{moveNotice.message}</Alert>}<Stack direction="row" gap={1}>{/* needed_at = 내 출차 예정, 상시 주차면 지금 */}<Button variant="contained" fullWidth disabled={sending || sent || !mine} onClick={() => mine && sendMoveRequest(blockAlert.blocking_parking_id, mine.expected_exit_at ?? kstNow())}>{sent ? '이동 요청을 보냈어요' : '이동 요청 보내기'}</Button><NavButton to="notifications" variant="outlined" fullWidth>상세 보기</NavButton></Stack></Stack></Surface>}
     <SectionTitle>빠른 액션</SectionTitle>
     <Stack direction="row" gap={1.25}><NavButton to="parking-register" fullWidth>주차 배치 등록</NavButton><NavButton to="share" variant="outlined" fullWidth>공유 주차 탐색</NavButton></Stack>
     {links.length > 0 && <Box sx={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:1.25}}>{links.map(([title,desc,href])=><Surface key={title}><Box component="a" href={href} sx={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:1,color:'inherit'}}><Box><Typography variant="subtitle2">{title}</Typography><Typography variant="caption" color="text.secondary">{desc}</Typography></Box><ArrowForwardRoundedIcon color="action" fontSize="small"/></Box></Surface>)}</Box>}

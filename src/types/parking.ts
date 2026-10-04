@@ -70,6 +70,11 @@ export type Home = {
   recent_notifications: NotificationItem[]
 }
 
+// ── 차량 목록 GET /me/vehicles ──
+// TODO(logic): #16(효재)에서 src/types 차량 타입이 생기면 그쪽으로 옮긴다 (주차 안 한 상태에서 내 차량 id를 얻으려고 임시로 둠)
+export type VehicleStatus = 'PARKED' | 'OUT'
+export type VehicleListItem = { id: number; plate: string; alias: string | null; color: VehicleColor | null; is_default: boolean; status: VehicleStatus; status_text: string }
+
 // ── 차량 상세 GET /me/vehicles/{id} ──
 export type VehicleDetail = {
   id: number
