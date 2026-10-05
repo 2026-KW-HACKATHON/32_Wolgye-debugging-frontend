@@ -1,13 +1,15 @@
 import { USE_MOCK, invalidInput, mockDelay, mockFail, notFound, request } from './client'
+import { getMyRole } from './auth'
 import { WEEKDAYS, type ErrorDetail } from '../types/api'
 import type { AdminDashboard, AdminDashboardQuery, AdminShareRequestItem, AdminShareRequestPage, AdminShareRequestQuery, AdminSlot, AdminSlotUpdate, ShareOffer, ShareOfferCreate, ShareOfferFields, ShareOfferUpdate, ShareRequestDecided, ShareRequestDecision } from '../types/admin'
 import { MOCK_NOW, MY_BUILDING_ID, allSlots, findSlot, labelOf, layout, parkedAt, slotStatuses } from '../mocks/parking'
 import { ADMIN_USER_ID, congestion, shareOffers, shareRequests } from '../mocks/admin'
 
 // 관리자 API. 함수 이름 = 명세 operationId. 지금은 목데이터를 돌려주고, 서버 연결 시 함수 안쪽만 바꾼다 (docs/api-layer.md)
-// TODO(logic): 목은 역할을 확인하지 않는다. 서버는 관리자가 아니면 403 NOT_BUILDING_ADMIN (로그인 목 사용자 김지수는 RESIDENT)
+// 목도 서버처럼 관리자가 아니면 403 NOT_BUILDING_ADMIN (관리자 체험 계정 admin@kw.ac.kr, 2026-10-06)
 
 const notAdmin = () => mockFail(403, 'NOT_BUILDING_ADMIN', '이 빌라의 관리자만 이용할 수 있습니다.')
+const isAdmin = () => getMyRole() === 'ADMIN'
 const isHour = (value: unknown) => Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 24
 const plain = (value: string) => value.replace(/\s/g, '')
 const toItem = ({ id, requester, plate, slot_label, request_date, start_hour, end_hour, total_price, status }: AdminShareRequestItem): AdminShareRequestItem => ({ id, requester, plate, slot_label, request_date, start_hour, end_hour, total_price, status })
@@ -34,6 +36,7 @@ function offerError(fields: ShareOfferFields): [string, ErrorDetail] | null {
 export async function getAdminDashboard(buildingId: number, query: AdminDashboardQuery = {}): Promise<AdminDashboard> {
   if (!USE_MOCK) return request('GET', `/admin/buildings/${buildingId}/dashboard`, { query })
   // TODO(api): GET /admin/buildings/{building_id}/dashboard?month=YYYY-MM
+  if (!isAdmin()) return notAdmin()
   if (buildingId !== MY_BUILDING_ID) return notAdmin()
   const month = query.month ?? MOCK_NOW.slice(0, 7)
   if (!/^\d{4}-\d{2}$/.test(month)) return invalidInput('월 형식이 올바르지 않습니다.', { field: 'month' })
@@ -56,6 +59,7 @@ export async function getAdminDashboard(buildingId: number, query: AdminDashboar
 export async function decideShareRequest(shareRequestId: number, body: ShareRequestDecision): Promise<ShareRequestDecided> {
   if (!USE_MOCK) return request('PATCH', `/admin/share-requests/${shareRequestId}`, { body })
   // TODO(api): PATCH /admin/share-requests/{share_request_id} (수락 시 토큰이 요청자 → 관리자로 이동)
+  if (!isAdmin()) return notAdmin()
   if (body.status !== 'APPROVED' && body.status !== 'REJECTED') return invalidInput('상태가 올바르지 않습니다.', { field: 'status' })
   const shareRequest = shareRequests.find((item) => item.id === shareRequestId)
   if (!shareRequest) return notFound()
@@ -72,6 +76,7 @@ export async function decideShareRequest(shareRequestId: number, body: ShareRequ
 export async function listAdminShareRequests(buildingId: number, query: AdminShareRequestQuery = {}): Promise<AdminShareRequestPage> {
   if (!USE_MOCK) return request('GET', `/admin/buildings/${buildingId}/share-requests`, { query })
   // TODO(api): GET /admin/buildings/{building_id}/share-requests?status&q&cursor
+  if (!isAdmin()) return notAdmin()
   if (buildingId !== MY_BUILDING_ID) return notAdmin()
   const status = query.status ?? 'all'
   const q = plain(query.q ?? '')
@@ -87,6 +92,7 @@ export async function listAdminShareRequests(buildingId: number, query: AdminSha
 export async function listAdminSlots(buildingId: number): Promise<{ items: AdminSlot[] }> {
   if (!USE_MOCK) return request('GET', `/admin/buildings/${buildingId}/slots`)
   // TODO(api): GET /admin/buildings/{building_id}/slots
+  if (!isAdmin()) return notAdmin()
   if (buildingId !== MY_BUILDING_ID) return notAdmin()
   return mockDelay({ items: allSlots().flatMap((slot) => toAdminSlot(slot.id) ?? []) })
 }
@@ -94,6 +100,7 @@ export async function listAdminSlots(buildingId: number): Promise<{ items: Admin
 export async function updateAdminSlot(slotId: number, body: AdminSlotUpdate): Promise<AdminSlot> {
   if (!USE_MOCK) return request('PATCH', `/admin/slots/${slotId}`, { body })
   // TODO(api): PATCH /admin/slots/{slot_id} (공유 여부는 여기서 못 바꾼다)
+  if (!isAdmin()) return notAdmin()
   const slot = findSlot(slotId)
   if (!slot) return notFound()
   if (typeof body.is_active !== 'boolean') return invalidInput('사용 여부가 올바르지 않습니다.', { field: 'is_active' })
@@ -106,6 +113,7 @@ export async function updateAdminSlot(slotId: number, body: AdminSlotUpdate): Pr
 export async function listAdminShareOffers(buildingId: number): Promise<{ items: ShareOffer[] }> {
   if (!USE_MOCK) return request('GET', `/admin/buildings/${buildingId}/share-offers`)
   // TODO(api): GET /admin/buildings/{building_id}/share-offers
+  if (!isAdmin()) return notAdmin()
   if (buildingId !== MY_BUILDING_ID) return notAdmin()
   return mockDelay({ items: shareOffers })
 }
@@ -113,6 +121,7 @@ export async function listAdminShareOffers(buildingId: number): Promise<{ items:
 export async function createAdminShareOffer(buildingId: number, body: ShareOfferCreate): Promise<{ items: ShareOffer[] }> {
   if (!USE_MOCK) return request('POST', `/admin/buildings/${buildingId}/share-offers`, { body })
   // TODO(api): POST /admin/buildings/{building_id}/share-offers (칸마다 공유 조건 하나. 하나라도 실패하면 전부 취소)
+  if (!isAdmin()) return notAdmin()
   if (buildingId !== MY_BUILDING_ID) return notAdmin()
   if (body.slot_ids.length === 0) return invalidInput('공유할 칸을 하나 이상 골라 주세요.', { field: 'slot_ids' })
   const wrong = body.slot_ids.find((slotId) => !findSlot(slotId))
@@ -130,6 +139,7 @@ export async function createAdminShareOffer(buildingId: number, body: ShareOffer
 export async function updateAdminShareOffer(offerId: number, body: ShareOfferUpdate): Promise<ShareOffer> {
   if (!USE_MOCK) return request('PATCH', `/admin/share-offers/${offerId}`, { body })
   // TODO(api): PATCH /admin/share-offers/{offer_id} (is_public:false = 공유 중단)
+  if (!isAdmin()) return notAdmin()
   const offer = shareOffers.find((item) => item.id === offerId)
   if (!offer) return notFound()
   const next: ShareOffer = { ...offer, ...Object.fromEntries(Object.entries(body).filter(([, value]) => value !== undefined)) }
@@ -142,6 +152,7 @@ export async function updateAdminShareOffer(offerId: number, body: ShareOfferUpd
 export async function deleteAdminShareOffer(offerId: number): Promise<void> {
   if (!USE_MOCK) return request<void>('DELETE', `/admin/share-offers/${offerId}`)
   // TODO(api): DELETE /admin/share-offers/{offer_id} (딸린 공유 요청도 함께 지워진다)
+  if (!isAdmin()) return notAdmin()
   const index = shareOffers.findIndex((item) => item.id === offerId)
   if (index < 0) return notFound()
   shareOffers.splice(index, 1)

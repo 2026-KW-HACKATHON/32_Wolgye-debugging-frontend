@@ -45,5 +45,7 @@ FE GitHub 이슈 #4~#18 본문은 Manyfast 기준으로 쓰였다. 이 문서와
 | 대시보드 혼잡도 달 (2026-10-05) | 응답의 `congestion.month`로 표시 ([backend PR #35](https://github.com/2026-KW-HACKATHON/32_Wolgye-debugging-backend/pull/35), FE #24) |
 | 출차 일정 수정의 지난 시각 (2026-10-05) | 배치 등록과 같이 **막는다** (서버도 400) |
 | 공유 요청 → 관리자 승인 연동 (2026-10-05) | 효재 공유 목과 민솔 관리자 목의 ID(차고지·오퍼·소유자·관리자)를 **맞추지 않는다**. test 서버 연결 후 실제 DB로 확인한다 ([#17 댓글](https://github.com/2026-KW-HACKATHON/32_Wolgye-debugging-frontend/issues/17#issuecomment-5991694850)). test 서버 정보는 [backend #36](https://github.com/2026-KW-HACKATHON/32_Wolgye-debugging-backend/issues/36)으로 요청 |
+| 관리 메뉴 표시 (2026-10-06) | **관리자(`ADMIN`)에게만** 하단 '관리' 탭과 화면 미리보기 목록의 관리 화면을 보인다. 입주민·로그인 전에는 숨기고, 관리 화면 주소로 직접 오면 "관리자만 볼 수 있어요". 역할은 `auth.ts` `getMyRole()`(프로필 `building.role`). 목도 서버처럼 관리자 API는 403 `NOT_BUILDING_ADMIN` |
+| 관리자 체험 계정 (2026-10-06) | `admin@kw.ac.kr` / `chagok1234` (박관리, 월계 한빛빌라 `ADMIN`, 목 id 2 = 공유 조건 host). 김지수는 입주민 그대로. 이전 "관리자 화면도 김지수로 시연"은 폐기 |
 
 결정 대기 항목은 없다. 새로 생기면 이 표 아래에 `## 결정 대기`를 다시 만든다.

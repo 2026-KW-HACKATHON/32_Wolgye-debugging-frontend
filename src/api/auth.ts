@@ -1,8 +1,9 @@
 import { ApiError, mockDelay, request, USE_MOCK } from './client'
 import { accounts } from '../mocks/auth'
+import type { BuildingRole } from '../types/api'
 import type { AuthTokens, JoinBuildingResponse, LoginRequest, SignupRequest, UpdateMeRequest, UserMe } from '../types/auth'
 
-export { DEMO_EMAIL, DEMO_PASSWORD } from '../mocks/auth'
+export { ADMIN_DEMO_EMAIL, DEMO_EMAIL, DEMO_PASSWORD } from '../mocks/auth'
 const KEY = 'chagok.auth'
 type Session = { tokens: AuthTokens; profile: UserMe; accessExpiresAt: number; refreshExpiresAt: number }
 type ServerSession = { mode: 'server'; tokens: AuthTokens; profile: UserMe | null }
@@ -80,6 +81,8 @@ export function requireMockSession(): void {
   }
 }
 export function getAccessToken(): string | null { return USE_MOCK ? session && session.accessExpiresAt > Date.now() ? session.tokens.access_token : null : serverSession?.tokens.access_token ?? null }
+/** 로그인한 사용자의 빌라 역할. 로그인 전·빌라 미합류면 null (화면의 관리 메뉴 표시에 쓴다) */
+export function getMyRole(): BuildingRole | null { return (USE_MOCK ? session?.profile : serverSession?.profile)?.building?.role ?? null }
 export function getMyBuildingId(): number | null { return (USE_MOCK ? session?.profile : serverSession?.profile)?.building?.building_id ?? null }
 export function getMockUserId(): number { requireMockSession(); return session!.profile.id }
 function startSession(profile: UserMe): AuthTokens {

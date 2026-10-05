@@ -3,7 +3,7 @@ import type { Page, PageQuery } from '../types/api'
 import type { BuildingLayout, BuildingStatus, Home, LayoutSlot, MoveRequestBox, MoveRequestCreate, MoveRequestCreated, MoveRequestDetail, MoveRequestDone, MoveRequestListItem, NotificationItem, ParkingCreate, ParkingCreated, ParkingExited, ParkingScheduleUpdate, ParkingScheduleUpdated, RecurringSchedule, SlotRecommendation, SlotRecommendationQuery, SlotRecommendations, VehicleDetail } from '../types/parking'
 import { MOCK_NOW, MY_BUILDING_ID, WEEKDAYS_MON_FRI, allSlots, blocks, findSlot, labelOf, layout, me, minutesSince, moveRequests, notifications, parkedAt, parkings, recurringByVehicle, slotStatuses } from '../mocks/parking'
 import { vehiclesByUser } from '../mocks/vehicles'
-import { getMockUserId } from './auth'
+import { getMockUserId, getMyRole } from './auth'
 import type { VehicleListItem } from '../types/vehicles'
 import { shareRequests } from '../mocks/admin'
 
@@ -53,12 +53,12 @@ export async function getHome(): Promise<Home> {
   const blocker = mineStatus?.blocked_by[0]
   const blockerParking = blocker === undefined ? undefined : parkedAt(blocker)
   return mockDelay({
-    building: { id: MY_BUILDING_ID, name: layout.name, role: me.role },
+    building: { id: MY_BUILDING_ID, name: layout.name, role: getMyRole() ?? me.role },
     unread_notification_count: notifications.filter((item) => !item.is_read).length,
     summary: { available: count('EMPTY') + count('SOON_EXIT'), soon_exit: count('SOON_EXIT'), blocked: statuses.filter((slot) => slot.parking?.occupant_type === 'RESIDENT' && slot.blocked_by.length > 0).length, empty: count('EMPTY') },
     my_parking: mine ? { parking_id: mine.id, vehicle: myVehicleOf(mine.vehicle_id!), slot_label: labelOf(mine.slot_id), state: mine.state, expected_exit_at: mine.expected_exit_at } : null,
     block_alert: blockerParking ? { blocking_parking_id: blockerParking.id, message: `내 차량이 ${labelOf(blockerParking.slot_id)} 차량에 의해 막혀 있습니다.` } : null,
-    admin: me.role === 'ADMIN' ? { pending_share_requests: shareRequests.filter((request) => request.status === 'PENDING').length } : null,
+    admin: (getMyRole() ?? me.role) === 'ADMIN' ? { pending_share_requests: shareRequests.filter((request) => request.status === 'PENDING').length } : null,
     recent_notifications: byNewest(notifications).slice(0, 2),
   })
 }
