@@ -17,7 +17,7 @@ export default function MoveDonePage() {
   if (!request) return <Box display="grid" minHeight="40vh" sx={{placeItems:'center'}}><CircularProgress size={30}/></Box>
   if (request.status === 'PENDING') return <Stack gap={2.25}><ResultHero state="pending" title="아직 처리하지 않은 요청이에요" description="차를 옮긴 뒤 이동 요청 화면에서 '옮겼어요'를 눌러 주세요."/><Button component="a" href={toHash('move', { id })} variant="contained" fullWidth>이동 요청 보기</Button><NavButton to="notifications" variant="outlined" fullWidth>알림 센터</NavButton></Stack>
   return <Stack gap={2.25}>
-    <ResultHero state="success" title="이동 완료로 처리했어요" description="요청한 이웃에게 따로 알림은 가지 않아요. 전화번호는 공유되지 않아요."/>
+    <ResultHero state="success" title={request.responded_at ? `${timeOf(request.responded_at)}에 옮겼어요` : '이동 완료로 처리했어요'} description="요청한 이웃에게 따로 알림은 가지 않아요. 전화번호는 공유되지 않아요."/>
     {/* 응답 시각은 '옮겼어요'를 누른 시각(responded_at). 없으면 줄을 숨긴다 */}
     <Surface><InfoRow label="내 차량" value={request.my_vehicle.plate}/><InfoRow label="요청자" value={request.requester.label}/><InfoRow label="요청 시각" value={timeOf(request.requested_at)}/>{request.responded_at && <InfoRow label="응답 시각" value={timeOf(request.responded_at)}/>}</Surface>
     {links}

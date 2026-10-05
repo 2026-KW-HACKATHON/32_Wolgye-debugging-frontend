@@ -11,6 +11,8 @@ import { halfHourOptions } from './timeOptions'
 
 const TIME_OPTIONS = halfHourOptions('06:00','23:30')
 const kstDate = (offsetDays = 0) => new Date(Date.now() + 9 * 3600000 + offsetDays * 86400000).toISOString().slice(0, 10)
+// 실제 현재 시각 기준 KST "HH:mm"
+const kstClock = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(11, 16)
 
 // 차량 id 는 #departure?id=7. 없으면(화면 목록에서 직접 연 경우) 홈의 내 주차 차량을 쓴다
 async function loadVehicle(paramId: number) {
@@ -38,10 +40,14 @@ function DepartureForm({ vehicle, parking }: { vehicle: VehicleDetail; parking: 
   const [memo, setMemo] = useState(vehicle.schedule?.memo ?? '')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const date = day === 'today' ? kstDate() : day === 'tomorrow' ? kstDate(1) : customDate
+  // 오늘 이미 지난 시각은 고를 수 없다 (서버도 400 INVALID_INPUT, 2026-10-04 결정)
+  const isPast = (value: string) => date === kstDate() && value <= kstClock()
+  const pastTime = isPast(time)
 
   async function save() {
-    const date = day === 'today' ? kstDate() : day === 'tomorrow' ? kstDate(1) : customDate
     if (!date) return setSaveError('날짜를 골라 주세요.')
+    if (pastTime) return
     setSaving(true)
     setSaveError(null)
     try {
@@ -59,13 +65,14 @@ function DepartureForm({ vehicle, parking }: { vehicle: VehicleDetail; parking: 
     <SectionTitle>출차 일시</SectionTitle>
     <TextField select label="날짜 선택" value={day} onChange={(event)=>setDay(event.target.value)}>{[['today','오늘'],['tomorrow','내일'],['custom','날짜 직접 선택']].map(([value,label])=><MenuItem key={value} value={value}>{label}</MenuItem>)}</TextField>
     {day === 'custom' && <TextField type="date" label="날짜" value={customDate} onChange={(event)=>setCustomDate(event.target.value)} slotProps={{inputLabel:{shrink:true},htmlInput:{min:kstDate()}}}/>}
-    <TextField select label="출차 시간" value={time} onChange={(event)=>setTime(event.target.value)}>{TIME_OPTIONS.map((value)=><MenuItem key={value} value={value}>{value}</MenuItem>)}</TextField>
+    <TextField select label="출차 시간" value={time} onChange={(event)=>setTime(event.target.value)}>{TIME_OPTIONS.map((value)=><MenuItem key={value} value={value} disabled={isPast(value)}>{value}</MenuItem>)}</TextField>
+    {pastTime && <Typography variant="caption" color="error">이미 지난 시각이에요. 이후 시각을 골라 주세요</Typography>}
     <Divider/>
     <SectionTitle>반복 설정</SectionTitle>
     <Surface><Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}><Stack direction="row" gap={1.25} alignItems="center"><EventRepeatRoundedIcon color="primary"/><div><Typography variant="subtitle2">반복 일정 설정</Typography><Typography variant="caption" color="text.secondary">매주·매일 반복 출차 일정을 등록합니다</Typography></div></Stack><Button component="a" href={toHash('repeat', { id: vehicle.id })} variant="outlined">설정</Button></Stack></Surface>
     <Divider/>
     <TextField label="메모 (선택)" multiline rows={2} value={memo} onChange={(event)=>setMemo(event.target.value)}/>
     {saveError && <Alert severity="error">{saveError}</Alert>}
-    <Button variant="contained" fullWidth disabled={saving} onClick={save}>변경 사항 저장</Button>
+    <Button variant="contained" fullWidth disabled={saving || pastTime} onClick={save}>변경 사항 저장</Button>
   </Stack>
 }
