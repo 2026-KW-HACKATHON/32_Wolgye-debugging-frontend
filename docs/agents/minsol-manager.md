@@ -18,6 +18,8 @@
    gh issue view 18                                    # 에픽: 워크플로·분배·파일 소유권
    gh issue list --label "track:민솔" --state all
    gh issue view 4 --comments                          # 결정 대기 항목(Q1~Q6)
+   gh issue list --state open                          # 다른 사람(백엔드 팀 등)이 FE에 올린 이슈도 확인
+   gh issue list -R 2026-KW-HACKATHON/32_Wolgye-debugging-backend --state open   # FE가 백엔드에 요청한 이슈의 답변
    ```
 3. `git status`와 `git log --oneline -10`으로 작업 트리를 확인한 뒤, 다음에 할 이슈를 사람에게 한 줄로 알린다.
 
