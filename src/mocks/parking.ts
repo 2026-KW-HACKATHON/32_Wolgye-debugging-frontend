@@ -11,7 +11,6 @@ export const MY_BUILDING_ID = 3
 export const MY_VEHICLE_ID = 7
 
 export const me: { name: string; unit: string; role: BuildingRole; label: string } = { name: '김지수', unit: '101동 202호', role: 'RESIDENT', label: '101동 입주민' }
-export const myVehicle = { id: MY_VEHICLE_ID, plate: '12가 3456', color: '흰색' as const }
 
 // rect = 배치도 px / 50 (src/components/parkingLotGeometry.ts PX_PER_METER). front_slot_id = 출구(통로) 쪽 앞 칸
 // TODO(logic): 주차 구역(zone) 이름·묶음은 화면에 쓰지 않아 배치도 줄 단위 임시 값이다 (명세 example 의 구역 구성과 다름)
@@ -54,7 +53,8 @@ export const parkings: MockParking[] = [
 /** 막힘 관계 [막는 칸, 막힌 칸]. 판정은 백엔드 몫이라 목에서는 시나리오 값을 그대로 둔다 */
 export const blocks: [number, number][] = []
 
-export const recurring: { schedule: RecurringSchedule | null } = { schedule: { days: ['MON', 'TUE', 'WED', 'THU', 'FRI'], time: '07:30', memo: '출근 일정' } }
+/** 차량별 반복 일정 (차량당 하나) */
+export const recurringByVehicle = new Map<number, RecurringSchedule>([[MY_VEHICLE_ID, { days: ['MON', 'TUE', 'WED', 'THU', 'FRI'], time: '07:30', memo: '출근 일정' }]])
 export const WEEKDAYS_MON_FRI: Weekday[] = ['MON', 'TUE', 'WED', 'THU', 'FRI']
 
 export type MockMoveRequest = MoveRequestDetail & { box: MoveRequestBox; target_parking_id: number }
@@ -77,19 +77,19 @@ export const allSlots = (): LayoutSlot[] => layout.zones.flatMap((zone) => zone.
 export const findSlot = (slotId: number) => allSlots().find((slot) => slot.id === slotId)
 export const labelOf = (slotId: number) => findSlot(slotId)?.label ?? ''
 export const parkedAt = (slotId: number) => parkings.find((parking) => parking.slot_id === slotId && parking.state === 'PARKED')
-export const myParking = () => parkings.find((parking) => parking.vehicle_id === MY_VEHICLE_ID && parking.state === 'PARKED')
 /** 1시간 이내 출차 */
 export const isSoonExit = (exitAt: DateTime | null) => exitAt !== null && Date.parse(exitAt) - Date.parse(MOCK_NOW) <= 60 * 60 * 1000
 export const minutesSince = (from: DateTime) => Math.max(0, Math.round((Date.parse(MOCK_NOW) - Date.parse(from)) / 60000))
 
-export function slotStatuses(): SlotStatus[] {
+/** isMine: 내 차량인지 (api/parking.ts 가 로그인한 사용자의 차량으로 넘긴다) */
+export function slotStatuses(isMine: (vehicleId: number | null) => boolean = (vehicleId) => vehicleId === MY_VEHICLE_ID): SlotStatus[] {
   return allSlots().map((slot) => {
     const parking = parkedAt(slot.id)
     const state = !slot.is_active ? 'UNAVAILABLE' : !parking ? 'EMPTY' : isSoonExit(parking.expected_exit_at) ? 'SOON_EXIT' : 'OCCUPIED'
     return {
       slot_id: slot.id,
       state,
-      parking: parking ? { id: parking.id, is_mine: parking.vehicle_id === MY_VEHICLE_ID, plate: parking.plate, occupant_type: parking.occupant_type, expected_exit_at: parking.expected_exit_at, exit_source: parking.exit_source } : null,
+      parking: parking ? { id: parking.id, is_mine: isMine(parking.vehicle_id), plate: parking.plate, occupant_type: parking.occupant_type, expected_exit_at: parking.expected_exit_at, exit_source: parking.exit_source } : null,
       blocked_by: blocks.filter(([, blocked]) => blocked === slot.id).map(([blocker]) => blocker),
       blocking: blocks.filter(([blocker]) => blocker === slot.id).map(([, blocked]) => blocked),
     }

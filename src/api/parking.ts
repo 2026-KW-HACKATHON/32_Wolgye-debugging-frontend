@@ -1,7 +1,10 @@
 import { invalidInput, mockDelay, mockFail, notFound } from './client'
 import type { Page, PageQuery } from '../types/api'
 import type { BuildingLayout, BuildingStatus, Home, LayoutSlot, MoveRequestBox, MoveRequestCreate, MoveRequestCreated, MoveRequestDetail, MoveRequestDone, MoveRequestListItem, NotificationItem, ParkingCreate, ParkingCreated, ParkingExited, ParkingScheduleUpdate, ParkingScheduleUpdated, RecurringSchedule, SlotRecommendation, SlotRecommendationQuery, SlotRecommendations, VehicleDetail } from '../types/parking'
-import { MOCK_NOW, MY_BUILDING_ID, MY_VEHICLE_ID, WEEKDAYS_MON_FRI, allSlots, blocks, findSlot, labelOf, layout, me, minutesSince, moveRequests, myParking, myVehicle, notifications, parkedAt, parkings, recurring, slotStatuses } from '../mocks/parking'
+import { MOCK_NOW, MY_BUILDING_ID, WEEKDAYS_MON_FRI, allSlots, blocks, findSlot, labelOf, layout, me, minutesSince, moveRequests, notifications, parkedAt, parkings, recurringByVehicle, slotStatuses } from '../mocks/parking'
+import { vehiclesByUser } from '../mocks/vehicles'
+import { getMockUserId } from './auth'
+import type { VehicleListItem } from '../types/vehicles'
 import { shareRequests } from '../mocks/admin'
 
 // 입주민 API. 함수 이름 = 명세 operationId. 지금은 목데이터를 돌려주고, 서버 연결 시 함수 안쪽만 바꾼다 (docs/api-layer.md)
@@ -12,12 +15,29 @@ const isTime = (value: string) => /^\d{2}:\d{2}$/.test(value)
 const isDateTime = (value: unknown): value is string => typeof value === 'string' && !Number.isNaN(Date.parse(value))
 const byNewest = <T extends { created_at: string }>(items: T[]) => [...items].sort((a, b) => b.created_at.localeCompare(a.created_at))
 
+// 내 차량 = 로그인한 사용자의 차량 (효재 #16 차량 목). 로그인 전에는 체험 계정(1)의 차량으로 본다 (2026-10-05 결정)
+const DEMO_USER_ID = 1
+function ownedVehicles(): VehicleListItem[] {
+  let userId = DEMO_USER_ID
+  try { userId = getMockUserId() } catch { /* 로그인 전 */ }
+  return vehiclesByUser.get(userId) ?? []
+}
+const ownVehicle = (vehicleId: number) => ownedVehicles().find((vehicle) => vehicle.id === vehicleId)
+const isMine = (vehicleId: number | null) => vehicleId !== null && !!ownVehicle(vehicleId)
+/** 내 차량의 주차. vehicleId 를 주면 그 차량, 아니면 대표 차량 → 다른 차량 순 */
+function myParking(vehicleId?: number) {
+  const mine = parkings.filter((parking) => parking.state === 'PARKED' && isMine(parking.vehicle_id) && (vehicleId === undefined || parking.vehicle_id === vehicleId))
+  return mine.find((parking) => ownVehicle(parking.vehicle_id!)?.is_default) ?? mine[0]
+}
+const myStatuses = () => slotStatuses(isMine)
+const myVehicleOf = (vehicleId: number) => { const vehicle = ownVehicle(vehicleId); return { id: vehicleId, plate: vehicle?.plate ?? '', color: vehicle?.color ?? null } }
+
 /** 내 차를 이 칸에 두면: 앞 칸 차에 막히는지, 뒤 칸 차를 막는지 (명세 getBuildingStatus 막힘 규칙. 출차 시간 null = 가장 늦게) */
 function evaluate(slot: LayoutSlot, myExit: string | null) {
   const exitsLater = (a: string | null, b: string | null) => a === null ? b !== null : b !== null && Date.parse(a) > Date.parse(b)
   const front = slot.front_slot_id === null ? undefined : parkedAt(slot.front_slot_id)
-  const blocked = !!front && front.vehicle_id !== MY_VEHICLE_ID && myExit !== null && exitsLater(front.expected_exit_at, myExit)
-  const will_block = allSlots().filter((behind) => behind.front_slot_id === slot.id).filter((behind) => { const parking = parkedAt(behind.id); return !!parking && parking.vehicle_id !== MY_VEHICLE_ID && parking.expected_exit_at !== null && exitsLater(myExit, parking.expected_exit_at) }).map((behind) => behind.id)
+  const blocked = !!front && !isMine(front.vehicle_id) && myExit !== null && exitsLater(front.expected_exit_at, myExit)
+  const will_block = allSlots().filter((behind) => behind.front_slot_id === slot.id).filter((behind) => { const parking = parkedAt(behind.id); return !!parking && !isMine(parking.vehicle_id) && parking.expected_exit_at !== null && exitsLater(myExit, parking.expected_exit_at) }).map((behind) => behind.id)
   return { blocked, will_block }
 }
 
@@ -25,7 +45,7 @@ function evaluate(slot: LayoutSlot, myExit: string | null) {
 
 export async function getHome(): Promise<Home> {
   // TODO(api): GET /me/home
-  const statuses = slotStatuses()
+  const statuses = myStatuses()
   const count = (state: string) => statuses.filter((slot) => slot.state === state).length
   const mine = myParking()
   const mineStatus = mine && statuses.find((slot) => slot.slot_id === mine.slot_id)
@@ -35,7 +55,7 @@ export async function getHome(): Promise<Home> {
     building: { id: MY_BUILDING_ID, name: layout.name, role: me.role },
     unread_notification_count: notifications.filter((item) => !item.is_read).length,
     summary: { available: count('EMPTY') + count('SOON_EXIT'), soon_exit: count('SOON_EXIT'), blocked: statuses.filter((slot) => slot.parking?.occupant_type === 'RESIDENT' && slot.blocked_by.length > 0).length, empty: count('EMPTY') },
-    my_parking: mine ? { parking_id: mine.id, vehicle: { ...myVehicle }, slot_label: labelOf(mine.slot_id), state: mine.state, expected_exit_at: mine.expected_exit_at } : null,
+    my_parking: mine ? { parking_id: mine.id, vehicle: myVehicleOf(mine.vehicle_id!), slot_label: labelOf(mine.slot_id), state: mine.state, expected_exit_at: mine.expected_exit_at } : null,
     block_alert: blockerParking ? { blocking_parking_id: blockerParking.id, message: `내 차량이 ${labelOf(blockerParking.slot_id)} 차량에 의해 막혀 있습니다.` } : null,
     admin: me.role === 'ADMIN' ? { pending_share_requests: shareRequests.filter((request) => request.status === 'PENDING').length } : null,
     recent_notifications: byNewest(notifications).slice(0, 2),
@@ -51,7 +71,7 @@ export async function getBuildingLayout(buildingId: number): Promise<BuildingLay
 export async function getBuildingStatus(buildingId: number): Promise<BuildingStatus> {
   // TODO(api): GET /buildings/{building_id}/status
   if (buildingId !== MY_BUILDING_ID) return notMember()
-  return mockDelay({ updated_at: MOCK_NOW, slots: slotStatuses() })
+  return mockDelay({ updated_at: MOCK_NOW, slots: myStatuses() })
 }
 
 // ── 주차 배치·출차 ──
@@ -59,12 +79,12 @@ export async function getBuildingStatus(buildingId: number): Promise<BuildingSta
 export async function getSlotRecommendations(buildingId: number, query: SlotRecommendationQuery): Promise<SlotRecommendations> {
   // TODO(api): GET /buildings/{building_id}/slots/recommendations?vehicle_id&expected_exit_at ('+'는 %2B 로 인코딩)
   if (buildingId !== MY_BUILDING_ID) return notMember()
-  if (query.vehicle_id !== MY_VEHICLE_ID) return notFound()
+  if (!ownVehicle(query.vehicle_id)) return notFound()
   if (query.expected_exit_at !== undefined && !isDateTime(query.expected_exit_at)) return invalidInput('출차 시간이 올바르지 않습니다.', { field: 'expected_exit_at' })
   const myExit = query.expected_exit_at ?? null
   // 다른 차가 있는 칸은 넣지 않는다 (명세 SlotTag 에 사용 중이 없음). 내 차가 지금 있는 칸은 빈 칸으로 본다
   // TODO(logic): 그 시간에 수락된 공유 요청이 있는 칸('예약된 상태')은 목에서 따지지 않는다
-  const candidates = allSlots().filter((slot) => !slot.is_active || !parkedAt(slot.id) || parkedAt(slot.id)?.vehicle_id === MY_VEHICLE_ID)
+  const candidates = allSlots().filter((slot) => !slot.is_active || !parkedAt(slot.id) || parkedAt(slot.id)?.vehicle_id === query.vehicle_id)
   const evaluated = candidates.map((slot) => ({ slot, ...evaluate(slot, myExit) }))
   const best = [...evaluated].filter((item) => item.slot.is_active && !item.blocked && item.will_block.length === 0).sort((a, b) => Number(b.slot.front_slot_id !== null) - Number(a.slot.front_slot_id !== null))[0]
   const slots: SlotRecommendation[] = evaluated.map(({ slot, will_block }) => !slot.is_active ? { slot_id: slot.id, tag: 'UNAVAILABLE', label: slot.label, unavailable_reason: UNAVAILABLE_REASON }
@@ -76,26 +96,27 @@ export async function getSlotRecommendations(buildingId: number, query: SlotReco
 export async function createParking(body: ParkingCreate): Promise<ParkingCreated> {
   // TODO(api): POST /parkings
   const slot = findSlot(body.slot_id)
-  if (!slot || body.vehicle_id !== MY_VEHICLE_ID) return notFound()
+  const vehicle = ownVehicle(body.vehicle_id)
+  if (!slot || !vehicle) return notFound()
   const longTerm = body.is_long_term ?? false
   if (!longTerm && !isDateTime(body.expected_exit_at)) return invalidInput('출차 시간을 입력해 주세요.', { field: 'expected_exit_at' })
   if (!slot.is_active) return mockFail(409, 'SLOT_UNAVAILABLE', '해당 칸을 사용할 수 없습니다.', { reason: UNAVAILABLE_REASON })
   if (parkedAt(slot.id)) return mockFail(409, 'SLOT_OCCUPIED', '이미 다른 차량이 주차 중인 칸입니다.')
-  const current = myParking()
+  const current = myParking(vehicle.id)
   if (current) return mockFail(409, 'VEHICLE_ALREADY_PARKED', '이미 주차 중인 차량입니다.', { parking_id: current.id })
   const expected = longTerm ? null : body.expected_exit_at ?? null
   const { blocked, will_block } = evaluate(slot, expected)
   const id = Math.max(...parkings.map((parking) => parking.id)) + 1
-  parkings.push({ id, slot_id: slot.id, vehicle_id: MY_VEHICLE_ID, plate: myVehicle.plate, occupant_type: 'RESIDENT', state: 'PARKED', entered_at: MOCK_NOW, expected_exit_at: expected, exit_source: longTerm ? 'NONE' : 'MANUAL', memo: body.memo ?? null })
+  parkings.push({ id, slot_id: slot.id, vehicle_id: vehicle.id, plate: vehicle.plate, occupant_type: 'RESIDENT', state: 'PARKED', entered_at: MOCK_NOW, expected_exit_at: expected, exit_source: longTerm ? 'NONE' : 'MANUAL', memo: body.memo ?? null })
   if (blocked && slot.front_slot_id !== null) blocks.push([slot.front_slot_id, slot.id])
   will_block.forEach((behind) => blocks.push([slot.id, behind]))
-  if (body.repeat_weekdays && expected) recurring.schedule = { days: WEEKDAYS_MON_FRI, time: expected.slice(11, 16), memo: body.memo ?? null }
+  if (body.repeat_weekdays && expected) recurringByVehicle.set(vehicle.id, { days: WEEKDAYS_MON_FRI, time: expected.slice(11, 16), memo: body.memo ?? null })
   return mockDelay({ id, slot_id: slot.id, state: 'PARKED', expected_exit_at: expected, exit_source: longTerm ? 'NONE' : 'MANUAL', blocking: will_block })
 }
 
 export async function updateParkingSchedule(parkingId: number, body: ParkingScheduleUpdate): Promise<ParkingScheduleUpdated> {
   // TODO(api): PUT /parkings/{parking_id}/schedule
-  const parking = parkings.find((item) => item.id === parkingId && item.state === 'PARKED' && item.vehicle_id === MY_VEHICLE_ID)
+  const parking = parkings.find((item) => item.id === parkingId && item.state === 'PARKED' && isMine(item.vehicle_id))
   if (!parking) return notFound()
   if (!isDateTime(body.expected_exit_at)) return invalidInput('출차 시간이 올바르지 않습니다.', { field: 'expected_exit_at' })
   // TODO(logic): 시간이 바뀌어도 목에서는 막힘 관계를 다시 계산하지 않는다 (서버가 판정)
@@ -108,7 +129,7 @@ export async function updateParkingSchedule(parkingId: number, body: ParkingSche
 
 export async function exitParking(parkingId: number): Promise<ParkingExited> {
   // TODO(api): POST /parkings/{parking_id}/exit
-  const parking = parkings.find((item) => item.id === parkingId && item.state === 'PARKED' && item.vehicle_id === MY_VEHICLE_ID)
+  const parking = parkings.find((item) => item.id === parkingId && item.state === 'PARKED' && isMine(item.vehicle_id))
   if (!parking) return notFound()
   parking.state = 'EXITED'
   for (let index = blocks.length - 1; index >= 0; index -= 1) if (blocks[index].includes(parking.slot_id)) blocks.splice(index, 1)
@@ -120,36 +141,39 @@ export async function exitParking(parkingId: number): Promise<ParkingExited> {
 
 export async function getMyVehicle(vehicleId: number): Promise<VehicleDetail> {
   // TODO(api): GET /me/vehicles/{vehicle_id}
-  if (vehicleId !== MY_VEHICLE_ID) return notFound()
-  const parking = myParking()
+  const vehicle = ownVehicle(vehicleId)
+  if (!vehicle) return notFound()
+  const parking = myParking(vehicleId)
   return mockDelay({
-    id: myVehicle.id, plate: myVehicle.plate, color: myVehicle.color,
+    id: vehicle.id, plate: vehicle.plate, color: vehicle.color,
     owner: { name: me.name, unit: me.unit },
     parking: parking ? { parking_id: parking.id, slot_id: parking.slot_id, slot_label: labelOf(parking.slot_id), entered_at: parking.entered_at, state: parking.state } : null,
-    schedule: parking ? { expected_exit_at: parking.expected_exit_at, exit_source: parking.exit_source, elapsed_minutes: minutesSince(parking.entered_at), memo: parking.expected_exit_at === null ? null : parking.exit_source === 'RECURRING' ? recurring.schedule?.memo ?? null : parking.memo } : null,
+    schedule: parking ? { expected_exit_at: parking.expected_exit_at, exit_source: parking.exit_source, elapsed_minutes: minutesSince(parking.entered_at), memo: parking.expected_exit_at === null ? null : parking.exit_source === 'RECURRING' ? recurringByVehicle.get(vehicleId)?.memo ?? null : parking.memo } : null,
   })
 }
 
 export async function getRecurringSchedule(vehicleId: number): Promise<RecurringSchedule> {
   // TODO(api): GET /me/vehicles/{vehicle_id}/recurring-schedule
   // TODO(logic): 반복 일정이 없을 때 응답이 명세에 없다. 목은 404 NOT_FOUND 로 둔다
-  if (vehicleId !== MY_VEHICLE_ID || !recurring.schedule) return notFound()
-  return mockDelay(recurring.schedule)
+  const schedule = recurringByVehicle.get(vehicleId)
+  if (!ownVehicle(vehicleId) || !schedule) return notFound()
+  return mockDelay(schedule)
 }
 
 export async function putRecurringSchedule(vehicleId: number, body: RecurringSchedule): Promise<RecurringSchedule> {
   // TODO(api): PUT /me/vehicles/{vehicle_id}/recurring-schedule
-  if (vehicleId !== MY_VEHICLE_ID) return notFound()
+  if (!ownVehicle(vehicleId)) return notFound()
   if (body.days.length === 0) return invalidInput('요일을 하나 이상 골라 주세요.', { field: 'days' })
   if (!isTime(body.time)) return invalidInput('시각이 올바르지 않습니다.', { field: 'time' })
-  recurring.schedule = { days: [...new Set(body.days)], time: body.time, memo: body.memo ?? null }
-  return mockDelay(recurring.schedule)
+  const schedule = { days: [...new Set(body.days)], time: body.time, memo: body.memo ?? null }
+  recurringByVehicle.set(vehicleId, schedule)
+  return mockDelay(schedule)
 }
 
 export async function deleteRecurringSchedule(vehicleId: number): Promise<void> {
   // TODO(api): DELETE /me/vehicles/{vehicle_id}/recurring-schedule
-  if (vehicleId !== MY_VEHICLE_ID) return notFound()
-  recurring.schedule = null
+  if (!ownVehicle(vehicleId)) return notFound()
+  recurringByVehicle.delete(vehicleId)
   return mockDelay(undefined)
 }
 
@@ -165,7 +189,7 @@ export async function createMoveRequest(body: MoveRequestCreate): Promise<MoveRe
   if (pending) return mockFail(409, 'MOVE_REQUEST_ALREADY_PENDING', '이 차량에 대기 중인 이동 요청이 이미 있습니다.', { move_request_id: pending.id })
   const mine = myParking()
   const id = Math.max(...moveRequests.map((request) => request.id)) + 1
-  moveRequests.push({ id, box: 'sent', target_parking_id: target.id, status: 'PENDING', requested_at: MOCK_NOW, requester: { label: me.label }, my_vehicle: { plate: target.plate, slot_label: labelOf(target.slot_id), parked_at: target.entered_at }, blocked_vehicle: { plate: myVehicle.plate, slot_label: mine ? labelOf(mine.slot_id) : '', needed_at: body.needed_at }, reason: body.reason ?? null, responded_at: null })
+  moveRequests.push({ id, box: 'sent', target_parking_id: target.id, status: 'PENDING', requested_at: MOCK_NOW, requester: { label: me.label }, my_vehicle: { plate: target.plate, slot_label: labelOf(target.slot_id), parked_at: target.entered_at }, blocked_vehicle: { plate: mine?.plate ?? '', slot_label: mine ? labelOf(mine.slot_id) : '', needed_at: body.needed_at }, reason: body.reason ?? null, responded_at: null })
   return mockDelay({ id, status: 'PENDING' })
 }
 
