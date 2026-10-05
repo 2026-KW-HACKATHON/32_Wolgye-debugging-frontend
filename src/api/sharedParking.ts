@@ -1,6 +1,6 @@
 import { getMe, getMockUserId, requireMockSession } from './auth'
 import { listMyVehicles } from './vehicles'
-import { invalidInput, mockDelay, mockFail, notFound } from './client'
+import { invalidInput, mockDelay, mockFail, notFound, request, USE_MOCK } from './client'
 import type { Page } from '../types/api'
 import type { GarageDetail, GarageListItem, GarageListQuery, ShareRequestCreate, ShareRequestCreated, ShareRequestDetail } from '../types/sharedParking'
 import { offerOwnerId, sharedGarages, sharedGarageItems, userShareRequests, type StoredShareRequest } from '../mocks/sharedParking'
@@ -10,6 +10,7 @@ const validDate = (value: string) => { if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) r
 const publicRequest = (item: StoredShareRequest): ShareRequestDetail => ({id:item.id,status:item.status,reject_reason:item.reject_reason,garage:item.garage,slot_id:item.slot_id,slot_label:item.slot_label,request_date:item.request_date,start_hour:item.start_hour,end_hour:item.end_hour,total_price:item.total_price})
 
 export async function listGarages(query: GarageListQuery = {}): Promise<Page<GarageListItem>> {
+  if (!USE_MOCK) return request('GET', '/garages', { query })
   // TODO(api): GET /garages?q&filter&cursor&limit
   requireMockSession()
   const filter = query.filter ?? 'all'
@@ -24,12 +25,14 @@ export async function listGarages(query: GarageListQuery = {}): Promise<Page<Gar
   return mockDelay({items:items.slice(cursor,cursor+limit),next_cursor:cursor+limit < items.length ? String(cursor+limit) : null})
 }
 export async function getGarage(garageId: number): Promise<GarageDetail> {
+  if (!USE_MOCK) return request('GET', `/garages/${garageId}`)
   // TODO(api): GET /garages/{garage_id}
   requireMockSession()
   const garage = sharedGarages.find((item) => item.id === garageId)
   return garage ? mockDelay(garage) : notFound()
 }
 export async function createShareRequest(body: ShareRequestCreate): Promise<ShareRequestCreated> {
+  if (!USE_MOCK) return request('POST', '/share-requests', { body })
   // TODO(api): POST /share-requests (요청 시 잔액 확인만, 수락 시 차감)
   requireMockSession()
   const userId = getMockUserId()!
@@ -58,12 +61,14 @@ export async function createShareRequest(body: ShareRequestCreate): Promise<Shar
   return mockDelay({id,status:'PENDING',total_price})
 }
 export async function getShareRequest(shareRequestId: number): Promise<ShareRequestDetail> {
+  if (!USE_MOCK) return request('GET', `/share-requests/${shareRequestId}`)
   // TODO(api): GET /share-requests/{share_request_id}
   requireMockSession()
   const item = userShareRequests.find((request) => request.id === shareRequestId && request.user_id === getMockUserId())
   return item ? mockDelay(publicRequest(item)) : notFound()
 }
 export async function listMyShareRequests(): Promise<{items:ShareRequestDetail[]}> {
+  if (!USE_MOCK) return request('GET', '/me/share-requests')
   // TODO(api): GET /me/share-requests (명세에 페이지네이션 없음)
   requireMockSession()
   return mockDelay({items:userShareRequests.filter((item)=>item.user_id === getMockUserId()).sort((a,b)=>b.id-a.id).map(publicRequest)})

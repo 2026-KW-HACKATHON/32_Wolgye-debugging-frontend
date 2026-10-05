@@ -1,5 +1,5 @@
 import { completeVehicleOnboarding, getMockUserId, requireMockSession } from './auth'
-import { ApiError, mockDelay } from './client'
+import { ApiError, mockDelay, request, USE_MOCK } from './client'
 import { parkings } from '../mocks/parking'
 import { nextVehicleId, vehiclesByUser } from '../mocks/vehicles'
 import type { VehicleCreate, VehicleListItem, VehicleUpdate } from '../types/vehicles'
@@ -26,10 +26,12 @@ function validate(body: VehicleUpdate, exceptId?: number) {
   }
 }
 export async function listMyVehicles(): Promise<{ items: VehicleListItem[] }> {
+  if (!USE_MOCK) return request('GET', '/me/vehicles')
   // TODO(api): GET /me/vehicles
   return mockDelay({ items: myVehicles().map(withStatus) })
 }
 export async function createMyVehicle(body: VehicleCreate): Promise<VehicleListItem> {
+  if (!USE_MOCK) return request('POST', '/me/vehicles', { body })
   // TODO(api): POST /me/vehicles
   const items = myVehicles()
   validate(body)
@@ -41,6 +43,7 @@ export async function createMyVehicle(body: VehicleCreate): Promise<VehicleListI
   return mockDelay(item)
 }
 export async function updateMyVehicle(id: number, body: VehicleUpdate): Promise<VehicleListItem> {
+  if (!USE_MOCK) return request('PATCH', `/me/vehicles/${id}`, { body })
   // TODO(api): PATCH /me/vehicles/{vehicle_id}
   const items = myVehicles()
   const item = items.find(vehicle => vehicle.id === id)
@@ -53,6 +56,7 @@ export async function updateMyVehicle(id: number, body: VehicleUpdate): Promise<
   return mockDelay(withStatus(item))
 }
 export async function deleteMyVehicle(id: number): Promise<void> {
+  if (!USE_MOCK) return request('DELETE', `/me/vehicles/${id}`)
   // TODO(api): DELETE /me/vehicles/{vehicle_id}
   const items = myVehicles()
   const index = items.findIndex(vehicle => vehicle.id === id)
