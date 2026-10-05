@@ -3,7 +3,8 @@ import type { BuildingRole, DateTime, Page, TimeOfDay, VehicleColor, Weekday } f
 // 배치도·홈·차량·주차·이동 요청·알림 타입 (docs/openapi-mock.yaml). 필드 이름은 API 그대로
 
 export type SlotState = 'EMPTY' | 'SOON_EXIT' | 'OCCUPIED' | 'UNAVAILABLE'
-export type SlotTag = 'RECOMMENDED' | 'EMPTY' | 'UNAVAILABLE'
+/** OCCUPIED = 다른 차가 있는 칸 (명세 SlotTag). 화면은 현황(status)의 칸 상태로 이미 '사용 중'을 그린다 */
+export type SlotTag = 'RECOMMENDED' | 'EMPTY' | 'OCCUPIED' | 'UNAVAILABLE'
 export type OccupantType = 'RESIDENT' | 'EXTERNAL' | 'UNKNOWN'
 export type ExitSource = 'MANUAL' | 'RECURRING' | 'AI_ESTIMATED' | 'NONE'
 export type ParkingState = 'PARKED' | 'EXITED'

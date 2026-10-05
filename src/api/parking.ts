@@ -1,4 +1,4 @@
-import { invalidInput, mockDelay, mockFail, notFound } from './client'
+import { USE_MOCK, invalidInput, mockDelay, mockFail, notFound, request } from './client'
 import type { Page, PageQuery } from '../types/api'
 import type { BuildingLayout, BuildingStatus, Home, LayoutSlot, MoveRequestBox, MoveRequestCreate, MoveRequestCreated, MoveRequestDetail, MoveRequestDone, MoveRequestListItem, NotificationItem, ParkingCreate, ParkingCreated, ParkingExited, ParkingScheduleUpdate, ParkingScheduleUpdated, RecurringSchedule, SlotRecommendation, SlotRecommendationQuery, SlotRecommendations, VehicleDetail } from '../types/parking'
 import { MOCK_NOW, MY_BUILDING_ID, WEEKDAYS_MON_FRI, allSlots, blocks, findSlot, labelOf, layout, me, minutesSince, moveRequests, notifications, parkedAt, parkings, recurringByVehicle, slotStatuses } from '../mocks/parking'
@@ -44,6 +44,7 @@ function evaluate(slot: LayoutSlot, myExit: string | null) {
 // ── 홈·배치도 ──
 
 export async function getHome(): Promise<Home> {
+  if (!USE_MOCK) return request('GET', '/me/home')
   // TODO(api): GET /me/home
   const statuses = myStatuses()
   const count = (state: string) => statuses.filter((slot) => slot.state === state).length
@@ -63,12 +64,14 @@ export async function getHome(): Promise<Home> {
 }
 
 export async function getBuildingLayout(buildingId: number): Promise<BuildingLayout> {
+  if (!USE_MOCK) return request('GET', `/buildings/${buildingId}/layout`)
   // TODO(api): GET /buildings/{building_id}/layout (정적이라 화면에서 캐싱)
   if (buildingId !== MY_BUILDING_ID) return notMember()
   return mockDelay(layout)
 }
 
 export async function getBuildingStatus(buildingId: number): Promise<BuildingStatus> {
+  if (!USE_MOCK) return request('GET', `/buildings/${buildingId}/status`)
   // TODO(api): GET /buildings/{building_id}/status
   if (buildingId !== MY_BUILDING_ID) return notMember()
   return mockDelay({ updated_at: MOCK_NOW, slots: myStatuses() })
@@ -77,12 +80,13 @@ export async function getBuildingStatus(buildingId: number): Promise<BuildingSta
 // ── 주차 배치·출차 ──
 
 export async function getSlotRecommendations(buildingId: number, query: SlotRecommendationQuery): Promise<SlotRecommendations> {
+  if (!USE_MOCK) return request('GET', `/buildings/${buildingId}/slots/recommendations`, { query: { vehicle_id: query.vehicle_id, expected_exit_at: query.expected_exit_at } })
   // TODO(api): GET /buildings/{building_id}/slots/recommendations?vehicle_id&expected_exit_at ('+'는 %2B 로 인코딩)
   if (buildingId !== MY_BUILDING_ID) return notMember()
   if (!ownVehicle(query.vehicle_id)) return notFound()
   if (query.expected_exit_at !== undefined && !isDateTime(query.expected_exit_at)) return invalidInput('출차 시간이 올바르지 않습니다.', { field: 'expected_exit_at' })
   const myExit = query.expected_exit_at ?? null
-  // 다른 차가 있는 칸은 넣지 않는다 (명세 SlotTag 에 사용 중이 없음). 내 차가 지금 있는 칸은 빈 칸으로 본다
+  // 목은 다른 차가 있는 칸을 넣지 않는다 (서버는 OCCUPIED 태그로 줄 수 있다). 내 차가 지금 있는 칸은 빈 칸으로 본다
   // TODO(logic): 그 시간에 수락된 공유 요청이 있는 칸('예약된 상태')은 목에서 따지지 않는다
   const candidates = allSlots().filter((slot) => !slot.is_active || !parkedAt(slot.id) || parkedAt(slot.id)?.vehicle_id === query.vehicle_id)
   const evaluated = candidates.map((slot) => ({ slot, ...evaluate(slot, myExit) }))
@@ -94,6 +98,7 @@ export async function getSlotRecommendations(buildingId: number, query: SlotReco
 }
 
 export async function createParking(body: ParkingCreate): Promise<ParkingCreated> {
+  if (!USE_MOCK) return request('POST', '/parkings', { body })
   // TODO(api): POST /parkings
   const slot = findSlot(body.slot_id)
   const vehicle = ownVehicle(body.vehicle_id)
@@ -115,6 +120,7 @@ export async function createParking(body: ParkingCreate): Promise<ParkingCreated
 }
 
 export async function updateParkingSchedule(parkingId: number, body: ParkingScheduleUpdate): Promise<ParkingScheduleUpdated> {
+  if (!USE_MOCK) return request('PUT', `/parkings/${parkingId}/schedule`, { body })
   // TODO(api): PUT /parkings/{parking_id}/schedule
   const parking = parkings.find((item) => item.id === parkingId && item.state === 'PARKED' && isMine(item.vehicle_id))
   if (!parking) return notFound()
@@ -128,6 +134,7 @@ export async function updateParkingSchedule(parkingId: number, body: ParkingSche
 }
 
 export async function exitParking(parkingId: number): Promise<ParkingExited> {
+  if (!USE_MOCK) return request('POST', `/parkings/${parkingId}/exit`)
   // TODO(api): POST /parkings/{parking_id}/exit
   const parking = parkings.find((item) => item.id === parkingId && item.state === 'PARKED' && isMine(item.vehicle_id))
   if (!parking) return notFound()
@@ -140,6 +147,7 @@ export async function exitParking(parkingId: number): Promise<ParkingExited> {
 // ── 차량·반복 일정 ──
 
 export async function getMyVehicle(vehicleId: number): Promise<VehicleDetail> {
+  if (!USE_MOCK) return request('GET', `/me/vehicles/${vehicleId}`)
   // TODO(api): GET /me/vehicles/{vehicle_id}
   const vehicle = ownVehicle(vehicleId)
   if (!vehicle) return notFound()
@@ -153,6 +161,7 @@ export async function getMyVehicle(vehicleId: number): Promise<VehicleDetail> {
 }
 
 export async function getRecurringSchedule(vehicleId: number): Promise<RecurringSchedule> {
+  if (!USE_MOCK) return request('GET', `/me/vehicles/${vehicleId}/recurring-schedule`)
   // TODO(api): GET /me/vehicles/{vehicle_id}/recurring-schedule
   // TODO(logic): 반복 일정이 없을 때 응답이 명세에 없다. 목은 404 NOT_FOUND 로 둔다
   const schedule = recurringByVehicle.get(vehicleId)
@@ -161,6 +170,7 @@ export async function getRecurringSchedule(vehicleId: number): Promise<Recurring
 }
 
 export async function putRecurringSchedule(vehicleId: number, body: RecurringSchedule): Promise<RecurringSchedule> {
+  if (!USE_MOCK) return request('PUT', `/me/vehicles/${vehicleId}/recurring-schedule`, { body })
   // TODO(api): PUT /me/vehicles/{vehicle_id}/recurring-schedule
   if (!ownVehicle(vehicleId)) return notFound()
   if (body.days.length === 0) return invalidInput('요일을 하나 이상 골라 주세요.', { field: 'days' })
@@ -171,6 +181,7 @@ export async function putRecurringSchedule(vehicleId: number, body: RecurringSch
 }
 
 export async function deleteRecurringSchedule(vehicleId: number): Promise<void> {
+  if (!USE_MOCK) return request<void>('DELETE', `/me/vehicles/${vehicleId}/recurring-schedule`)
   // TODO(api): DELETE /me/vehicles/{vehicle_id}/recurring-schedule
   if (!ownVehicle(vehicleId)) return notFound()
   recurringByVehicle.delete(vehicleId)
@@ -180,6 +191,7 @@ export async function deleteRecurringSchedule(vehicleId: number): Promise<void> 
 // ── 이동 요청 ──
 
 export async function createMoveRequest(body: MoveRequestCreate): Promise<MoveRequestCreated> {
+  if (!USE_MOCK) return request('POST', '/move-requests', { body })
   // TODO(api): POST /move-requests
   const target = parkings.find((item) => item.id === body.target_parking_id && item.state === 'PARKED')
   if (!target) return notFound()
@@ -194,24 +206,27 @@ export async function createMoveRequest(body: MoveRequestCreate): Promise<MoveRe
 }
 
 export async function getMoveRequest(moveRequestId: number): Promise<MoveRequestDetail> {
+  if (!USE_MOCK) return request('GET', `/move-requests/${moveRequestId}`)
   // TODO(api): GET /move-requests/{move_request_id}
-  const request = moveRequests.find((item) => item.id === moveRequestId)
-  if (!request) return notFound()
-  const { id, status, requested_at, requester, my_vehicle, blocked_vehicle, reason, responded_at } = request
+  const moveRequest = moveRequests.find((item) => item.id === moveRequestId)
+  if (!moveRequest) return notFound()
+  const { id, status, requested_at, requester, my_vehicle, blocked_vehicle, reason, responded_at } = moveRequest
   return mockDelay({ id, status, requested_at, requester, my_vehicle, blocked_vehicle, reason, responded_at })
 }
 
 export async function doneMoveRequest(moveRequestId: number): Promise<MoveRequestDone> {
+  if (!USE_MOCK) return request('POST', `/move-requests/${moveRequestId}/done`)
   // TODO(api): POST /move-requests/{move_request_id}/done (요청자에게 알림 없음)
-  const request = moveRequests.find((item) => item.id === moveRequestId && item.box === 'received')
-  if (!request) return notFound()
-  if (request.status !== 'PENDING') return mockFail(409, 'ALREADY_DECIDED', '이미 처리된 요청입니다.', { status: request.status })
-  request.status = 'MOVED'
-  request.responded_at = MOCK_NOW
-  return mockDelay({ id: request.id, status: 'MOVED', responded_at: MOCK_NOW })
+  const moveRequest = moveRequests.find((item) => item.id === moveRequestId && item.box === 'received')
+  if (!moveRequest) return notFound()
+  if (moveRequest.status !== 'PENDING') return mockFail(409, 'ALREADY_DECIDED', '이미 처리된 요청입니다.', { status: moveRequest.status })
+  moveRequest.status = 'MOVED'
+  moveRequest.responded_at = MOCK_NOW
+  return mockDelay({ id: moveRequest.id, status: 'MOVED', responded_at: MOCK_NOW })
 }
 
 export async function listMyMoveRequests(query: { box: MoveRequestBox }): Promise<{ items: MoveRequestListItem[] }> {
+  if (!USE_MOCK) return request('GET', '/me/move-requests', { query: { box: query.box } })
   // TODO(api): GET /me/move-requests?box=received|sent
   // 보낸 요청의 상대는 칸 이름으로 표시 ("P1 차량")
   const items = moveRequests.filter((request) => request.box === query.box).sort((a, b) => b.requested_at.localeCompare(a.requested_at))
@@ -222,6 +237,7 @@ export async function listMyMoveRequests(query: { box: MoveRequestBox }): Promis
 // ── 알림 ──
 
 export async function listNotifications(query: PageQuery = {}): Promise<Page<NotificationItem>> {
+  if (!USE_MOCK) return request('GET', '/notifications', { query: { cursor: query.cursor, limit: query.limit } })
   // TODO(api): GET /notifications?cursor&limit (목 커서는 시작 위치 숫자)
   const limit = Math.min(Math.max(query.limit ?? 20, 1), 50)
   const start = Number(query.cursor ?? 0) || 0
@@ -231,6 +247,7 @@ export async function listNotifications(query: PageQuery = {}): Promise<Page<Not
 }
 
 export async function readNotification(notificationId: number): Promise<void> {
+  if (!USE_MOCK) return request<void>('POST', `/notifications/${notificationId}/read`)
   // TODO(api): POST /notifications/{notification_id}/read
   const item = notifications.find((notification) => notification.id === notificationId)
   if (!item) return notFound()
@@ -239,6 +256,7 @@ export async function readNotification(notificationId: number): Promise<void> {
 }
 
 export async function readAllNotifications(): Promise<void> {
+  if (!USE_MOCK) return request<void>('POST', '/notifications/read-all')
   // TODO(api): POST /notifications/read-all
   notifications.forEach((notification) => { notification.is_read = true })
   return mockDelay(undefined)
