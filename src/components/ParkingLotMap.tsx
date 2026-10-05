@@ -18,6 +18,8 @@ type Props = {
   /** 넘기면 칸을 탭할 수 있다. 빈 칸 → onSelect, 그 밖의 칸 → onUnavailable */
   onSelect?: (id: SlotId) => void
   onUnavailable?: (slot: LotSlot) => void
+  /** 홈에서 상태에 관계없이 칸 정보를 확인한다 */
+  onInspect?: (slot: LotSlot) => void
 }
 
 const colors = {
@@ -100,14 +102,14 @@ function Tag({ x, y, label, color, bg, size, stroke }: { x: number; y: number; l
 
 const occupied = (slot: LotSlot) => slot.state === 'occupied' || slot.state === 'soon_exit'
 
-export default function ParkingLotMap({ slots, view = 'iso', variant = 'resident', selected, recommendedId, focusId, onSelect, onUnavailable }: Props) {
+export default function ParkingLotMap({ slots, view = 'iso', variant = 'resident', selected, recommendedId, focusId, onSelect, onUnavailable, onInspect }: Props) {
   const iso = view === 'iso'
   const admin = variant === 'admin'
   const font = FONT[view]
-  const interactive = Boolean(onSelect)
+  const interactive = Boolean(onSelect || onInspect)
   // 내 차를 막고 있는 칸 (빨간 테두리로 표시)
   const blockers = new Set(admin ? [] : slots.filter((slot) => slot.car?.mine).flatMap((slot) => slot.blockedBy ?? []))
-  const tap = (slot: LotSlot) => slot.state === 'empty' ? onSelect?.(slot.id) : onUnavailable?.(slot)
+  const tap = (slot: LotSlot) => onInspect ? onInspect(slot) : slot.state === 'empty' ? onSelect?.(slot.id) : onUnavailable?.(slot)
   const onKey = (event: KeyboardEvent, slot: LotSlot) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); tap(slot) } }
   const center = (r: Rect) => iso ? isoPoint(r.x + r.w / 2, r.y + r.h / 2) : [r.x + r.w / 2, r.y + r.h / 2] as [number, number]
   const dim = (slot: LotSlot) => focusId !== undefined && slot.id !== focusId ? 0.35 : 1
@@ -133,7 +135,7 @@ export default function ParkingLotMap({ slots, view = 'iso', variant = 'resident
     const strokeWidth = iso ? style.width : style.width + 1
     const shape = iso ? <path className="slot-outline" d={isoRect(rect)} fill={style.fill} stroke={style.stroke} strokeWidth={strokeWidth} strokeDasharray={style.dash}/> : <rect className="slot-outline" x={rect.x} y={rect.y} width={rect.w} height={rect.h} rx={6} fill={style.fill} stroke={style.stroke} strokeWidth={strokeWidth} strokeDasharray={style.dash}/>
     if (!interactive) return <g key={slot.id} opacity={dim(slot)}>{shape}</g>
-    return <g key={slot.id} role="button" tabIndex={0} aria-label={`${slot.label} · ${describe(slot)}`} aria-pressed={slot.id === selected} onClick={() => tap(slot)} onKeyDown={(event) => onKey(event, slot)} style={{ cursor: 'pointer', outline: 'none' }}>{shape}</g>
+    return <g key={slot.id} role="button" tabIndex={0} aria-label={`${slot.label} · ${describe(slot)}`} aria-pressed={onInspect ? undefined : slot.id === selected} onClick={() => tap(slot)} onKeyDown={(event) => onKey(event, slot)} style={{ cursor: 'pointer' }}>{shape}</g>
   })
 
   // 차량과 라벨은 탭 대상(칸) 위에 그리되 포인터 이벤트를 막아 칸 탭을 방해하지 않게 한다.

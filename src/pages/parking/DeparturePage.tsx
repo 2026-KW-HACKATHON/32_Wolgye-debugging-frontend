@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import EventRepeatRoundedIcon from '@mui/icons-material/EventRepeatRounded'
 import { Alert, Box, Button, CircularProgress, Divider, MenuItem, Stack, TextField, Typography } from '@mui/material'
 import { PageTitle, SectionTitle, Surface } from '../../components/Ui'
@@ -8,6 +8,7 @@ import { useApi } from '../../api/useApi'
 import { hashParams, toHash } from '../../types/navigation'
 import type { VehicleDetail } from '../../types/parking'
 import { halfHourOptions } from './timeOptions'
+import { readDraft, writeDraft, removeDraft } from '../../utils/formDrafts'
 import { kstClock, kstDate } from './kstTime'
 
 const TIME_OPTIONS = halfHourOptions('06:00','23:30')
@@ -28,29 +29,34 @@ export default function DeparturePage() {
 }
 
 function DepartureForm({ vehicle, parking }: { vehicle: VehicleDetail; parking: NonNullable<VehicleDetail['parking']> }) {
+  const draftKey = `departure-${vehicle.id}`
+  const [draft] = useState(()=>readDraft<{day:string;customDate:string;time:string;memo:string}>(draftKey))
   const current = vehicle.schedule?.expected_exit_at ?? null
   const currentDate = current?.slice(0, 10)
-  const [day, setDay] = useState(!currentDate ? 'tomorrow' : currentDate === kstDate() ? 'today' : currentDate === kstDate(1) ? 'tomorrow' : 'custom')
-  const [customDate, setCustomDate] = useState(currentDate ?? '')
+  const [day, setDay] = useState(draft?.day ?? (!currentDate ? 'tomorrow' : currentDate === kstDate() ? 'today' : currentDate === kstDate(1) ? 'tomorrow' : 'custom'))
+  const [customDate, setCustomDate] = useState(draft?.customDate ?? currentDate ?? '')
   // 지금 출차 시각이 선택지(06:00~14:00) 밖이면 기본값 07:30
-  const [time, setTime] = useState(current && TIME_OPTIONS.includes(current.slice(11, 16)) ? current.slice(11, 16) : '07:30')
+  const [time, setTime] = useState(draft?.time ?? (current && TIME_OPTIONS.includes(current.slice(11, 16)) ? current.slice(11, 16) : '07:30'))
   // 지금 일정의 메모로 채운다. PUT 이라 저장할 때 메모 칸 값을 늘 같이 보낸다 (안 보내면 기존 메모가 지워짐, backend #34)
-  const [memo, setMemo] = useState(vehicle.schedule?.memo ?? '')
+  const [memo, setMemo] = useState(draft?.memo ?? vehicle.schedule?.memo ?? '')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  useEffect(()=>{writeDraft(draftKey,{day,customDate,time,memo})},[draftKey,day,customDate,time,memo])
   const date = day === 'today' ? kstDate() : day === 'tomorrow' ? kstDate(1) : customDate
   // 오늘 이미 지난 시각은 고를 수 없다 (서버도 400 INVALID_INPUT, 2026-10-04 결정)
   const isPast = (value: string) => date === kstDate() && value <= kstClock()
   const pastTime = isPast(time)
 
   async function save() {
-    if (!date) return setSaveError('날짜를 골라 주세요.')
+    if (saving) return
+    if (!date || date < kstDate()) return setSaveError('오늘 이후 날짜를 골라 주세요.')
     if (pastTime) return
     setSaving(true)
     setSaveError(null)
     try {
       await updateParkingSchedule(parking.parking_id, { expected_exit_at: `${date}T${time}:00+09:00`, memo: memo.trim() || null })
-      window.location.hash = toHash('vehicle-detail', { id: vehicle.id })
+      removeDraft(draftKey)
+      window.location.hash = toHash('vehicle-detail', { id: vehicle.id, saved: 'departure' })
     } catch (e) {
       setSaveError(isApiError(e) ? e.message : '잠시 후 다시 시도해 주세요')
       setSaving(false)
@@ -58,8 +64,9 @@ function DepartureForm({ vehicle, parking }: { vehicle: VehicleDetail; parking: 
   }
 
   return <Stack gap={2.25}>
-    <PageTitle title="출차 일정 수정" description={`${vehicle.plate} · ${parking.slot_label}에 주차 중 — 배치는 그대로 두고 출차 일정만 바꿉니다`}/>
+    <PageTitle title="출차 일정 수정" description={`${vehicle.plate} · ${parking.slot_label}에 주차 중 · 출차 예정 시간을 변경해요`}/>
     <Divider/>
+    {hashParams().get('saved') === 'repeat' && <Alert severity="success">반복 일정을 저장했어요. 출차 일정 입력은 그대로 유지했어요.</Alert>}
     <SectionTitle>출차 일시</SectionTitle>
     <TextField select label="날짜 선택" value={day} onChange={(event)=>setDay(event.target.value)}>{[['today','오늘'],['tomorrow','내일'],['custom','날짜 직접 선택']].map(([value,label])=><MenuItem key={value} value={value}>{label}</MenuItem>)}</TextField>
     {day === 'custom' && <TextField type="date" label="날짜" value={customDate} onChange={(event)=>setCustomDate(event.target.value)} slotProps={{inputLabel:{shrink:true},htmlInput:{min:kstDate()}}}/>}
@@ -67,10 +74,10 @@ function DepartureForm({ vehicle, parking }: { vehicle: VehicleDetail; parking: 
     {pastTime && <Typography variant="caption" color="error">이미 지난 시각이에요. 이후 시각을 골라 주세요</Typography>}
     <Divider/>
     <SectionTitle>반복 설정</SectionTitle>
-    <Surface><Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}><Stack direction="row" gap={1.25} alignItems="center"><EventRepeatRoundedIcon color="primary"/><div><Typography variant="subtitle2">반복 일정 설정</Typography><Typography variant="caption" color="text.secondary">매주·매일 반복 출차 일정을 등록합니다</Typography></div></Stack><Button component="a" href={toHash('repeat', { id: vehicle.id })} variant="outlined">설정</Button></Stack></Surface>
+    <Surface><Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}><Stack direction="row" gap={1.25} alignItems="center"><EventRepeatRoundedIcon color="primary"/><div><Typography variant="subtitle2">반복 일정 설정</Typography><Typography variant="caption" color="text.secondary">매주·매일 반복 출차 일정을 등록합니다</Typography></div></Stack><Button component="a" href={toHash('repeat', { id: vehicle.id, from: 'departure' })} variant="outlined">설정</Button></Stack></Surface>
     <Divider/>
     <TextField label="메모 (선택)" multiline rows={2} value={memo} onChange={(event)=>setMemo(event.target.value)}/>
     {saveError && <Alert severity="error">{saveError}</Alert>}
-    <Button variant="contained" fullWidth disabled={saving || pastTime} onClick={save}>변경 사항 저장</Button>
+    <Button variant="contained" fullWidth disabled={saving || pastTime || !date || date < kstDate()} onClick={save}>{saving ? '저장 중…' : '변경 사항 저장'}</Button>
   </Stack>
 }

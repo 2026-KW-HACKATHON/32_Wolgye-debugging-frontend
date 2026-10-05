@@ -26,7 +26,7 @@ export type PageId =
   | 'profile'
   | 'role-guide'
 
-export type TabId = '배치도' | '알림' | '공유 주차' | '관리' | '프로필'
+export type TabId = '홈' | '알림' | '공유 주차' | '관리' | '프로필'
 
 export type PageMeta = {
   id: PageId
@@ -42,12 +42,12 @@ export const pages: PageMeta[] = [
   { id: 'login', title: '로그인', group: '시작하기', backTo: 'welcome' },
   { id: 'join-building', title: '건물 합류', group: '시작하기', backTo: 'signup' },
   { id: 'vehicle-register', title: '차량 등록', group: '시작하기', backTo: 'join-building' },
-  { id: 'home', title: '홈', group: '주차', tab: '배치도' },
-  { id: 'parking-register', title: '주차 배치 등록', group: '주차', tab: '배치도', backTo: 'home' },
-  { id: 'departure', title: '출차 일정 수정', group: '주차', tab: '배치도', backTo: 'vehicle-detail' },
-  { id: 'repeat', title: '반복 일정 설정', group: '주차', tab: '배치도', backTo: 'parking-register' },
-  { id: 'vehicle-detail', title: '차량 상세', group: '주차', tab: '배치도', backTo: 'home' },
-  { id: 'unavailable', title: '사용 불가 안내', group: '주차', tab: '배치도', backTo: 'parking-register' },
+  { id: 'home', title: '홈', group: '주차', tab: '홈' },
+  { id: 'parking-register', title: '주차하기', group: '주차', tab: '홈', backTo: 'home' },
+  { id: 'departure', title: '출차 일정 수정', group: '주차', tab: '홈', backTo: 'vehicle-detail' },
+  { id: 'repeat', title: '반복 일정 설정', group: '주차', tab: '홈', backTo: 'parking-register' },
+  { id: 'vehicle-detail', title: '차량 상세', group: '주차', tab: '홈', backTo: 'home' },
+  { id: 'unavailable', title: '사용 불가 안내', group: '주차', tab: '홈', backTo: 'parking-register' },
   { id: 'notifications', title: '알림 센터', group: '주차', tab: '알림' },
   { id: 'move', title: '이동 요청', group: '주차', tab: '알림', backTo: 'notifications' },
   { id: 'move-done', title: '요청 처리 완료', group: '주차', tab: '알림', backTo: 'notifications' },

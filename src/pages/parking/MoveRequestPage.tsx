@@ -6,7 +6,7 @@ import { doneMoveRequest, getMoveRequest } from '../../api/parking'
 import { useApi } from '../../api/useApi'
 import { InfoRow, NavButton, PageTitle, SectionTitle, Surface } from '../../components/Ui'
 import { hashParams, toHash } from '../../types/navigation'
-import { timeOf } from './kstTime'
+import { dateTimeOf, timeOf } from './kstTime'
 
 // 이동 요청 수신(Figma 52:651). 알림의 link(MOVE_REQUEST)로 #move?id= 를 받아 요청 정보를 불러온다.
 export default function MoveRequestPage() {
@@ -31,15 +31,15 @@ export default function MoveRequestPage() {
   const handled = request.status !== 'PENDING'
   return <Stack gap={2.25}>
     <PageTitle title="이동 요청"/>
-    <Surface sx={{bgcolor:'#FFF7F2',borderColor:'#FFD9BE'}}><Stack direction="row" gap={1.25} alignItems="center"><ErrorRoundedIcon color="warning"/><div><Typography variant="caption" color="warning.main" fontWeight={800}>긴급 이동 요청</Typography><Typography variant="h6">내 차량을 이동해 주세요</Typography></div></Stack><Divider sx={{my:1.25}}/><InfoRow label="요청 시각" value={timeOf(request.requested_at)}/><InfoRow label="요청자" value={request.requester.label}/></Surface>
-    <SectionTitle>요청 차량 정보</SectionTitle>
+    <Surface sx={{bgcolor:'#FFF7F2',borderColor:'#FFD9BE'}}><Stack direction="row" gap={1.25} alignItems="center"><ErrorRoundedIcon color="warning"/><div><Typography variant="caption" color="warning.main" fontWeight={800}>이웃의 이동 요청</Typography><Typography variant="h6">내 차량을 이동해 주세요</Typography></div></Stack><Divider sx={{my:1.25}}/><InfoRow label="요청 시각" value={timeOf(request.requested_at)}/><InfoRow label="요청자" value={request.requester.label}/></Surface>
+    <SectionTitle>이동을 요청받은 내 차량</SectionTitle>
     <Surface><InfoRow label="차량 번호" value={request.my_vehicle.plate}/><InfoRow label="차량 위치" value={request.my_vehicle.slot_label}/><InfoRow label="주차 시각" value={timeOf(request.my_vehicle.parked_at)}/></Surface>
-    <SectionTitle>막힌 차량 정보</SectionTitle>
-    <Surface><InfoRow label="차량 번호" value={request.blocked_vehicle.plate}/><InfoRow label="차량 위치" value={request.blocked_vehicle.slot_label}/><InfoRow label="출차 필요 시각" value={timeOf(request.blocked_vehicle.needed_at)}/></Surface>
+    <SectionTitle>출차하려는 이웃 차량</SectionTitle>
+    <Surface><InfoRow label="차량 번호" value={request.blocked_vehicle.plate}/><InfoRow label="차량 위치" value={request.blocked_vehicle.slot_label}/><InfoRow label="출차 필요 시각" value={dateTimeOf(request.blocked_vehicle.needed_at)}/></Surface>
     <SectionTitle>요청 사유</SectionTitle>
     <Surface><Typography variant="body2" color="text.secondary">{request.reason ?? '요청 사유가 없어요.'}</Typography></Surface>
     {notice && <Alert severity={notice.severity}>{notice.message}</Alert>}
     {handled && !notice && <Alert severity="info">{request.status === 'MOVED' ? '이미 이동 완료로 처리한 요청이에요.' : '이미 처리된 요청이에요.'}</Alert>}
-    <Button variant="contained" fullWidth disabled={handled || sending} onClick={done}>옮겼어요</Button>
+    <Typography variant="body2" color="text.secondary">차량을 실제로 이동한 뒤 완료해 주세요.</Typography><Button variant="contained" fullWidth disabled={handled || sending} onClick={done}>{sending ? '처리 중…' : '차량을 옮겼어요'}</Button>
   </Stack>
 }
