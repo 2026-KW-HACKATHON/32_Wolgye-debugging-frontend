@@ -70,11 +70,6 @@ export type Home = {
   recent_notifications: NotificationItem[]
 }
 
-// ── 차량 목록 GET /me/vehicles ──
-// TODO(logic): #16(효재)에서 src/types 차량 타입이 생기면 그쪽으로 옮긴다 (주차 안 한 상태에서 내 차량 id를 얻으려고 임시로 둠)
-export type VehicleStatus = 'PARKED' | 'OUT'
-export type VehicleListItem = { id: number; plate: string; alias: string | null; color: VehicleColor | null; is_default: boolean; status: VehicleStatus; status_text: string }
-
 // ── 차량 상세 GET /me/vehicles/{id} ──
 export type VehicleDetail = {
   id: number
@@ -82,7 +77,8 @@ export type VehicleDetail = {
   color: VehicleColor | null
   owner: { name: string; unit: string }
   parking: { parking_id: number; slot_id: number; slot_label: string; entered_at: DateTime; state: ParkingState } | null
-  schedule: { expected_exit_at: DateTime | null; exit_source: ExitSource; elapsed_minutes: number } | null
+  /** memo: 출차 예정이 온 일정의 메모 (RECURRING 이면 반복 일정 메모). 메모가 없거나 상시 주차면 null (backend #33·#34) */
+  schedule: { expected_exit_at: DateTime | null; exit_source: ExitSource; elapsed_minutes: number; memo: string | null } | null
 }
 
 // ── 반복 일정 /me/vehicles/{id}/recurring-schedule ──
@@ -112,6 +108,8 @@ export type MoveRequestDetail = {
   /** 막힌 차량 */
   blocked_vehicle: { plate: string; slot_label: string; needed_at: DateTime }
   reason: string | null
+  /** "옮겼어요"를 누른 시각. PENDING 이면 null (backend #33·#34) */
+  responded_at: DateTime | null
 }
 export type MoveRequestDone = { id: number; status: MoveRequestStatus; responded_at: DateTime }
 export type MoveRequestBox = 'received' | 'sent'

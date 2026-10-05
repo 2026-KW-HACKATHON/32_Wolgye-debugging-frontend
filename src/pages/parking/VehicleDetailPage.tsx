@@ -1,13 +1,14 @@
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
 import DirectionsCarRoundedIcon from '@mui/icons-material/DirectionsCarRounded'
 import { Alert, Box, Button, Chip, CircularProgress, Divider, Stack, Typography } from '@mui/material'
-import { InfoRow, PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
+import { InfoRow, NavButton, PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
 import ParkingLotMap from '../../components/ParkingLotMap'
 import { toLotSlots } from '../../components/parkingLotGeometry'
-import { getBuildingLayout, getBuildingStatus, getHome, getMyVehicle, listMyVehicles } from '../../api/parking'
+import { getBuildingLayout, getBuildingStatus, getHome, getMyVehicle } from '../../api/parking'
 import { useApi } from '../../api/useApi'
 import { hashParams, toHash } from '../../types/navigation'
 import type { ExitSource } from '../../types/parking'
+import { getDefaultVehicle } from './defaultVehicle'
 
 const sourceLabel: Record<ExitSource, string> = { MANUAL: '직접 등록', RECURRING: '반복', AI_ESTIMATED: 'AI 추정', NONE: '없음' }
 
@@ -18,13 +19,12 @@ function dayTime(dateTime: string) {
   const day = date === kstDate() ? '오늘' : date === kstDate(1) ? '내일' : date === kstDate(-1) ? '어제' : `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`
   return `${day} ${dateTime.slice(11, 16)}`
 }
-const defaultVehicleId = async () => { const { items } = await listMyVehicles(); return (items.find((item) => item.is_default) ?? items[0])?.id }
 const elapsed = (minutes: number) => minutes < 60 ? `${minutes}분` : `${Math.floor(minutes / 60)}시간${minutes % 60 ? ` ${minutes % 60}분` : ''}`
 
 // 차량 id 는 #vehicle-detail?id=7. 없으면(화면 목록에서 직접 연 경우) 홈의 내 주차 차량, 주차 중이 아니면 기본 차량(없으면 첫 차)을 쓴다
 async function loadDetail(paramId: number) {
   const home = await getHome()
-  const vehicleId = paramId || home.my_parking?.vehicle.id || await defaultVehicleId()
+  const vehicleId = paramId || home.my_parking?.vehicle.id || (await getDefaultVehicle())?.id
   const [vehicle, layout, status] = await Promise.all([vehicleId ? getMyVehicle(vehicleId) : null, getBuildingLayout(home.building.id), getBuildingStatus(home.building.id)])
   return { vehicle, slots: toLotSlots(layout, status) }
 }
@@ -32,6 +32,8 @@ async function loadDetail(paramId: number) {
 export default function VehicleDetailPage() {
   const paramId = Number(hashParams().get('id')) || 0
   const { data, error, reload } = useApi(() => loadDetail(paramId), `vehicle-${paramId}`)
+  // 기본 차량 조회는 로그인 세션이 필요하다 (401)
+  if (error?.status === 401) return <Stack gap={2.25}><PageTitle title="차량 상세"/><Alert severity="info" action={<NavButton to="login" variant="text">로그인</NavButton>}>로그인이 필요해요.</Alert></Stack>
   if (error) return <Alert severity="error" action={<Button color="inherit" size="small" onClick={reload}>다시 시도</Button>}>{error.message}</Alert>
   if (!data) return <Box display="grid" py={6} sx={{placeItems:'center'}}><CircularProgress size={30}/></Box>
   const { vehicle, slots } = data
