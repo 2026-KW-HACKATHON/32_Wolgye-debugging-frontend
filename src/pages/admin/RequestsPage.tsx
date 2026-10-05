@@ -1,24 +1,24 @@
 import { useEffect, useState } from 'react'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
-import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, InputAdornment, Stack, TextField, Typography } from '@mui/material'
+import { Alert, Box, Button, Chip, CircularProgress, Divider, InputAdornment, Stack, TextField, Typography } from '@mui/material'
 import { PageTitle, StatusChip, Surface } from '../../components/Ui'
 import { decideShareRequest, listAdminShareRequests } from '../../api/admin'
 import { isApiError } from '../../api/client'
 import { getHome } from '../../api/parking'
 import { useApi } from '../../api/useApi'
 import type { ShareRequestStatus } from '../../types/admin'
+import { pad } from '../parking/kstTime'
+import RejectDialog from './RejectDialog'
 
 type Filter = 'all' | ShareRequestStatus
 type Notice = { severity: 'success' | 'warning' | 'error'; message: string }
 
 const filters: [Filter, string][] = [['all', '전체'], ['PENDING', '대기 중'], ['APPROVED', '수락됨'], ['REJECTED', '거절됨']]
 const statusKind = { PENDING: 'pending', APPROVED: 'accepted', REJECTED: 'rejected' } as const
-const REJECT_REASONS = ['주차 구역 용량 초과', '시간 불가', '기타']
 // 처리 중 상태가 바뀐 요청. 안내 후 다시 불러온다
 const DECIDE_CONFLICTS = ['INSUFFICIENT_TOKENS', 'GARAGE_TIME_CONFLICT', 'ALREADY_DECIDED']
 
 const errorMessage = (e: unknown) => isApiError(e) ? e.message : '잠시 후 다시 시도해 주세요'
-const pad = (value: number) => String(value).padStart(2, '0')
 // "2026-10-05", 13, 18 → "2026.10.05 13:00 ~ 18:00"
 const requestTime = (date: string, start: number, end: number) => `${date.replaceAll('-', '.')} ${pad(start)}:00 ~ ${pad(end)}:00`
 
@@ -28,15 +28,6 @@ function Loading() {
 
 function LoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
   return <Alert severity="error" action={<Button color="inherit" size="small" onClick={onRetry}>다시 시도</Button>}>{message}</Alert>
-}
-
-function RejectDialog({ open, busy, onClose, onReject }: { open: boolean; busy: boolean; onClose: () => void; onReject: (reason: string) => void }) {
-  const [reason, setReason] = useState(REJECT_REASONS[0])
-  return <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
-    <DialogTitle>요청을 거절할까요?</DialogTitle>
-    <DialogContent><Typography variant="body2" color="text.secondary" mb={1.25}>거절 사유를 골라 주세요. 요청자에게 함께 전달돼요.</Typography><Stack direction="row" gap={0.75} flexWrap="wrap">{REJECT_REASONS.map((label)=><Chip key={label} label={label} clickable color={reason===label?'primary':'default'} variant={reason===label?'filled':'outlined'} onClick={() => setReason(label)}/>)}</Stack></DialogContent>
-    <DialogActions><Button onClick={onClose} disabled={busy}>취소</Button><Button variant="contained" color="error" disabled={busy} onClick={() => onReject(reason)}>거절</Button></DialogActions>
-  </Dialog>
 }
 
 export default function RequestsPage() {
