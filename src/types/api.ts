@@ -20,6 +20,9 @@ export type ErrorCode =
   | 'MOVE_REQUEST_ALREADY_PENDING'
   | 'ALREADY_IN_BUILDING'
   | 'INSUFFICIENT_TOKENS'
+  // 아래 둘은 FE 전용 (서버 응답이 아님): 서버에 닿지 못함(status 0) / 에러 본문이 { error } 모양이 아님
+  | 'NETWORK_ERROR'
+  | 'UNKNOWN_ERROR'
 
 export type ErrorDetail = Record<string, unknown> | null
 
