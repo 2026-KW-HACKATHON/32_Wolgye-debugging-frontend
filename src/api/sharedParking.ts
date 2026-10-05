@@ -1,7 +1,7 @@
 import { getMe, getMockUserId, requireMockSession } from './auth'
 import { listMyVehicles } from './vehicles'
 import { invalidInput, mockDelay, mockFail, notFound, request, USE_MOCK } from './client'
-import type { Page } from '../types/api'
+import type { Page, PageQuery } from '../types/api'
 import type { GarageDetail, GarageListItem, GarageListQuery, ShareRequestCreate, ShareRequestCreated, ShareRequestDetail } from '../types/sharedParking'
 import { offerOwnerId, sharedGarages, sharedGarageItems, userShareRequests, type StoredShareRequest } from '../mocks/sharedParking'
 
@@ -67,9 +67,14 @@ export async function getShareRequest(shareRequestId: number): Promise<ShareRequ
   const item = userShareRequests.find((request) => request.id === shareRequestId && request.user_id === getMockUserId())
   return item ? mockDelay(publicRequest(item)) : notFound()
 }
-export async function listMyShareRequests(): Promise<{items:ShareRequestDetail[]}> {
-  if (!USE_MOCK) return request('GET', '/me/share-requests')
-  // TODO(api): GET /me/share-requests (명세에 페이지네이션 없음)
+// 서버는 cursor·limit 페이지네이션 (기본 20, 최대 50). backend PR #37 에서 명세에도 추가
+export async function listMyShareRequests(query: PageQuery = {}): Promise<Page<ShareRequestDetail>> {
+  if (!USE_MOCK) return request('GET', '/me/share-requests', { query })
+  // TODO(api): GET /me/share-requests?cursor&limit
   requireMockSession()
-  return mockDelay({items:userShareRequests.filter((item)=>item.user_id === getMockUserId()).sort((a,b)=>b.id-a.id).map(publicRequest)})
+  const all = userShareRequests.filter((item)=>item.user_id === getMockUserId()).sort((a,b)=>b.id-a.id).map(publicRequest)
+  const cursor = Number(query.cursor ?? 0)
+  const limit = query.limit ?? 20
+  const items = all.slice(cursor, cursor + limit)
+  return mockDelay({items, next_cursor: cursor + limit < all.length ? String(cursor + limit) : null})
 }
