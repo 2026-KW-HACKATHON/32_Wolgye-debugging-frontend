@@ -98,7 +98,7 @@ npm run dev                                    # http://localhost:5173/#home
 - 프론트와 다른 점은 `docs/decisions.md`에 정리했다
 
 ## 7. 정리가 필요한 것 (이슈 #17 대상)
-- 루트 `test.py` (프로젝트와 무관)
+- ~~루트 `test.py`~~ 삭제 (2026-10-05)
+- ~~README의 "23개 페이지"~~ → 26개로 수정 (2026-10-05, `navigation.ts`·`pages/index.tsx` 기준)
 - 안 쓰는 Tailwind 패키지: 쓸지 지울지 결정
-- `src/data/mockData.ts`의 `requesters` (사용처 없음)
-- README의 "23개 페이지" → 현재 25개 (`navigation.ts` 기준)
+- `src/data/mockData.ts`: 이제 **파일 전체를 import하는 곳이 없음** (`garages`는 효재 소유 → 효재 확인 후 삭제)
