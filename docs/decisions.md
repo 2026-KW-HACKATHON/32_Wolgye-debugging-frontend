@@ -44,5 +44,6 @@ FE GitHub 이슈 #4~#18 본문은 Manyfast 기준으로 쓰였다. 이 문서와
 | 오늘 이미 지난 출차 시각 (2026-10-04) | **막는다**. 지난 시각 버튼 비활성, 직접 입력하면 오류 문구 |
 | 대시보드 혼잡도 달 (2026-10-05) | 응답의 `congestion.month`로 표시 ([backend PR #35](https://github.com/2026-KW-HACKATHON/32_Wolgye-debugging-backend/pull/35), FE #24) |
 | 출차 일정 수정의 지난 시각 (2026-10-05) | 배치 등록과 같이 **막는다** (서버도 400) |
+| 공유 요청 → 관리자 승인 연동 (2026-10-05) | 효재 공유 목과 민솔 관리자 목의 ID(차고지·오퍼·소유자·관리자)를 **맞추지 않는다**. test 서버 연결 후 실제 DB로 확인한다 ([#17 댓글](https://github.com/2026-KW-HACKATHON/32_Wolgye-debugging-frontend/issues/17#issuecomment-5991694850)). test 서버 정보는 [backend #36](https://github.com/2026-KW-HACKATHON/32_Wolgye-debugging-backend/issues/36)으로 요청 |
 
 결정 대기 항목은 없다. 새로 생기면 이 표 아래에 `## 결정 대기`를 다시 만든다.
