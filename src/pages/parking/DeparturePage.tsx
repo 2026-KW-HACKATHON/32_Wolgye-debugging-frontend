@@ -34,8 +34,8 @@ function DepartureForm({ vehicle, parking }: { vehicle: VehicleDetail; parking: 
   const [customDate, setCustomDate] = useState(currentDate ?? '')
   // 지금 출차 시각이 선택지(06:00~14:00) 밖이면 기본값 07:30
   const [time, setTime] = useState(current && TIME_OPTIONS.includes(current.slice(11, 16)) ? current.slice(11, 16) : '07:30')
-  // TODO(logic): 지금 저장된 메모를 돌려주는 조회 API가 없어(GET /me/vehicles/{id} 에 memo 없음) 메모는 빈 칸으로 시작한다
-  const [memo, setMemo] = useState('')
+  // 지금 일정의 메모로 채운다. PUT 이라 저장할 때 메모 칸 값을 늘 같이 보낸다 (안 보내면 기존 메모가 지워짐, backend #34)
+  const [memo, setMemo] = useState(vehicle.schedule?.memo ?? '')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
