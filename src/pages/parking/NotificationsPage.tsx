@@ -8,12 +8,9 @@ import { useApi } from '../../api/useApi'
 import { NavButton, PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
 import type { MoveRequestStatus, NotificationItem } from '../../types/parking'
 import { toHash } from '../../types/navigation'
+import { dateTimeOf, kstNow, timeOf } from './kstTime'
 
-const timeOf = (at: string) => new Date(at).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Seoul' })
-const dateTimeOf = (at: string) => new Date(at).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Seoul' })
 const errorText = (e: unknown) => isApiError(e) ? e.message : '잠시 후 다시 시도해 주세요.'
-// 현재 시각 → "2026-09-30T14:40:00+09:00"
-const kstNow = () => `${new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 19)}+09:00`
 const moveStatusChip: Record<MoveRequestStatus, { kind: 'pending' | 'accepted' | 'rejected'; label: string }> = { PENDING: { kind: 'pending', label: '응답 대기' }, MOVED: { kind: 'accepted', label: '처리 완료' }, DECLINED: { kind: 'rejected', label: '거절됨' } }
 
 // 알림의 link.screen → 이동할 화면. null 이면 이동 없음

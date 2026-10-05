@@ -35,6 +35,7 @@
 - 폰트: Pretendard → Inter → 시스템 폰트. **Pretendard 웹폰트는 로드하지 않는다** (설치된 기기에서만 적용)
 - 기본 radius 16, Button 높이 46 / small 36, Card radius 18, Chip 높이 32
 - 공통 컴포넌트 `src/components/Ui.tsx`: `PageTitle`, `SectionTitle`, `Surface`(Card), `NavButton`(해시 링크 버튼), `StatusChip`, `InfoRow`, `ResultHero`, `ParkingMark`. 새 화면은 이것부터 쓴다
+- parking·admin의 KST 날짜·시각(`kstDate`, `kstClock`, `kstNow`, `kstAfter`, `timeOf`, `dateTimeOf`, `pad`)은 `src/pages/parking/kstTime.ts`, 관리자 거절 창은 `src/pages/admin/RejectDialog.tsx`. 화면에 다시 정의하지 않는다
 
 ### 코드 스타일 (기존 코드 기준)
 - 한 컴포넌트를 한 줄 JSX로 길게 쓰는 압축 스타일. 주변 코드를 따라 한다

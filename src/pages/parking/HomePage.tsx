@@ -13,12 +13,11 @@ import { useApi } from '../../api/useApi'
 import { toHash } from '../../types/navigation'
 import type { Home } from '../../types/parking'
 import { getDefaultVehicle } from './defaultVehicle'
+import { kstNow } from './kstTime'
 
 type Notice = { severity: 'success' | 'info' | 'error'; message: string }
 
 const errorMessage = (e: unknown) => isApiError(e) ? e.message : '잠시 후 다시 시도해 주세요'
-// 현재 시각 → "2026-09-30T14:40:00+09:00"
-const kstNow = () => `${new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 19)}+09:00`
 // KST ISO 8601 → "오후 6:30"
 const ampm = (dateTime: string) => { const hour = Number(dateTime.slice(11, 13)); return `${hour < 12 ? '오전' : '오후'} ${hour % 12 || 12}:${dateTime.slice(14, 16)}` }
 function timeAgo(dateTime: string) {

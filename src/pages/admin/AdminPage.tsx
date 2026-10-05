@@ -4,7 +4,7 @@ import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
 import ChevronLeftRoundedIcon from '@mui/icons-material/ChevronLeftRounded'
 import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded'
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded'
-import { Alert, Avatar, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, IconButton, Stack, Typography } from '@mui/material'
+import { Alert, Avatar, Box, Button, CircularProgress, Divider, IconButton, Stack, Typography } from '@mui/material'
 import { NavButton, PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
 import { tones } from '../../theme'
 import ParkingLotMap from '../../components/ParkingLotMap'
@@ -14,22 +14,20 @@ import { isApiError } from '../../api/client'
 import { createMoveRequest, getBuildingLayout, getBuildingStatus, getHome } from '../../api/parking'
 import { useApi } from '../../api/useApi'
 import type { AdminPendingRequest, CongestionDay } from '../../types/admin'
+import { kstAfter, pad } from '../parking/kstTime'
+import RejectDialog from './RejectDialog'
 
 type Notice = { severity: 'success' | 'info' | 'warning' | 'error'; message: string }
 
-const REJECT_REASONS = ['주차 구역 용량 초과', '시간 불가', '기타']
 // 처리 중 상태가 바뀐 요청. 안내 후 다시 불러온다
 const DECIDE_CONFLICTS = ['INSUFFICIENT_TOKENS', 'GARAGE_TIME_CONFLICT', 'ALREADY_DECIDED']
 const WEEKDAY_NAMES = ['일', '월', '화', '수', '목', '금', '토']
 
 const errorMessage = (e: unknown) => isApiError(e) ? e.message : '잠시 후 다시 시도해 주세요'
-const pad = (value: number) => String(value).padStart(2, '0')
 // "2026-10-03" → 요일 번호 (KST 날짜라 UTC 정오로 계산해도 요일이 같다)
 const weekdayOf = (date: string) => new Date(`${date}T12:00:00Z`).getUTCDay()
 // "2026-10-03", 7, 11 → "10/3(토) 07~11시"
 const requestTime = (date: string, start: number, end: number) => `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}(${WEEKDAY_NAMES[weekdayOf(date)]}) ${pad(start)}~${pad(end)}시`
-// 지금 + minutes 분을 KST ISO 8601 로
-const kstAfter = (minutes: number) => `${new Date(Date.now() + (minutes + 9 * 60) * 60000).toISOString().slice(0, 19)}+09:00`
 // "2026-09", -1 → "2026-08"
 const shiftMonth = (month: string, diff: number) => { const index = Number(month.slice(0, 4)) * 12 + Number(month.slice(5, 7)) - 1 + diff; return `${Math.floor(index / 12)}-${pad(index % 12 + 1)}` }
 function timeAgo(dateTime: string) {
@@ -44,15 +42,6 @@ function Loading() {
 
 function LoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
   return <Alert severity="error" action={<Button color="inherit" size="small" onClick={onRetry}>다시 시도</Button>}>{message}</Alert>
-}
-
-function RejectDialog({ open, busy, onClose, onReject }: { open: boolean; busy: boolean; onClose: () => void; onReject: (reason: string) => void }) {
-  const [reason, setReason] = useState(REJECT_REASONS[0])
-  return <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
-    <DialogTitle>요청을 거절할까요?</DialogTitle>
-    <DialogContent><Typography variant="body2" color="text.secondary" mb={1.25}>거절 사유를 골라 주세요. 요청자에게 함께 전달돼요.</Typography><Stack direction="row" gap={0.75} flexWrap="wrap">{REJECT_REASONS.map((label)=><Chip key={label} label={label} clickable color={reason===label?'primary':'default'} variant={reason===label?'filled':'outlined'} onClick={() => setReason(label)}/>)}</Stack></DialogContent>
-    <DialogActions><Button onClick={onClose} disabled={busy}>취소</Button><Button variant="contained" color="error" disabled={busy} onClick={() => onReject(reason)}>거절</Button></DialogActions>
-  </Dialog>
 }
 
 function CongestionChart({ days, totalSlots }: { days: CongestionDay[]; totalSlots: number }) {

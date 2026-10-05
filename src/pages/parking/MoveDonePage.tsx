@@ -3,8 +3,7 @@ import { getMoveRequest } from '../../api/parking'
 import { useApi } from '../../api/useApi'
 import { InfoRow, NavButton, ResultHero, Surface } from '../../components/Ui'
 import { hashParams, toHash } from '../../types/navigation'
-
-const timeOf = (at: string) => new Date(at).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Seoul' })
+import { timeOf } from './kstTime'
 
 // 요청 처리 완료(n31). 와이어프레임이 없어 공유 주차 결과 화면과 같은 ResultHero 형식으로 구성했다.
 // '옮겼어요'(POST /move-requests/{id}/done) 후 #move-done?id= 로 온다. 요청자에게는 알림이 가지 않는다 (docs/decisions.md)

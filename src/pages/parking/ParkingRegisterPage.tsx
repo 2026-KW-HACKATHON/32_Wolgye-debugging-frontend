@@ -13,6 +13,7 @@ import type { Home, LotSlot, SlotId } from '../../types/parking'
 import type { VehicleListItem } from '../../types/vehicles'
 import { getDefaultVehicle } from './defaultVehicle'
 import UnavailableNotice from './UnavailableNotice'
+import { kstClock, kstDate } from './kstTime'
 
 function BottomSheet({ children }: { children: React.ReactNode }) {
   return <Box sx={{mx:-2.5,mb:-2.5,mt:0,bgcolor:'#fff',borderTop:'1px solid',borderColor:'divider',borderRadius:'24px 24px 0 0',boxShadow:'0 -12px 32px rgba(23,35,60,.08)',p:2.5,pb:'calc(24px + env(safe-area-inset-bottom))','@media (max-width: 360px)':{mx:-2,px:2}}}>{children}</Box>
@@ -24,10 +25,6 @@ const GENERAL_REASON = '사용할 수 없는 칸이에요'
 const WEEKDAY = '일월화수목금토'
 
 const errorMessage = (e: unknown) => isApiError(e) ? e.message : '잠시 후 다시 시도해 주세요'
-// 실제 현재 시각 기준 KST 날짜 "YYYY-MM-DD"
-const kstDate = (offsetDays = 0) => new Date(Date.now() + 9 * 3600000 + offsetDays * 86400000).toISOString().slice(0, 10)
-// 실제 현재 시각 기준 KST "HH:mm"
-const kstClock = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(11, 16)
 const monthDay = (date: string) => `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`
 const weekday = (date: string) => WEEKDAY[new Date(`${date}T00:00:00Z`).getUTCDay()]
 const dayTitle = (date: string) => date === kstDate() ? '오늘' : date === kstDate(1) ? '내일' : `${monthDay(date)}에`

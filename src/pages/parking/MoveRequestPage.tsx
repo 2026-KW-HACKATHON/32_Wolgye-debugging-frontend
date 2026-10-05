@@ -6,8 +6,7 @@ import { doneMoveRequest, getMoveRequest } from '../../api/parking'
 import { useApi } from '../../api/useApi'
 import { InfoRow, NavButton, PageTitle, SectionTitle, Surface } from '../../components/Ui'
 import { hashParams, toHash } from '../../types/navigation'
-
-const timeOf = (at: string) => new Date(at).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Seoul' })
+import { timeOf } from './kstTime'
 
 // 이동 요청 수신(Figma 52:651). 알림의 link(MOVE_REQUEST)로 #move?id= 를 받아 요청 정보를 불러온다.
 export default function MoveRequestPage() {
