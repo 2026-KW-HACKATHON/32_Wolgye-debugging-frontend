@@ -123,8 +123,9 @@ function AdminView({ buildingId }: { buildingId: number }) {
   if (loadError) return <Stack gap={2.25}><PageTitle eyebrow="관리자" title="관리자 대시보드"/><LoadError message={loadError.message} onRetry={retry}/></Stack>
   if (!dashboard.data || !lot.data) return <Loading/>
   const { building, pending_requests: pending, realtime, congestion } = dashboard.data
+  // 이번 달(서버 시각)은 '아직 지나지 않은 달' 안내에만 쓰고, 보여 주는 달은 응답의 congestion.month (backend #35)
   const thisMonth = lot.data.updatedAt.slice(0, 7)
-  const shownMonth = month ?? thisMonth
+  const shownMonth = congestion.month
   return <Stack gap={2.25}>
     <PageTitle eyebrow="관리자" title={building.name} action={<NavButton to="requests" variant="text" startIcon={<NotificationsRoundedIcon/>}>알림</NavButton>}/>
     {notice && <Alert severity={notice.severity} onClose={() => setNotice(null)}>{notice.message}</Alert>}

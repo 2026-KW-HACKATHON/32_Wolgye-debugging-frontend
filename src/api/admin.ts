@@ -45,7 +45,7 @@ export async function getAdminDashboard(buildingId: number, query: AdminDashboar
       available_count: statuses.filter((slot) => slot.state === 'EMPTY' || slot.state === 'SOON_EXIT').length,
       vehicles: statuses.flatMap((slot) => slot.parking && slot.parking.occupant_type !== 'RESIDENT' ? [{ slot_id: slot.slot_id, slot_label: labelOf(slot.slot_id), plate: slot.parking.plate, occupant_type: slot.parking.occupant_type, can_request_move: slot.parking.occupant_type === 'EXTERNAL' }] : []),
     },
-    congestion: { total_slots: allSlots().length, days: congestion[month] ?? [] },
+    congestion: { month, total_slots: allSlots().length, days: congestion[month] ?? [] },
     ai_insight: null,
   })
 }
