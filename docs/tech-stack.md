@@ -92,7 +92,7 @@ npm run dev                                    # http://localhost:5173/#home
 ## 6. 백엔드 (참고)
 
 - 저장소: `2026-KW-HACKATHON/32_Wolgye-debugging-backend`. FastAPI + PostgreSQL/PostGIS, `http://localhost:8000/api/v1`
-- API 명세: 백엔드 저장소 `docs/openapi-mock.yaml` (OpenAPI 3.1, 엔드포인트 45개, 예시 값은 모두 가짜). 확정 결정은 백엔드 이슈 #4 결정 댓글
+- API 명세: **[명세 페이지(Swagger)](https://2026-kw-hackathon.github.io/32_Wolgye-debugging-backend/)** — 백엔드 저장소 `docs/openapi-mock.yaml`을 GitHub Pages로 자동 배포 (OpenAPI 3.1, 엔드포인트 45개, 예시 값은 모두 가짜). 2026-10-05 대조: FE 함수 42개가 operationId·메서드·경로 모두 일치, FE에 없는 것은 `password-reset`·`unknown-vehicles`(향후)·`health`. 확정 결정은 백엔드 이슈 #4 결정 댓글
 - 인증: `Authorization: Bearer <access_token>`, access 30분 / refresh 14일, `POST /auth/refresh`
 - 에러: `{ "error": { "code", "message", "detail" } }`, 시간은 KST(`+09:00`) ISO 8601, 페이지네이션은 `?cursor=&limit=` → `{ items, next_cursor }`
 - 프론트와 다른 점은 `docs/decisions.md`에 정리했다
