@@ -57,7 +57,7 @@ export type NotificationPage = Page<NotificationItem>
 
 // ── 홈 GET /me/home ──
 export type HomeSummary = { available: number; soon_exit: number; blocked: number; empty: number }
-export type HomeMyParking = { parking_id: number; vehicle: { id: number; plate: string; color: string | null }; slot_label: string; state: ParkingState; expected_exit_at: DateTime | null }
+export type HomeMyParking = { parking_id: number; vehicle: { id: number; plate: string; /** 백엔드가 색상을 안 받기로 함 — 빠지거나 null 일 수 있다 (backend #36) */ color?: string | null }; slot_label: string; state: ParkingState; expected_exit_at: DateTime | null }
 export type BlockAlert = { blocking_parking_id: number; message: string }
 export type Home = {
   building: { id: number; name: string; role: BuildingRole }
@@ -75,7 +75,8 @@ export type Home = {
 export type VehicleDetail = {
   id: number
   plate: string
-  color: VehicleColor | null
+  /** 백엔드가 색상을 안 받기로 함 — 빠지거나 null 일 수 있다 (backend #36) */
+  color?: VehicleColor | null
   owner: { name: string; unit: string }
   parking: { parking_id: number; slot_id: number; slot_label: string; entered_at: DateTime; state: ParkingState } | null
   /** memo: 출차 예정이 온 일정의 메모 (RECURRING 이면 반복 일정 메모). 메모가 없거나 상시 주차면 null (backend #33·#34) */
