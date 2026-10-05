@@ -45,10 +45,12 @@ function RequestsView({ buildingId }: { buildingId: number }) {
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<Notice | null>(null)
   const [rejectingId, setRejectingId] = useState<number | null>(null)
+  const updating = busy || list.loading
   // 입력이 멈추면 검색한다
   useEffect(() => { const timer = setTimeout(() => setQ(input.trim()), 300); return () => clearTimeout(timer) }, [input])
 
   async function decide(id: number, decision: { status: 'APPROVED' } | { status: 'REJECTED'; reject_reason: string }) {
+    if (updating) return
     setBusy(true)
     setNotice(null)
     try {
@@ -76,8 +78,8 @@ function RequestsView({ buildingId }: { buildingId: number }) {
     {notice && <Alert severity={notice.severity} onClose={() => setNotice(null)}>{notice.message}</Alert>}
     {list.error ? <LoadError message={list.error.message} onRetry={list.reload}/> : !list.data ? <Loading/> : list.data.items.length ? list.data.items.map((request)=><Surface key={request.id}><Stack gap={1.25}>
       <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={1}><Box minWidth={0}><Typography variant="subtitle2">{request.requester.name}</Typography><Typography variant="caption" color="text.secondary" display="block">{[request.plate, request.requester.unit].filter(Boolean).join(' · ')}</Typography><Typography variant="caption" color="text.secondary" display="block">요청 칸: {request.slot_label} · {requestTime(request.request_date, request.start_hour, request.end_hour)}</Typography></Box><StatusChip kind={statusKind[request.status]}/></Stack>
-      {request.status==='PENDING' && <><Divider/><Stack direction="row" gap={1}><Button size="small" variant="outlined" color="error" fullWidth disabled={busy} onClick={() => setRejectingId(request.id)}>거절</Button><Button size="small" variant="contained" fullWidth disabled={busy} onClick={() => decide(request.id, { status: 'APPROVED' })}>수락</Button></Stack></>}
+      {request.status==='PENDING' && <><Divider/><Stack direction="row" gap={1}><Button size="small" variant="outlined" color="error" fullWidth disabled={updating} onClick={() => setRejectingId(request.id)}>거절</Button><Button size="small" variant="contained" fullWidth disabled={updating} onClick={() => decide(request.id, { status: 'APPROVED' })}>수락</Button></Stack></>}
     </Stack></Surface>) : <Typography variant="caption" color="text.secondary">{q || filter !== 'all' ? '조건에 맞는 요청이 없어요.' : '받은 공유 요청이 없어요.'}</Typography>}
-    <RejectDialog key={rejectingId ?? 'none'} open={rejectingId !== null} busy={busy} onClose={() => setRejectingId(null)} onReject={(reason) => rejectingId !== null && decide(rejectingId, { status: 'REJECTED', reject_reason: reason })}/>
+    <RejectDialog key={rejectingId ?? 'none'} open={rejectingId !== null} busy={updating} onClose={() => setRejectingId(null)} onReject={(reason) => rejectingId !== null && decide(rejectingId, { status: 'REJECTED', reject_reason: reason })}/>
   </Stack>
 }

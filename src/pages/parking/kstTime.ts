@@ -15,3 +15,10 @@ export const kstNow = () => kstAfter(0)
 export const timeOf = (at: string) => new Date(at).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Seoul' })
 /** API 일시 → "9월 30일 오후 2:40" */
 export const dateTimeOf = (at: string) => new Date(at).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Seoul' })
+/** 출차 일정 표시: 오늘/내일/날짜 + KST 시각 */
+export function dayTimeOf(at: string) {
+  const local = new Date(Date.parse(at) + KST_OFFSET).toISOString()
+  const date = local.slice(0, 10)
+  const day = date === kstDate() ? '오늘' : date === kstDate(1) ? '내일' : date === kstDate(-1) ? '어제' : `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`
+  return `${day} ${local.slice(11, 16)}`
+}

@@ -10,7 +10,7 @@ import { timeOf } from './kstTime'
 export default function MoveDonePage() {
   const id = Number(hashParams().get('id'))
   const { data: request, error, reload } = useApi(() => getMoveRequest(id), `move-${id}`)
-  const links = <Stack gap={1}><NavButton to="home" fullWidth>배치도로 돌아가기</NavButton><NavButton to="notifications" variant="outlined" fullWidth>알림 센터</NavButton></Stack>
+  const links = <Stack gap={1}><NavButton to="home" fullWidth>홈으로 돌아가기</NavButton><NavButton to="notifications" variant="outlined" fullWidth>알림 센터</NavButton></Stack>
   if (error && (error.status === 403 || error.status === 404)) return <Stack gap={2.25}><Typography variant="caption" color="text.secondary">요청을 찾을 수 없어요. 알림 센터에서 다시 확인해 주세요.</Typography>{links}</Stack>
   if (error) return <Stack gap={2.25}><Alert severity="error" action={<Button color="inherit" size="small" onClick={reload}>다시 시도</Button>}>{error.message}</Alert>{links}</Stack>
   if (!request) return <Box display="grid" minHeight="40vh" sx={{placeItems:'center'}}><CircularProgress size={30}/></Box>

@@ -1,7 +1,7 @@
 .app-shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 238px minmax(320px, 402px);
+  grid-template-columns: minmax(320px, 402px);
   justify-content: center;
   align-items: start;
   gap: 44px;
@@ -10,6 +10,8 @@
     radial-gradient(circle at 20% 10%, rgba(36, 107, 253, 0.07), transparent 30%),
     #f4f6f9;
 }
+
+.app-shell--preview { grid-template-columns: 238px minmax(320px, 402px); }
 
 .page-index {
   position: sticky;
@@ -89,7 +91,7 @@
 
   .phone {
     width: 100%;
-    height: calc(100dvh - 50px - env(safe-area-inset-top));
+    height: 100dvh;
     min-height: 0;
     border: 0;
     border-radius: 0 !important;
@@ -100,3 +102,9 @@
 @media (max-width: 360px) {
   .page-content { padding-inline: 16px; }
 }
+
+@media (max-width: 760px) {
+  .app-shell--preview .phone { height: calc(100dvh - 50px - env(safe-area-inset-top)); }
+}
+
+.page-content a:focus-visible { outline: 3px solid #246BFD; outline-offset: 4px; border-radius: 8px; }

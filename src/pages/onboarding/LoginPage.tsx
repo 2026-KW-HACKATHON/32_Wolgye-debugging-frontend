@@ -1,27 +1,28 @@
-import { Alert, Button, Stack, TextField } from '@mui/material'
-import { DEMO_EMAIL, DEMO_PASSWORD, login } from '../../api/auth'
-import { NavButton, PageTitle } from '../../components/Ui'
+import { useState } from 'react'
+import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
+import VisibilityOffRoundedIcon from '@mui/icons-material/VisibilityOffRounded'
+import { Alert, Button, IconButton, InputAdornment, Stack, TextField, Typography } from '@mui/material'
+import { ADMIN_DEMO_EMAIL, DEMO_EMAIL, DEMO_PASSWORD, login } from '../../api/auth'
+import { USE_MOCK } from '../../api/client'
+import { NavButton, PageTitle, Surface } from '../../components/Ui'
 import { onboardingHash, useOnboardingForm } from './useOnboardingForm'
 
 export default function LoginPage() {
   const { pending, error, submit } = useOnboardingForm()
-  return <Stack component="form" gap={2.25} pt={3} onSubmit={(event) => {
+  const [email,setEmail] = useState('')
+  const [password,setPassword] = useState('')
+  const [showPassword,setShowPassword] = useState(false)
+  const fillDemo = (value:string) => { setEmail(value);setPassword(DEMO_PASSWORD) }
+  return <Stack component="form" gap={2.25} pt={2} onSubmit={(event)=>{
     event.preventDefault()
-    const data = new FormData(event.currentTarget)
-    void submit(async () => {
-      const result = await login({ email: String(data.get('email')), password: String(data.get('password')) })
-      window.location.hash = onboardingHash(result.user.onboarding_step)
-    })
+    void submit(async()=>{ const result=await login({email,password});window.location.hash=onboardingHash(result.user.onboarding_step) })
   }}>
-    <PageTitle title="로그인" description="입주민을 위한 주차 관리" />
-    <Alert severity="info">시연 계정: {DEMO_EMAIL}<br />비밀번호: {DEMO_PASSWORD}</Alert>
+    <PageTitle title="반가워요" description="로그인하고 우리 빌라 주차를 시작해요."/>
     {error && <Alert severity="error">{error}</Alert>}
-    <TextField name="email" label="이메일" type="email" required disabled={pending} autoComplete="email" placeholder="이메일을 입력하세요" />
-    <TextField name="password" label="비밀번호" type="password" required disabled={pending} autoComplete="current-password" placeholder="비밀번호를 입력하세요" />
+    <TextField name="email" label="이메일" type="email" required disabled={pending} autoComplete="email" value={email} onChange={(event)=>setEmail(event.target.value)}/>
+    <TextField name="password" label="비밀번호" type={showPassword ? 'text' : 'password'} required disabled={pending} autoComplete="current-password" value={password} onChange={(event)=>setPassword(event.target.value)} slotProps={{input:{endAdornment:<InputAdornment position="end"><IconButton aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 보기'} onClick={()=>setShowPassword(!showPassword)} edge="end">{showPassword ? <VisibilityOffRoundedIcon/> : <VisibilityRoundedIcon/>}</IconButton></InputAdornment>}}}/>
     <Button type="submit" variant="contained" fullWidth disabled={pending}>{pending ? '로그인 중…' : '로그인'}</Button>
-    <Stack direction="row" justifyContent="center" gap={1}>
-      <Button disabled>계정 찾기 · 준비 중</Button>
-      <NavButton to="signup" variant="text">회원가입</NavButton>
-    </Stack>
+    <NavButton to="signup" variant="text" fullWidth>처음이라면 회원가입</NavButton>
+    {USE_MOCK && <Surface sx={{bgcolor:'#F1F6FF',boxShadow:'none'}}><Stack gap={1.25}><Typography variant="subtitle2">회원가입 없이 체험해 보세요</Typography><Typography variant="body2" color="text.secondary">계정을 선택하면 로그인 정보가 채워져요.</Typography><Stack direction="row" gap={1}><Button type="button" variant="outlined" fullWidth disabled={pending} onClick={()=>fillDemo(DEMO_EMAIL)}>입주민 체험</Button><Button type="button" variant="outlined" fullWidth disabled={pending} onClick={()=>fillDemo(ADMIN_DEMO_EMAIL)}>관리자 체험</Button></Stack></Stack></Surface>}
   </Stack>
 }

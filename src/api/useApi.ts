@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useState } from 'react'
 import { ApiError, isApiError } from './client'
 
 export type ApiState<T> = { data: T | undefined; error: ApiError | undefined; loading: boolean; reload: () => void }
@@ -9,13 +9,16 @@ const toApiError = (err: unknown) => isApiError(err) ? err : new ApiError(0, 'CO
 // const { data, error, loading, reload } = useApi(() => getMoveRequest(id), `move-${id}`)
 export function useApi<T>(load: () => Promise<T>, key = ''): ApiState<T> {
   const [tick, setTick] = useState(0)
-  const [result, setResult] = useState<{ at: string; data?: T; error?: ApiError }>()
+  const [result, setResult] = useState<{ key: string; at: string; data?: T; error?: ApiError }>()
   const at = `${key}#${tick}`
   const fetchData = useEffectEvent(() => load())
   useEffect(() => {
     let alive = true
-    fetchData().then((data) => { if (alive) setResult({ at, data }) }, (err: unknown) => { if (alive) setResult({ at, error: toApiError(err) }) })
+    fetchData().then((data) => { if (alive) setResult({ key, at, data }) }, (err: unknown) => { if (alive) setResult({ key, at, error: toApiError(err) }) })
     return () => { alive = false }
-  }, [at])
-  return { data: result?.data, error: result?.error, loading: result?.at !== at, reload: () => setTick((value) => value + 1) }
+  }, [at, key])
+  // 다른 차량·검색 조건의 이전 응답을 새 조건의 결과로 사용하지 않는다.
+  const current = result?.at === at ? result : undefined
+  const reload = useCallback(() => setTick((value) => value + 1), [])
+  return { data: result?.key === key ? result.data : undefined, error: current?.error, loading: !current, reload }
 }

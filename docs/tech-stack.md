@@ -47,9 +47,9 @@
 | 항목 | 내용 |
 |---|---|
 | 라우팅 | **라우터 라이브러리 없음.** `window.location.hash` (`#home`)를 `src/App.tsx`가 읽어 `src/pages/index.tsx`의 lazy 컴포넌트를 고른다. 화면 목록·제목·탭·뒤로가기 대상은 `src/types/navigation.ts`의 `pages` |
-| 화면 이동 | `<NavButton to="home">` 또는 `href="#home"`. 쿼리·파라미터 전달 방식은 **아직 없음** (이슈 #11에서 합의 필요) |
-| 앱 셸 | `src/components/AppShell.tsx`: 데스크톱에서는 왼쪽 화면 목록 + 가운데 폰 프레임(최대 402px), 좁은 화면에서는 상단 화면 선택 select. 하단 탭 5개(배치도·알림·공유 주차·관리·프로필) |
-| 상태 관리 | 라이브러리 없음. 화면 안 `useState`만 사용 |
+| 화면 이동 | `<NavButton to="home">` 또는 `href="#home"`. ID·이전 화면·검색 조건은 `toHash`와 `hashParams`의 해시 쿼리로 전달한다 |
+| 앱 셸 | `src/components/AppShell.tsx`: 기본은 폰 프레임(최대 402px)과 하단 탭(홈·알림·공유 주차·프로필, 관리자는 관리 탭 추가). `?preview=1`에서만 데스크톱 화면 목록 / 모바일 상단 화면 선택을 보인다. `App.tsx`가 로그인·건물 합류·차량 등록 상태를 확인한다 |
+| 상태 관리 | 라이브러리 없음. 화면 안 `useState`와 `useApi`. 주차·출차 작성 내용은 `src/utils/formDrafts.ts`의 메모리 Map으로 차량별 유지하고 저장·로그아웃·새로고침 시 비운다 |
 | 데이터 | 화면은 `src/api/` 함수만 부른다. 지금은 목(`src/mocks/`), 실제 서버 연결은 test 서버 준비 후 (`docs/api-layer.md` 3장) |
 | 반응형 | 모바일 우선. 360px 이하에서 `.page-content` 좌우 패딩 16px (`src/App.css`) |
 | PWA | 없음 (manifest·service worker 없음) |
@@ -62,7 +62,7 @@
 |---|---|---|---|
 | `ParkingLotMap` | `src/components/ParkingLotMap.tsx` + 건물·벽·입구 상수와 `toLotSlots` `src/components/parkingLotGeometry.ts`, 타입 `src/types/parking.ts`, 목 `lotStatus` `src/mocks/parking.ts` | **SVG + 직접 만든 등각 투영**. `view="iso"`(2.5D, 기본) / `view="top"`(평면) | 홈, 주차 배치 등록, 차량 상세, 관리자 대시보드, 서비스 소개(효재 `WelcomePage`, 목 `lotStatus`) |
 
-`ParkingLotMap` props: `slots: LotSlot[]`(필수), `view`, `variant: 'resident' | 'admin'`, `selected`, `recommendedId`, `focusId`(이 칸만 진하게), `onSelect`(넘기면 칸 탭 가능), `onUnavailable`. 칩 색 범례는 `LotLegend`. 화면별 쓰임은 `docs/figma-wireframe.md` 6장
+`ParkingLotMap` props: `slots: LotSlot[]`(필수), `view`, `variant: 'resident' | 'admin'`, `selected`, `recommendedId`, `focusId`(이 칸만 진하게), `onSelect`(빈 칸 선택), `onUnavailable`, `onInspect`(홈에서 모든 상태의 칸 정보 확인). 칩 색 범례는 `LotLegend`. 화면별 쓰임은 `docs/figma-wireframe.md` 6장
 
 ### `ParkingLotMap`의 2.5D 방식
 - 라이브러리 없이 SVG `<path>`로 그린다. 평면 좌표 `(x, y)`와 높이 `z`를 `isoPoint(x, y, z) = [(x − y)·0.78, (x + y)·0.42 − z]`로 화면 좌표로 바꾼다

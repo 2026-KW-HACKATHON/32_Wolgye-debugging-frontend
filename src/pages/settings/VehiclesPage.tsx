@@ -6,6 +6,7 @@ import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormC
 import { NavButton, PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
 
 import { createMyVehicle, deleteMyVehicle, isValidPlate, listMyVehicles, updateMyVehicle } from '../../api/vehicles'
+import { hashParams, toHash } from '../../types/navigation'
 import type { VehicleListItem } from '../../types/vehicles'
 
 export default function VehiclesPage() {
@@ -52,15 +53,15 @@ export default function VehiclesPage() {
     {error && !editing && !deleting && <Alert severity="error" action={needsLogin ? <Button component="a" href="#login">로그인</Button> : <Button onClick={() => void reload()}>다시 불러오기</Button>}>{error}</Alert>}
     {!loading && !error && vehicles.length === 0 && <Alert severity="info">등록된 차량이 없어요. 아래에서 첫 차량을 등록해 주세요.</Alert>}
     {vehicles.map(vehicle => <Surface key={vehicle.id}><Stack gap={1}>
-      <Stack direction="row" gap={1.25} alignItems="center"><DirectionsCarRoundedIcon color={vehicle.status === 'PARKED' ? 'primary' : 'action'}/><div><Stack direction="row" gap={0.75} alignItems="center"><Typography variant="subtitle2">{vehicle.plate}</Typography>{vehicle.is_default && <StatusChip kind="recommended" label="대표"/>}</Stack><Typography variant="caption" color="text.secondary">{vehicle.alias || vehicle.color || '등록 차량'} · {vehicle.status_text}</Typography></div></Stack>
-      <Stack direction="row" justifyContent="flex-end" gap={1}><Button size="small" aria-label={`${vehicle.plate} 수정`} disabled={pending} onClick={() => { setError(''); setEditing(vehicle) }}>수정</Button><Button size="small" color="error" variant="outlined" aria-label={`${vehicle.plate} 삭제`} disabled={pending} onClick={() => { setError(''); setDeleting(vehicle) }}>삭제</Button></Stack>
+      <Stack direction="row" gap={1.25} alignItems="center"><DirectionsCarRoundedIcon color={vehicle.status === 'PARKED' ? 'primary' : 'action'}/><div><Stack direction="row" gap={0.75} alignItems="center"><Typography variant="subtitle2">{vehicle.plate}</Typography>{vehicle.is_default && <StatusChip kind="recommended" label="대표"/>}</Stack><Typography variant="caption" color="text.secondary">{[vehicle.alias, vehicle.color].filter(Boolean).join(' · ') || '등록 차량'} · {vehicle.status_text}</Typography></div></Stack>
+      <Stack direction="row" justifyContent="flex-end" gap={1}><Button size="small" href={toHash('vehicle-detail',{id:vehicle.id})}>상세 보기</Button><Button size="small" aria-label={`${vehicle.plate} 수정`} disabled={pending} onClick={() => { setError(''); setEditing(vehicle) }}>수정</Button><Button size="small" color="error" variant="outlined" aria-label={`${vehicle.plate} 삭제`} disabled={pending} onClick={() => { setError(''); setDeleting(vehicle) }}>삭제</Button></Stack>
     </Stack></Surface>)}
     <SectionTitle>차량 추가</SectionTitle>
     <TextField label="차량 번호" placeholder="12가 3456" value={plate} onChange={e => setPlate(e.target.value)} disabled={pending} error={!!plate && !isValidPlate(plate)} helperText={plate && !isValidPlate(plate) ? '차량 번호를 확인해 주세요.' : ' '}/>
     <TextField label="차량 별칭" placeholder="예: 내 차, 가족 차" value={alias} onChange={e => setAlias(e.target.value)} disabled={pending}/>
     <FormControlLabel label="대표 차량으로 설정" labelPlacement="start" sx={{ mx: 0, justifyContent: 'space-between' }} control={<Switch checked={isDefault} onChange={e => setIsDefault(e.target.checked)} disabled={pending}/>}/>
     <Button variant="contained" startIcon={<AddRoundedIcon/>} fullWidth disabled={pending || loading || !isValidPlate(plate)} onClick={() => void mutate(async () => { await createMyVehicle({ plate, alias, is_default: isDefault }); setPlate(''); setAlias('') })}>{pending ? '처리 중…' : '차량 등록'}</Button>
-    <NavButton to="profile" variant="text" fullWidth>설정으로 돌아가기</NavButton>
+    {hashParams().get('from') === 'parking-register' ? <Button href={toHash('parking-register', hashParams().has('vehicle_id') ? { id: hashParams().get('vehicle_id')! } : undefined)} variant="outlined">주차 등록으로 돌아가기</Button> : <NavButton to="profile" variant="text" fullWidth>설정으로 돌아가기</NavButton>}
     <Dialog open={!!editing} onClose={() => { if (!pending) setEditing(null) }} fullWidth maxWidth="xs" aria-labelledby="vehicle-edit-title">
       <DialogTitle id="vehicle-edit-title">차량 정보 수정</DialogTitle>
       <DialogContent>{error && <Alert severity="error" action={needsLogin && <Button component="a" href="#login">로그인</Button>}>{error}</Alert>}<Stack gap={2} pt={1} key={editing?.id}><TextField label="차량 번호" value={editing?.plate ?? ''} onChange={e => setEditing(item => item && { ...item, plate: e.target.value })} disabled={pending} error={!!editing && !isValidPlate(editing.plate)}/><TextField label="차량 별칭" value={editing?.alias ?? ''} onChange={e => setEditing(item => item && { ...item, alias: e.target.value })} disabled={pending}/><FormControlLabel label="대표 차량으로 설정" labelPlacement="start" sx={{ mx: 0, justifyContent: 'space-between' }} control={<Switch checked={editing?.is_default ?? false} onChange={e => setEditing(item => item && { ...item, is_default: e.target.checked })} disabled={pending}/>}/></Stack></DialogContent>

@@ -3,99 +3,94 @@ import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import DirectionsCarRoundedIcon from '@mui/icons-material/DirectionsCarRounded'
 import ErrorRoundedIcon from '@mui/icons-material/ErrorRounded'
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded'
-import { Alert, Box, Button, Chip, CircularProgress, Divider, Stack, Typography } from '@mui/material'
-import { NavButton, PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
-import ParkingLotMap, { LotLegend } from '../../components/ParkingLotMap'
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
+import { Alert, Box, Button, Chip, CircularProgress, Divider, Drawer, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
+import { InfoRow, NavButton, PageTitle, SectionTitle, Surface } from '../../components/Ui'
+import ParkingLotMap, { LotLegend, type LotView } from '../../components/ParkingLotMap'
 import { toLotSlots } from '../../components/parkingLotGeometry'
 import { isApiError } from '../../api/client'
 import { createMoveRequest, getBuildingLayout, getBuildingStatus, getHome, readNotification } from '../../api/parking'
+import { listMyVehicles } from '../../api/vehicles'
 import { useApi } from '../../api/useApi'
 import { toHash } from '../../types/navigation'
-import type { Home } from '../../types/parking'
-import { getDefaultVehicle } from './defaultVehicle'
-import { kstNow } from './kstTime'
+import type { Home, LotSlot, NotificationItem } from '../../types/parking'
+import { dateTimeOf, kstNow } from './kstTime'
+import { notificationHref, notificationTitle } from '../../utils/notificationLinks'
 
 type Notice = { severity: 'success' | 'info' | 'error'; message: string }
-
 const errorMessage = (e: unknown) => isApiError(e) ? e.message : '잠시 후 다시 시도해 주세요'
-// KST ISO 8601 → "오후 6:30"
-const ampm = (dateTime: string) => { const hour = Number(dateTime.slice(11, 13)); return `${hour < 12 ? '오전' : '오후'} ${hour % 12 || 12}:${dateTime.slice(14, 16)}` }
-function timeAgo(dateTime: string) {
-  const minutes = Math.max(0, Math.floor((Date.now() - Date.parse(dateTime)) / 60000))
-  return minutes < 1 ? '방금 전' : minutes < 60 ? `${minutes}분 전` : minutes < 1440 ? `${Math.floor(minutes / 60)}시간 전` : `${Math.floor(minutes / 1440)}일 전`
+const loadLot = async (buildingId: number) => {
+  const [layout, status] = await Promise.all([getBuildingLayout(buildingId), getBuildingStatus(buildingId)])
+  return { slots: toLotSlots(layout, status), status }
 }
-const loadLot = async (buildingId: number) => { const [layout, status] = await Promise.all([getBuildingLayout(buildingId), getBuildingStatus(buildingId)]); return toLotSlots(layout, status) }
-
-function Loading() {
-  return <Box display="grid" py={6} sx={{placeItems:'center'}}><CircularProgress size={30}/></Box>
-}
-
+function Loading() { return <Box display="grid" py={6} sx={{placeItems:'center'}}><CircularProgress size={30}/></Box> }
 function LoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
   return <Alert severity="error" action={<Button color="inherit" size="small" onClick={onRetry}>다시 시도</Button>}>{message}</Alert>
 }
-
 export default function HomePage() {
   const { data: home, error, reload } = useApi(() => getHome(), 'home')
   if (error) return <LoadError message={error.message} onRetry={reload}/>
   if (!home) return <Loading/>
   return <HomeView home={home} reload={reload}/>
 }
-
 function HomeView({ home, reload }: { home: Home; reload: () => void }) {
-  const buildingId = home.building.id
-  const lot = useApi(() => loadLot(buildingId), `lot-${buildingId}`)
-  const { summary, my_parking: mine, block_alert: blockAlert } = home
-  // 주차 중이 아닐 때 차량 상세로 갈 내 차 (기본 차량)
-  const myVehicle = useApi(() => mine ? Promise.resolve(null) : getDefaultVehicle(), `my-vehicle-${mine ? 'parked' : 'out'}`)
+  const lot = useApi(() => loadLot(home.building.id), `lot-${home.building.id}`)
+  const vehicles = useApi(() => listMyVehicles(), 'home-vehicles')
+  const [view, setView] = useState<LotView>('iso')
+  const [inspectedId, setInspectedId] = useState<number | null>(null)
   const [moveNotice, setMoveNotice] = useState<Notice | null>(null)
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
   const [readError, setReadError] = useState<string | null>(null)
-  const links: [string, string, string][] = []
-  if (mine) links.push(['내 차량 상세', [mine.vehicle.plate, mine.vehicle.color].filter(Boolean).join(' · '), toHash('vehicle-detail', { id: mine.vehicle.id })])
-  if (home.admin) links.push(['관리자 대시보드', `대기 요청 ${home.admin.pending_share_requests}건`, toHash('admin')])
-
-  async function sendMoveRequest(blockingParkingId: number, neededAt: string) {
-    setSending(true)
-    setMoveNotice(null)
+  const [openingId, setOpeningId] = useState<number | null>(null)
+  const [openedNotice, setOpenedNotice] = useState<NotificationItem | null>(null)
+  const { summary, my_parking: mine, block_alert: blockAlert } = home
+  const inspected = lot.data?.slots.find((slot) => slot.slotId === inspectedId)
+  const inspectedParking = lot.data?.status.slots.find((slot) => slot.slot_id === inspectedId)?.parking
+  const refresh = () => { reload(); lot.reload(); vehicles.reload() }
+  async function sendMoveRequest() {
+    if (!blockAlert || !mine || sending || sent) return
+    setSending(true); setMoveNotice(null)
     try {
-      await createMoveRequest({ target_parking_id: blockingParkingId, needed_at: neededAt })
-      setSent(true)
-      setMoveNotice({ severity: 'success', message: '이동 요청을 보냈어요. 전화번호는 공유되지 않아요.' })
+      await createMoveRequest({ target_parking_id: blockAlert.blocking_parking_id, needed_at: mine.expected_exit_at ?? kstNow() })
+      setSent(true); setMoveNotice({ severity: 'success', message: '이동 요청을 보냈어요. 알림에서 요청을 확인할 수 있어요.' })
     } catch (e) {
-      if (isApiError(e) && e.code === 'MOVE_REQUEST_ALREADY_PENDING') {
-        setSent(true)
-        setMoveNotice({ severity: 'info', message: e.message })
-        reload()
-      } else setMoveNotice({ severity: 'error', message: errorMessage(e) })
-    } finally {
-      setSending(false)
-    }
+      if (isApiError(e) && e.code === 'MOVE_REQUEST_ALREADY_PENDING') { setSent(true); setMoveNotice({ severity: 'info', message: e.message }) }
+      else setMoveNotice({ severity: 'error', message: errorMessage(e) })
+    } finally { setSending(false) }
   }
-
-  async function confirmNotification(id: number) {
-    setReadError(null)
+  async function openNotification(item: NotificationItem) {
+    if (openingId !== null) return
+    setOpeningId(item.id); setReadError(null)
     try {
-      await readNotification(id)
-      reload()
-    } catch (e) {
-      setReadError(errorMessage(e))
-    }
+      if (!item.is_read) await readNotification(item.id)
+      const href = notificationHref(item)
+      if (href) window.location.assign(href)
+      else { setOpenedNotice(item); reload() }
+    } catch (e) { setReadError(errorMessage(e)) }
+    finally { setOpeningId(null) }
   }
-
+  function inspect(slot: LotSlot) { setInspectedId(slot.slotId) }
   return <Stack gap={2.25}>
-    <PageTitle eyebrow={home.building.name} title="우리 빌라 주차 현황" action={<Chip component="a" href="#notifications" clickable icon={<NotificationsRoundedIcon/>} label={`알림 ${home.unread_notification_count}`}/>}/>
-    <Stack direction="row" gap={0.75} flexWrap="wrap"><StatusChip kind="available" label={`가능 ${summary.available}`}/><StatusChip kind="soon" label={`곧 출차 ${summary.soon_exit}`}/><StatusChip kind="danger" label={`막힘 ${summary.blocked}`}/><Chip size="small" variant="outlined" label={`빈칸 ${summary.empty}`}/></Stack>
-    <Box sx={{borderRadius:4,bgcolor:'#F8FAFC',border:'1px solid',borderColor:'divider',p:1}}>{lot.error ? <LoadError message={lot.error.message} onRetry={lot.reload}/> : lot.data ? <><ParkingLotMap slots={lot.data}/><LotLegend/></> : <Loading/>}</Box>
-    {mine ? <Surface sx={{background:'linear-gradient(135deg,#246BFD 0%,#4988FF 100%)',color:'#fff',border:'none'}}><Box component="a" href={toHash('vehicle-detail', { id: mine.vehicle.id })} sx={{display:'flex',justifyContent:'space-between',alignItems:'center',color:'inherit'}}><Box><Typography variant="caption" sx={{opacity:.82}}>내 차량 · {mine.vehicle.plate}</Typography><Typography variant="h6" mt={0.4}>{mine.slot_label}</Typography><Stack direction="row" gap={0.75} mt={1}><Chip size="small" label={mine.state === 'PARKED' ? '주차 중' : '출차'} sx={{bgcolor:'rgba(255,255,255,.18)',color:'#fff'}}/><Chip size="small" label={mine.expected_exit_at ? `출차 예정 ${ampm(mine.expected_exit_at)}` : '상시 주차'} sx={{bgcolor:'#fff',color:'primary.main'}}/></Stack></Box><DirectionsCarRoundedIcon sx={{fontSize:58,opacity:.9}}/></Box></Surface>
-      : myVehicle.error?.status === 401 ? <Alert severity="info" action={<NavButton to="login" variant="text">로그인</NavButton>}>로그인이 필요해요.</Alert>
-      : <Surface>{myVehicle.data ? <Box component="a" href={toHash('vehicle-detail', { id: myVehicle.data.id })} sx={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:1,color:'inherit'}}><Box><Typography variant="caption" color="text.secondary">주차 중인 내 차량이 없어요.</Typography><Typography variant="subtitle2">내 차량 · {[myVehicle.data.plate, myVehicle.data.color].filter(Boolean).join(' · ')}</Typography></Box><ArrowForwardRoundedIcon color="action" fontSize="small"/></Box> : <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}><Typography variant="caption" color="text.secondary">주차 중인 내 차량이 없어요.</Typography>{myVehicle.error ? <Button size="small" onClick={myVehicle.reload}>다시 시도</Button> : myVehicle.loading && <CircularProgress size={16}/>}</Stack>}</Surface>}
-    {blockAlert && <Surface sx={{bgcolor:'#FFF7F2',borderColor:'#FFD9BE'}}><Stack gap={1.25}><Stack direction="row" justifyContent="space-between" alignItems="center"><Stack direction="row" gap={1} alignItems="center"><ErrorRoundedIcon color="error"/><Typography variant="subtitle2">막힘 알림</Typography></Stack><Button component="a" href="#notifications" size="small" endIcon={<ArrowForwardRoundedIcon/>}>알림 센터</Button></Stack><Typography variant="body2" color="text.secondary">{blockAlert.message}</Typography>{moveNotice && <Alert severity={moveNotice.severity}>{moveNotice.message}</Alert>}<Stack direction="row" gap={1}>{/* needed_at = 내 출차 예정, 상시 주차면 지금 */}<Button variant="contained" fullWidth disabled={sending || sent || !mine} onClick={() => mine && sendMoveRequest(blockAlert.blocking_parking_id, mine.expected_exit_at ?? kstNow())}>{sent ? '이동 요청을 보냈어요' : '이동 요청 보내기'}</Button><NavButton to="notifications" variant="outlined" fullWidth>상세 보기</NavButton></Stack></Stack></Surface>}
-    <SectionTitle>빠른 액션</SectionTitle>
-    <Stack direction="row" gap={1.25}><NavButton to="parking-register" fullWidth>주차 배치 등록</NavButton><NavButton to="share" variant="outlined" fullWidth>공유 주차 탐색</NavButton></Stack>
-    {links.length > 0 && <Box sx={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:1.25}}>{links.map(([title,desc,href])=><Surface key={title}><Box component="a" href={href} sx={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:1,color:'inherit'}}><Box><Typography variant="subtitle2">{title}</Typography><Typography variant="caption" color="text.secondary">{desc}</Typography></Box><ArrowForwardRoundedIcon color="action" fontSize="small"/></Box></Surface>)}</Box>}
-    <SectionTitle>최근 알림</SectionTitle>
+    <PageTitle eyebrow={home.building.name} title={home.building.role === 'ADMIN' ? '우리 빌라 관리' : '우리 빌라 주차'} action={<Chip label={home.building.role === 'ADMIN' ? '관리자' : '입주민'} size="small" variant="outlined" color="primary"/>}/>
+    {home.admin && <Surface sx={{bgcolor:'#E8F0FF',borderColor:'#C6D9FF'}}><Stack gap={1.25}><Typography variant="subtitle2">확인할 공유 요청 {home.admin.pending_share_requests}건</Typography><NavButton to="admin" fullWidth>관리자 대시보드 열기</NavButton></Stack></Surface>}
+    {blockAlert && <Surface sx={{bgcolor:'#FFF7F2',borderColor:'#FFD9BE'}}><Stack gap={1.25}><Stack direction="row" gap={1} alignItems="center"><ErrorRoundedIcon color="error"/><Typography variant="subtitle2">내 차가 막혀 있어요</Typography></Stack><Typography variant="body2">{blockAlert.message}</Typography>{moveNotice && <Alert severity={moveNotice.severity}>{moveNotice.message}</Alert>}<Button variant="contained" disabled={sending || sent || !mine} onClick={sendMoveRequest}>{sending ? '보내는 중…' : sent ? '이동 요청을 보냈어요' : '이동 요청 보내기'}</Button><Typography variant="caption" color="text.secondary">{mine?.expected_exit_at ? `${dateTimeOf(mine.expected_exit_at)}까지 이동을 요청해요.` : '지금 출차가 필요하다고 요청해요.'} 전화번호는 공유되지 않아요.</Typography></Stack></Surface>}
+    <Box sx={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:1}}>{[
+      ['지금 빈자리', summary.empty, '#187E67'], ['1시간 내 출차', summary.soon_exit, '#986D05'], ['막힌 차량', summary.blocked, '#B82D3B'],
+    ].map(([label,count,color])=><Box key={label} sx={{p:1.25,bgcolor:'#fff',border:'1px solid',borderColor:'divider',borderRadius:3,textAlign:'center'}}><Typography variant="h5" color={String(color)}>{count}</Typography><Typography variant="caption">{label}</Typography></Box>)}</Box>
+    <Surface sx={{boxShadow:'none'}}>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" gap={1}><Typography variant="subtitle2">주차 현황</Typography><ToggleButtonGroup color="primary" exclusive size="small" value={view} onChange={(_,value)=>value&&setView(value)} aria-label="배치도 시점"><ToggleButton value="iso">입체</ToggleButton><ToggleButton value="top">평면</ToggleButton></ToggleButtonGroup></Stack>
+      {lot.error ? <LoadError message={lot.error.message} onRetry={lot.reload}/> : lot.data ? <><ParkingLotMap slots={lot.data.slots} view={view} onInspect={inspect}/><LotLegend/><Typography variant="caption" display="block" color="text.secondary" mt={1.5}>칸을 누르면 차량과 출차 예정 시간을 볼 수 있어요.</Typography></> : <Loading/>}
+      <Button size="small" startIcon={<RefreshRoundedIcon/>} onClick={refresh} sx={{mt:1}}>현황 새로고침</Button>
+    </Surface>
+    {mine ? <Surface sx={{background:'linear-gradient(135deg,#246BFD,#4988FF)',color:'#fff',border:'none'}}><Stack gap={1.5}><Stack direction="row" justifyContent="space-between" alignItems="center"><Box><Typography variant="caption">내 차량 · {mine.vehicle.plate}</Typography><Typography variant="h5" mt={.5}>{mine.slot_label}에 주차 중</Typography><Typography variant="body2" mt={.5}>{mine.expected_exit_at ? `${dateTimeOf(mine.expected_exit_at)} 출차 예정` : '출차 시간 없이 상시 주차 중'}</Typography></Box><DirectionsCarRoundedIcon sx={{fontSize:44}}/></Stack><Button href={toHash('departure',{id:mine.vehicle.id})} variant="contained" sx={{bgcolor:'#fff',color:'primary.main','&:hover':{bgcolor:'#E8F0FF'}}}>출차 시간 변경</Button><Button href={toHash('vehicle-detail',{id:mine.vehicle.id})} sx={{color:'#fff'}}>내 차량 상세 보기</Button></Stack></Surface> : <Surface><Stack gap={1.25}><Typography variant="subtitle2">지금 주차 중인 내 차가 없어요</Typography><Typography variant="body2" color="text.secondary">빈 칸을 선택하고 출차 시간을 알려 주세요.</Typography><NavButton to={vehicles.data?.items.length === 0 ? 'vehicles' : 'parking-register'} fullWidth>{vehicles.data?.items.length === 0 ? '내 차량 등록' : '주차하기'}</NavButton></Stack></Surface>}
+    <NavButton to="share" variant="outlined" fullWidth>공유 주차장 찾기</NavButton>
+    <SectionTitle action={<Button href="#vehicles" size="small">관리</Button>}>내 차량</SectionTitle>
+    {vehicles.error ? <LoadError message={vehicles.error.message} onRetry={vehicles.reload}/> : !vehicles.data ? <Loading/> : vehicles.data.items.length ? <Surface><Stack divider={<Divider flexItem/>} gap={1.25}>{vehicles.data.items.map((vehicle)=><Box component="a" key={vehicle.id} href={toHash('vehicle-detail',{id:vehicle.id})} sx={{display:'flex',alignItems:'center',gap:1.25,minHeight:48}}><DirectionsCarRoundedIcon color="primary"/><Box flex={1}><Typography variant="subtitle2">{vehicle.plate}</Typography><Typography variant="caption" color="text.secondary">{vehicle.alias || '내 차량'}{vehicle.is_default && ' · 대표 차량'} · {vehicle.status === 'PARKED' ? '주차 중' : '주차 안 함'}</Typography></Box><ArrowForwardRoundedIcon color="action"/></Box>)}</Stack></Surface> : <Typography variant="body2" color="text.secondary">등록된 차량이 없어요.</Typography>}
+    <SectionTitle action={<Button href="#notifications" size="small" startIcon={<NotificationsRoundedIcon/>}>전체 {home.unread_notification_count > 0 && `· ${home.unread_notification_count}`}</Button>}>최근 알림</SectionTitle>
     {readError && <Alert severity="error">{readError}</Alert>}
-    <Surface>{home.recent_notifications.length ? <Stack divider={<Divider flexItem/>} gap={1.25}>{home.recent_notifications.map((item)=><Stack key={item.id} direction="row" justifyContent="space-between" alignItems="center" gap={1}><Box><Typography variant="subtitle2">{item.title}</Typography><Typography variant="caption" color="text.secondary">{item.body} · {timeAgo(item.created_at)}</Typography></Box><Button size="small" variant="outlined" disabled={item.is_read} onClick={() => confirmNotification(item.id)}>확인</Button></Stack>)}</Stack> : <Typography variant="caption" color="text.secondary">새 알림이 없어요.</Typography>}</Surface>
+    <Surface>{home.recent_notifications.length ? <Stack divider={<Divider flexItem/>} gap={1.25}>{home.recent_notifications.map((item)=><Stack key={item.id} direction="row" alignItems="center" gap={1}><Box flex={1}><Typography variant="subtitle2">{notificationTitle(item)}</Typography><Typography variant="caption" color="text.secondary">{item.body} · {dateTimeOf(item.created_at)}</Typography></Box><Button size="small" variant="outlined" disabled={openingId !== null} onClick={()=>void openNotification(item)} aria-label={`${notificationTitle(item)} 보기`}>보기</Button></Stack>)}</Stack> : <Typography variant="body2" color="text.secondary">새 알림이 없어요.</Typography>}</Surface>
+    <Drawer anchor="bottom" open={!!inspected} onClose={()=>setInspectedId(null)} slotProps={{paper:{sx:{maxWidth:440,mx:'auto',borderRadius:'20px 20px 0 0'}}}}><Stack gap={1.5} p={3} pb="calc(24px + env(safe-area-inset-bottom))"><Typography variant="h6">{inspected?.label} 주차 정보</Typography>{inspectedParking ? <><InfoRow label="차량" value={inspectedParking.is_mine ? `내 차 · ${inspectedParking.plate}` : `${inspected?.label} 차량`}/><InfoRow label="출차 예정" value={inspectedParking.expected_exit_at ? dateTimeOf(inspectedParking.expected_exit_at) : '등록된 출차 시간 없음'}/>{inspectedParking.exit_source === 'AI_ESTIMATED' && <Alert severity="info">예상 시각이에요. 실제 출차 시간은 달라질 수 있어요.</Alert>}{!!inspected?.blockedBy?.length && <Alert severity="warning">{inspected.blockedBy.join(' · ')} 차량에 막혀 있어요.</Alert>}</> : <Typography color="text.secondary">{inspected?.state === 'empty' ? '현재 빈자리예요. 주차하기에서 칸을 선택해 주세요.' : '현재 사용할 수 없는 칸이에요.'}</Typography>}<Button variant="outlined" onClick={()=>setInspectedId(null)}>닫기</Button></Stack></Drawer>
+    <Drawer anchor="bottom" open={!!openedNotice} onClose={()=>setOpenedNotice(null)} slotProps={{paper:{sx:{maxWidth:440,mx:'auto',borderRadius:'20px 20px 0 0'}}}}><Stack gap={2} p={3}><Typography variant="h6">{openedNotice?.title}</Typography><Typography>{openedNotice?.body}</Typography><Button onClick={()=>setOpenedNotice(null)}>닫기</Button></Stack></Drawer>
   </Stack>
 }
