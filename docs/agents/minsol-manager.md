@@ -90,7 +90,7 @@ flowchart LR
 
 하지 말 것
 - `git push`, PR 생성·머지, 이슈 닫기, 이슈 댓글 작성: 사람에게 먼저 확인
-- 효재 소유 파일 수정: `src/pages/{onboarding,settings,shared-parking}/**`, `src/api/{auth,vehicles,sharedParking}.ts`, `mockData.ts`의 `garages`
+- 효재 소유 파일 수정: `src/pages/{onboarding,settings,shared-parking}/**`, `src/api/{auth,vehicles,sharedParking}.ts`, `src/mocks/{auth,vehicles,sharedParking}.ts`
 - 공통 파일 수정 (`navigation.ts`, `pages/index.tsx`, `App.tsx`, `AppShell.tsx`, `Ui.tsx`, `theme.ts`): 필요하면 이유와 diff를 사람에게 보여 주고 승인을 받는다
 - 새 라이브러리 설치
 

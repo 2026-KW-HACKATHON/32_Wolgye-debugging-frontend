@@ -67,7 +67,7 @@ parking 폴더 안에 보조 파일 2개도 추가했다: `UnavailableNotice.tsx
 ## 5. 다른 팀원 화면에서 확인이 필요한 것 (건드리지 않음)
 
 - `src/pages/settings/ProfilePage.tsx`: "알림 설정" 항목이 `#move`(이동 요청 수신)로 연결되어 있다. 알림 설정 화면(n55)이 없으니, 담당자가 `#notifications`로 바꿀지 n55를 만들지 정해야 한다.
-- `src/data/mockData.ts`의 `requesters`는 이제 `RequestsPage`가 쓰지 않는다. 다른 곳에서도 안 쓰면 2단계에서 정리할 예정이다.
+- `src/data/mockData.ts`(`requesters`·`garages`)는 2026-10-05에 삭제했다. 목은 `src/mocks/`에 있다.
 - 공유 주차 화면(`src/pages/shared-parking/`)의 차고지 요금이 "월 55,000원" 형식이다. 차고지 등록 화면은 "시간당 요금"으로 바꿨으니 맞출지 확인이 필요하다.
 
 ## 6. 작업 규칙 (이 브랜치 담당자의 요청)
