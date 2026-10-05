@@ -52,16 +52,17 @@ function LoadError({ message, onRetry }: { message: string; onRetry: () => void 
 
 export default function ParkingRegisterPage() {
   const paramId = Number(hashParams().get('id')) || 0
+  const initialSlotId = Number(hashParams().get('slot_id')) || 0
   const { data, error, reload } = useApi(() => loadBase(paramId), `parking-register-${paramId}`)
   // 기본 차량 조회는 로그인 세션이 필요하다 (401)
   if (error?.status === 401) return <Stack gap={2.25}><PageTitle title="차 배치 · 출차 등록"/><Alert severity="info" action={<NavButton to="login" variant="text">로그인</NavButton>}>로그인이 필요해요.</Alert></Stack>
   if (error) return <LoadError message={error.message} onRetry={reload}/>
   if (!data) return <Loading/>
   if (!data.vehicle) return <Stack gap={2.25}><PageTitle title="차 배치 · 출차 등록"/><Surface><Stack gap={1.25}><Typography variant="caption" color="text.secondary">등록된 차량이 없어요. 차량을 먼저 등록해 주세요.</Typography><NavButton to="vehicles" variant="outlined" fullWidth>차량 관리로 가기</NavButton></Stack></Surface></Stack>
-  return <RegisterView key={data.vehicle.id} home={data.home} vehicle={data.vehicle} vehicles={data.vehicles} schedule={data.schedule} reloadBase={reload}/>
+  return <RegisterView key={data.vehicle.id} home={data.home} vehicle={data.vehicle} vehicles={data.vehicles} schedule={data.schedule} reloadBase={reload} initialSlotId={initialSlotId}/>
 }
 
-function RegisterView({ home, vehicle, vehicles, schedule, reloadBase }: { home: Home; vehicle: VehicleListItem; vehicles: VehicleListItem[]; schedule: RecurringSchedule | null; reloadBase: () => void }) {
+function RegisterView({ home, vehicle, vehicles, schedule, reloadBase, initialSlotId }: { home: Home; vehicle: VehicleListItem; vehicles: VehicleListItem[]; schedule: RecurringSchedule | null; reloadBase: () => void; initialSlotId: number }) {
   const draftKey = `parking-${vehicle.id}`
   const [draft] = useState(() => readDraft<ParkingDraft>(draftKey))
   const buildingId = home.building.id
@@ -72,14 +73,12 @@ function RegisterView({ home, vehicle, vehicles, schedule, reloadBase }: { home:
   const [longTerm, setLongTerm] = useState(draft?.longTerm ?? false)
   const [repeat, setRepeat] = useState(draft?.repeat ?? false)
   const [memo, setMemo] = useState(draft?.memo ?? '')
-  const [picked, setPicked] = useState<SlotId | null>(draft?.picked ?? null)
+  const [picked, setPicked] = useState<SlotId | null>(initialSlotId ? null : draft?.picked ?? null)
   const [view, setView] = useState<LotView>(draft?.view ?? 'iso')
   const [unavailable, setUnavailable] = useState<{ label: string; reason: string } | null>(null)
   const [sending, setSending] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [parkedError, setParkedError] = useState(false)
-
-  useEffect(() => { writeDraft(draftKey, { date, time, customTime, longTerm, repeat, memo, picked, view }) }, [draftKey, date, time, customTime, longTerm, repeat, memo, picked, view])
 
   const exitTime = time === CUSTOM_TIME ? customTime : time
   // 오늘 이미 지난 시각은 고를 수 없다 (2026-10-04 결정)
@@ -95,8 +94,11 @@ function RegisterView({ home, vehicle, vehicles, schedule, reloadBase }: { home:
   // 추천 결과에서 사용 불가인 칸(예약 등)은 현황이 빈 칸이어도 사용 불가로 그린다
   const lotSlots: LotSlot[] = (lot.data ?? []).map((slot) => slot.state === 'empty' && recs.some((item) => item.slot_id === slot.slotId && item.tag === 'UNAVAILABLE') ? { ...slot, state: 'unavailable' } : slot)
   const recommendedId = recommended?.label
+  const initialSlot = lotSlots.find((slot) => slot.slotId === initialSlotId)
+  const chosen = picked ?? initialSlot?.id
+  useEffect(() => { writeDraft(draftKey, { date, time, customTime, longTerm, repeat, memo, picked: picked ?? initialSlot?.id ?? null, view }) }, [draftKey, date, time, customTime, longTerm, repeat, memo, picked, initialSlot?.id, view])
   // 고른 칸이 다시 받은 결과에서 빈 칸이 아니면 추천 칸으로 돌아간다
-  const selected = picked && slotById(lotSlots, picked)?.state === 'empty' ? picked : recommendedId
+  const selected = chosen && slotById(lotSlots, chosen)?.state === 'empty' ? chosen : recommendedId
   const selectedSlot = selected ? slotById(lotSlots, selected) : undefined
   const selectedRec = selectedSlot && recs.find((item) => item.slot_id === selectedSlot.slotId)
   const isRecommended = !!selected && selected === recommendedId
@@ -142,8 +144,9 @@ function RegisterView({ home, vehicle, vehicles, schedule, reloadBase }: { home:
 
   return <Stack gap={2.25}>
     <PageTitle title="주차하기" description="차량과 빈 칸을 선택하고 출차 시간을 알려 주세요."/>
+    {!!initialSlotId && !picked && lot.data && !rec.loading && !rec.error && initialSlot?.state !== 'empty' && <Alert severity="warning">홈에서 선택한 칸은 현재 사용할 수 없어요. 다른 빈 칸을 선택해 주세요.</Alert>}
     {alreadyParked && <Alert severity="info" action={<NavButton to="home" variant="text" color="inherit">홈으로</NavButton>}>{parkedLabel ? `이미 ${parkedLabel}에 주차 중이에요` : '이미 주차 중이에요'}</Alert>}
-    <TextField select label="주차할 차량" value={vehicle.id} disabled={sending} onChange={(event)=>{window.location.hash=toHash('parking-register',{id:Number(event.target.value)})}} helperText="대표 차량을 바꾸지 않고 이번에 주차할 차를 선택해요.">{vehicles.map((item)=><MenuItem key={item.id} value={item.id}>{item.plate}{item.is_default ? ' · 대표' : ''}{item.status === 'PARKED' ? ' · 주차 중' : ''}</MenuItem>)}</TextField>
+    <TextField select label="주차할 차량" value={vehicle.id} disabled={sending} onChange={(event)=>{window.location.hash=toHash('parking-register',{id:Number(event.target.value),...(selectedSlot ? {slot_id:selectedSlot.slotId} : {})})}} helperText="대표 차량을 바꾸지 않고 이번에 주차할 차를 선택해요.">{vehicles.map((item)=><MenuItem key={item.id} value={item.id}>{item.plate}{item.is_default ? ' · 대표' : ''}{item.status === 'PARKED' ? ' · 주차 중' : ''}</MenuItem>)}</TextField>
     {hashParams().get('saved') === 'repeat' && <Alert severity="success">반복 일정을 저장했어요. 작성하던 주차 등록을 계속해 주세요.</Alert>}
     <Box sx={{position:'relative',borderRadius:4,bgcolor:'#F8FAFC',border:'1px solid',borderColor:'divider',p:1}}>
       {lot.error ? <LoadError message={lot.error.message} onRetry={lot.reload}/> : lot.data ? <>

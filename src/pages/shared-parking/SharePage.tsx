@@ -4,7 +4,7 @@ import { getMe } from '../../api/auth'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import { Alert, Box, Button, CircularProgress, InputAdornment, Stack, Tab, Tabs, TextField, Typography } from '@mui/material'
 import { GarageVisual } from '../../components/Illustrations'
-import { PageTitle, StatusChip, Surface } from '../../components/Ui'
+import { StatusChip, Surface } from '../../components/Ui'
 import { listGarages, listMyShareRequests } from '../../api/sharedParking'
 import { isApiError } from '../../api/client'
 import { useApi } from '../../api/useApi'
@@ -59,5 +59,5 @@ export default function SharePage() {
   const [search,setSearch] = useState(query)
   const profile = useApi(()=>getMe(),'share-profile')
   useEffect(()=>{const timer=window.setTimeout(()=>setSearch(query.trim()),300);return()=>window.clearTimeout(timer)},[query])
-  return <Stack gap={2.25}><PageTitle title="공유 주차 탐색" description="빌라와 이용 조건을 확인하고 공유 주차를 요청해요."/>{profile.data?.building && <Surface sx={{bgcolor:'#F1F6FF',boxShadow:'none'}}><Stack direction="row" gap={1} alignItems="center"><LocationOnRoundedIcon color="primary"/><Box><Typography variant="caption" color="text.secondary">소속 골목</Typography><Typography variant="subtitle2">{profile.data.building.alley.name}</Typography></Box></Stack></Surface>}<TextField label="주소, 빌라명으로 검색" value={query} onChange={(event)=>setQuery(event.target.value)} slotProps={{input:{startAdornment:<InputAdornment position="start"><SearchRoundedIcon/></InputAdornment>}}}/><Tabs value={filter} onChange={(_,value:GarageFilter)=>setFilter(value)} variant="scrollable" scrollButtons={false} aria-label="공유 주차 필터" sx={{minHeight:38,'.MuiTab-root':{minHeight:38,minWidth:'auto',px:1.5,borderRadius:3}}}><Tab value="all" label="전체"/><Tab value="now" label="즉시 가능"/><Tab value="reservable" label="예약 가능"/><Tab value="free" label="무료"/></Tabs><GarageResults key={`${filter}:${search}`} query={search} filter={filter}/><MyRequests query={search} filter={filter}/></Stack>
+  return <Stack gap={2.25}>{profile.data?.building && <Surface sx={{bgcolor:'#F1F6FF',boxShadow:'none'}}><Stack direction="row" gap={1} alignItems="center"><LocationOnRoundedIcon color="primary"/><Box><Typography variant="caption" color="text.secondary">소속 골목</Typography><Typography variant="subtitle2">{profile.data.building.alley.name}</Typography></Box></Stack></Surface>}<TextField label="주소, 빌라명으로 검색" value={query} onChange={(event)=>setQuery(event.target.value)} slotProps={{input:{startAdornment:<InputAdornment position="start"><SearchRoundedIcon/></InputAdornment>}}}/><Tabs value={filter} onChange={(_,value:GarageFilter)=>setFilter(value)} variant="scrollable" scrollButtons={false} aria-label="공유 주차 필터" sx={{minHeight:38,'.MuiTab-root':{minHeight:38,minWidth:'auto',px:1.5,borderRadius:3}}}><Tab value="all" label="전체"/><Tab value="now" label="즉시 가능"/><Tab value="reservable" label="예약 가능"/><Tab value="free" label="무료"/></Tabs><GarageResults key={`${filter}:${search}`} query={search} filter={filter}/><MyRequests query={search} filter={filter}/></Stack>
 }
