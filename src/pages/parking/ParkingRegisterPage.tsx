@@ -6,10 +6,12 @@ import { NavButton, PageTitle, SectionTitle, StatusChip, Surface } from '../../c
 import ParkingLotMap, { type LotView } from '../../components/ParkingLotMap'
 import { slotById, toLotSlots } from '../../components/parkingLotGeometry'
 import { isApiError } from '../../api/client'
-import { createParking, getBuildingLayout, getBuildingStatus, getHome, getSlotRecommendations, listMyVehicles } from '../../api/parking'
+import { createParking, getBuildingLayout, getBuildingStatus, getHome, getSlotRecommendations } from '../../api/parking'
 import { useApi } from '../../api/useApi'
 import { toHash } from '../../types/navigation'
-import type { Home, LotSlot, SlotId, VehicleListItem } from '../../types/parking'
+import type { Home, LotSlot, SlotId } from '../../types/parking'
+import type { VehicleListItem } from '../../types/vehicles'
+import { getDefaultVehicle } from './defaultVehicle'
 import UnavailableNotice from './UnavailableNotice'
 
 function BottomSheet({ children }: { children: React.ReactNode }) {
@@ -32,11 +34,7 @@ const dayTitle = (date: string) => date === kstDate() ? '오늘' : date === kstD
 const isTime = (value: string) => /^\d{2}:\d{2}$/.test(value)
 const isDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value)
 
-// 내 차량: 기본 차량, 없으면 첫 차
-async function loadBase() {
-  const [home, vehicles] = await Promise.all([getHome(), listMyVehicles()])
-  return { home, vehicle: vehicles.items.find((item) => item.is_default) ?? vehicles.items[0] ?? null }
-}
+const loadBase = async () => { const [home, vehicle] = await Promise.all([getHome(), getDefaultVehicle()]); return { home, vehicle } }
 const loadLot = async (buildingId: number) => { const [layout, status] = await Promise.all([getBuildingLayout(buildingId), getBuildingStatus(buildingId)]); return toLotSlots(layout, status) }
 
 function Loading() {
@@ -49,6 +47,8 @@ function LoadError({ message, onRetry }: { message: string; onRetry: () => void 
 
 export default function ParkingRegisterPage() {
   const { data, error, reload } = useApi(() => loadBase(), 'parking-register')
+  // 기본 차량 조회는 로그인 세션이 필요하다 (401)
+  if (error?.status === 401) return <Stack gap={2.25}><PageTitle title="차 배치 · 출차 등록"/><Alert severity="info" action={<NavButton to="login" variant="text">로그인</NavButton>}>로그인이 필요해요.</Alert></Stack>
   if (error) return <LoadError message={error.message} onRetry={reload}/>
   if (!data) return <Loading/>
   if (!data.vehicle) return <Stack gap={2.25}><PageTitle title="차 배치 · 출차 등록"/><Surface><Stack gap={1.25}><Typography variant="caption" color="text.secondary">등록된 차량이 없어요. 차량을 먼저 등록해 주세요.</Typography><NavButton to="vehicles" variant="outlined" fullWidth>차량 관리로 가기</NavButton></Stack></Surface></Stack>

@@ -1,6 +1,6 @@
 import { invalidInput, mockDelay, mockFail, notFound } from './client'
 import type { Page, PageQuery } from '../types/api'
-import type { BuildingLayout, BuildingStatus, Home, LayoutSlot, MoveRequestBox, MoveRequestCreate, MoveRequestCreated, MoveRequestDetail, MoveRequestDone, MoveRequestListItem, NotificationItem, ParkingCreate, ParkingCreated, ParkingExited, ParkingScheduleUpdate, ParkingScheduleUpdated, RecurringSchedule, VehicleListItem, SlotRecommendation, SlotRecommendationQuery, SlotRecommendations, VehicleDetail } from '../types/parking'
+import type { BuildingLayout, BuildingStatus, Home, LayoutSlot, MoveRequestBox, MoveRequestCreate, MoveRequestCreated, MoveRequestDetail, MoveRequestDone, MoveRequestListItem, NotificationItem, ParkingCreate, ParkingCreated, ParkingExited, ParkingScheduleUpdate, ParkingScheduleUpdated, RecurringSchedule, SlotRecommendation, SlotRecommendationQuery, SlotRecommendations, VehicleDetail } from '../types/parking'
 import { MOCK_NOW, MY_BUILDING_ID, MY_VEHICLE_ID, WEEKDAYS_MON_FRI, allSlots, blocks, findSlot, labelOf, layout, me, minutesSince, moveRequests, myParking, myVehicle, notifications, parkedAt, parkings, recurring, slotStatuses } from '../mocks/parking'
 import { shareRequests } from '../mocks/admin'
 
@@ -117,13 +117,6 @@ export async function exitParking(parkingId: number): Promise<ParkingExited> {
 }
 
 // ── 차량·반복 일정 ──
-
-// TODO(logic): #16(효재) src/api/vehicles.ts 의 listMyVehicles 가 생기면 이 함수를 지우고 import 만 바꾼다 (주차 안 한 상태에서 내 차량 id를 얻으려고 임시로 둠)
-export async function listMyVehicles(): Promise<{ items: VehicleListItem[] }> {
-  // TODO(api): GET /me/vehicles
-  const parked = !!myParking()
-  return mockDelay({ items: [{ id: myVehicle.id, plate: myVehicle.plate, alias: '내 차', color: myVehicle.color, is_default: true, status: parked ? 'PARKED' : 'OUT', status_text: parked ? '현재 주차 중' : '외부 출차' }] })
-}
 
 export async function getMyVehicle(vehicleId: number): Promise<VehicleDetail> {
   // TODO(api): GET /me/vehicles/{vehicle_id}

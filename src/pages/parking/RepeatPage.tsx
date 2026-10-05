@@ -1,22 +1,21 @@
 import { useState } from 'react'
 import { Alert, Box, Button, CircularProgress, Divider, MenuItem, Stack, TextField, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
-import { PageTitle, SectionTitle } from '../../components/Ui'
+import { NavButton, PageTitle, SectionTitle } from '../../components/Ui'
 import { isApiError } from '../../api/client'
-import { getHome, getRecurringSchedule, listMyVehicles, putRecurringSchedule } from '../../api/parking'
+import { getHome, getRecurringSchedule, putRecurringSchedule } from '../../api/parking'
 import { useApi } from '../../api/useApi'
 import { hashParams, toHash } from '../../types/navigation'
 import { WEEKDAYS, type Weekday } from '../../types/api'
 import type { RecurringSchedule } from '../../types/parking'
+import { getDefaultVehicle } from './defaultVehicle'
 import { halfHourOptions } from './timeOptions'
 
 const TIME_OPTIONS = halfHourOptions('06:00','23:30')
 const dayLabel: Record<Weekday, string> = { MON: '월', TUE: '화', WED: '수', THU: '목', FRI: '금', SAT: '토', SUN: '일' }
 
-const defaultVehicleId = async () => { const { items } = await listMyVehicles(); return (items.find((item) => item.is_default) ?? items[0])?.id }
-
 // 차량 id 는 #repeat?id=7. 없으면(화면 목록에서 직접 연 경우) 홈의 내 주차 차량, 주차 중이 아니면 기본 차량(없으면 첫 차)을 쓴다
 async function loadRepeat(paramId: number) {
-  const vehicleId = paramId || (await getHome()).my_parking?.vehicle.id || await defaultVehicleId()
+  const vehicleId = paramId || (await getHome()).my_parking?.vehicle.id || (await getDefaultVehicle())?.id
   if (!vehicleId) return null
   // 반복 일정이 없으면 404 (목 기준, 명세에 없는 경우) → 빈 일정으로 시작
   const schedule = await getRecurringSchedule(vehicleId).catch((e: unknown) => { if (isApiError(e) && e.code === 'NOT_FOUND') return null; throw e })
@@ -26,6 +25,8 @@ async function loadRepeat(paramId: number) {
 export default function RepeatPage() {
   const paramId = Number(hashParams().get('id')) || 0
   const { data, error, reload } = useApi(() => loadRepeat(paramId), `repeat-${paramId}`)
+  // 기본 차량 조회는 로그인 세션이 필요하다 (401)
+  if (error?.status === 401) return <Stack gap={2.25}><PageTitle title="반복 일정 설정"/><Alert severity="info" action={<NavButton to="login" variant="text">로그인</NavButton>}>로그인이 필요해요.</Alert></Stack>
   if (error) return <Alert severity="error" action={<Button color="inherit" size="small" onClick={reload}>다시 시도</Button>}>{error.message}</Alert>
   if (data === undefined) return <Box display="grid" py={6} sx={{placeItems:'center'}}><CircularProgress size={30}/></Box>
   if (!data) return <Stack gap={2.25}><PageTitle title="반복 일정 설정"/><Typography variant="caption" color="text.secondary">차량 정보를 찾을 수 없어요.</Typography></Stack>
