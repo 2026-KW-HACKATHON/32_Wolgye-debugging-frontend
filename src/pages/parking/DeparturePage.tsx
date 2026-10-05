@@ -8,11 +8,9 @@ import { useApi } from '../../api/useApi'
 import { hashParams, toHash } from '../../types/navigation'
 import type { VehicleDetail } from '../../types/parking'
 import { halfHourOptions } from './timeOptions'
+import { kstClock, kstDate } from './kstTime'
 
 const TIME_OPTIONS = halfHourOptions('06:00','23:30')
-const kstDate = (offsetDays = 0) => new Date(Date.now() + 9 * 3600000 + offsetDays * 86400000).toISOString().slice(0, 10)
-// 실제 현재 시각 기준 KST "HH:mm"
-const kstClock = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(11, 16)
 
 // 차량 id 는 #departure?id=7. 없으면(화면 목록에서 직접 연 경우) 홈의 내 주차 차량을 쓴다
 async function loadVehicle(paramId: number) {

@@ -9,10 +9,10 @@ import { useApi } from '../../api/useApi'
 import { hashParams, toHash } from '../../types/navigation'
 import type { ExitSource } from '../../types/parking'
 import { getDefaultVehicle } from './defaultVehicle'
+import { kstDate } from './kstTime'
 
 const sourceLabel: Record<ExitSource, string> = { MANUAL: '직접 등록', RECURRING: '반복', AI_ESTIMATED: 'AI 추정', NONE: '없음' }
 
-const kstDate = (offsetDays = 0) => new Date(Date.now() + 9 * 3600000 + offsetDays * 86400000).toISOString().slice(0, 10)
 // KST ISO 8601 → "오늘 18:30" / "내일 07:30" / "9/30 08:30"
 function dayTime(dateTime: string) {
   const date = dateTime.slice(0, 10)
