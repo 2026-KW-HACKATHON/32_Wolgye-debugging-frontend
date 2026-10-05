@@ -16,8 +16,8 @@ export type AdminDashboard = {
   pending_requests: AdminPendingRequest[]
   /** 외부·미확인 차량만 */
   realtime: { available_count: number; vehicles: AdminRealtimeVehicle[] }
-  /** 이번 달은 오늘까지 */
-  congestion: { total_slots: number; days: CongestionDay[] }
+  /** 이번 달은 오늘까지. month = 조회한 달 "YYYY-MM" (KST, 쿼리를 생략하면 서버 기준 이번 달, backend #35) */
+  congestion: { month: string; total_slots: number; days: CongestionDay[] }
   /** 향후 기능. 지금은 항상 null */
   ai_insight: null
 }
