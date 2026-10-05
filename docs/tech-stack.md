@@ -50,7 +50,7 @@
 | 화면 이동 | `<NavButton to="home">` 또는 `href="#home"`. 쿼리·파라미터 전달 방식은 **아직 없음** (이슈 #11에서 합의 필요) |
 | 앱 셸 | `src/components/AppShell.tsx`: 데스크톱에서는 왼쪽 화면 목록 + 가운데 폰 프레임(최대 402px), 좁은 화면에서는 상단 화면 선택 select. 하단 탭 5개(배치도·알림·공유 주차·관리·프로필) |
 | 상태 관리 | 라이브러리 없음. 화면 안 `useState`만 사용 |
-| 데이터 | 아직 API 호출 없음. 하드코딩 + `src/data/mockData.ts`. 2단계(#6)에서 `src/api/`, `src/types/`, `src/mocks/` 도입 예정 |
+| 데이터 | 화면은 `src/api/` 함수만 부른다. 지금은 목(`src/mocks/`), 실제 서버 연결은 test 서버 준비 후 (`docs/api-layer.md` 3장) |
 | 반응형 | 모바일 우선. 360px 이하에서 `.page-content` 좌우 패딩 16px (`src/App.css`) |
 | PWA | 없음 (manifest·service worker 없음) |
 
@@ -101,4 +101,4 @@ npm run dev                                    # http://localhost:5173/#home
 - ~~루트 `test.py`~~ 삭제 (2026-10-05)
 - ~~README의 "23개 페이지"~~ → 26개로 수정 (2026-10-05, `navigation.ts`·`pages/index.tsx` 기준)
 - 안 쓰는 Tailwind 패키지: 쓸지 지울지 결정
-- `src/data/mockData.ts`: 이제 **파일 전체를 import하는 곳이 없음** (`garages`는 효재 소유 → 효재 확인 후 삭제)
+- ~~`src/data/mockData.ts`~~ 삭제 (2026-10-05, import하는 곳 없음. 공유 목은 `src/mocks/sharedParking.ts`)

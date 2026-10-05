@@ -16,7 +16,7 @@
 |---|---|
 | 가입 | `src/pages/onboarding/**` |
 | 설정 | `src/pages/settings/**` (RoleGuidePage 포함) |
-| 공유 주차 | `src/pages/shared-parking/**`, `src/data/mockData.ts`의 garages |
+| 공유 주차 | `src/pages/shared-parking/**`, `src/mocks/sharedParking.ts` |
 
 관리자는 공통 라우트(`src/types/navigation.ts`, `src/pages/index.tsx`)와 문서를 담당한다. 공통 변경은 별도 diff로 검토하고 팀원과 공유한 뒤 통합한다. 작업자는 다른 작업자의 파일·민솔 parking/admin·공통 API client를 수정하지 않는다. 범위 밖 변경이 필요하면 관리자에게 보고한다.
 
