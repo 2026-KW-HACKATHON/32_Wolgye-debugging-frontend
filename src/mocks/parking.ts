@@ -57,7 +57,7 @@ export const blocks: [number, number][] = []
 export const recurring: { schedule: RecurringSchedule | null } = { schedule: { days: ['MON', 'TUE', 'WED', 'THU', 'FRI'], time: '07:30', memo: '출근 일정' } }
 export const WEEKDAYS_MON_FRI: Weekday[] = ['MON', 'TUE', 'WED', 'THU', 'FRI']
 
-export type MockMoveRequest = MoveRequestDetail & { box: MoveRequestBox; target_parking_id: number; responded_at: DateTime | null }
+export type MockMoveRequest = MoveRequestDetail & { box: MoveRequestBox; target_parking_id: number }
 
 // TODO(logic): 받은 이동 요청 44는 화면 시연용 임시 값. 내 차가 P2에 있을 때 받은 요청이고, 막힌 차량(P4)도 P2 뒤가 아니라 실제와 맞지 않는다
 export const moveRequests: MockMoveRequest[] = [

@@ -101,6 +101,7 @@ export async function updateParkingSchedule(parkingId: number, body: ParkingSche
   // TODO(logic): 시간이 바뀌어도 목에서는 막힘 관계를 다시 계산하지 않는다 (서버가 판정)
   parking.expected_exit_at = body.expected_exit_at
   parking.exit_source = 'MANUAL'
+  // PUT 이라 memo 를 안 보내면 기존 메모가 지워진다 (backend #34). 화면은 받아 온 메모를 늘 다시 보낸다
   parking.memo = body.memo ?? null
   return mockDelay({ parking_id: parking.id, expected_exit_at: body.expected_exit_at, exit_source: 'MANUAL', memo: parking.memo })
 }
@@ -132,7 +133,7 @@ export async function getMyVehicle(vehicleId: number): Promise<VehicleDetail> {
     id: myVehicle.id, plate: myVehicle.plate, color: myVehicle.color,
     owner: { name: me.name, unit: me.unit },
     parking: parking ? { parking_id: parking.id, slot_id: parking.slot_id, slot_label: labelOf(parking.slot_id), entered_at: parking.entered_at, state: parking.state } : null,
-    schedule: parking ? { expected_exit_at: parking.expected_exit_at, exit_source: parking.exit_source, elapsed_minutes: minutesSince(parking.entered_at) } : null,
+    schedule: parking ? { expected_exit_at: parking.expected_exit_at, exit_source: parking.exit_source, elapsed_minutes: minutesSince(parking.entered_at), memo: parking.expected_exit_at === null ? null : parking.exit_source === 'RECURRING' ? recurring.schedule?.memo ?? null : parking.memo } : null,
   })
 }
 
@@ -179,8 +180,8 @@ export async function getMoveRequest(moveRequestId: number): Promise<MoveRequest
   // TODO(api): GET /move-requests/{move_request_id}
   const request = moveRequests.find((item) => item.id === moveRequestId)
   if (!request) return notFound()
-  const { id, status, requested_at, requester, my_vehicle, blocked_vehicle, reason } = request
-  return mockDelay({ id, status, requested_at, requester, my_vehicle, blocked_vehicle, reason })
+  const { id, status, requested_at, requester, my_vehicle, blocked_vehicle, reason, responded_at } = request
+  return mockDelay({ id, status, requested_at, requester, my_vehicle, blocked_vehicle, reason, responded_at })
 }
 
 export async function doneMoveRequest(moveRequestId: number): Promise<MoveRequestDone> {
