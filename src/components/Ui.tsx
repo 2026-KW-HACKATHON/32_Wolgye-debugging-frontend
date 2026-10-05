@@ -53,7 +53,7 @@ export function StatusChip({ kind, label }: { kind: StatusKind; label?: string }
 }
 
 export function InfoRow({ label, value, icon }: { label: string; value: ReactNode; icon?: ReactNode }) {
-  return <Stack direction="row" justifyContent="space-between" alignItems="center" gap={2} py={0.75}><Stack direction="row" alignItems="center" gap={1}>{icon}<Typography variant="body2" color="text.secondary">{label}</Typography></Stack><Typography variant="body2" fontWeight={750} textAlign="right">{value}</Typography></Stack>
+  return <Stack direction="row" justifyContent="space-between" alignItems="center" gap={2} py={0.75}><Stack direction="row" alignItems="center" gap={1}>{icon}<Typography variant="body2" color="text.secondary">{label}</Typography></Stack><Typography component="div" variant="body2" fontWeight={750} textAlign="right">{value}</Typography></Stack>
 }
 
 export function ResultHero({ state, title, description }: { state: 'success' | 'error' | 'pending'; title: string; description: string }) {

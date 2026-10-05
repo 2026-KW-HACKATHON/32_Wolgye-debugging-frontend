@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Alert, Button, CircularProgress, Stack, Typography } from '@mui/material'
 import { InfoRow, ResultHero, StatusChip, Surface } from '../../components/Ui'
 import { getShareRequest } from '../../api/sharedParking'
@@ -8,6 +9,16 @@ import { hourLabel } from './requestPreview'
 export default function RequestStatusView() {
   const id = Number(hashParams().get('id'))
   const {data:request,error,loading,reload} = useApi(()=>getShareRequest(id),String(id))
+  useEffect(() => {
+    const params = hashParams()
+    if (!request) return
+    const garageId = Number(params.get('garage_id'))
+    const slotId = Number(params.get('slot_id'))
+    if (garageId === request.garage.id && slotId === request.slot_id) return
+    const next = toHash('request-result', { id: request.id, garage_id: request.garage.id, slot_id: request.slot_id })
+    window.history.replaceState(null, '', next)
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+  }, [request])
   if (loading) return <CircularProgress aria-label="요청 결과 불러오는 중"/>
   if (error) return <Alert severity="error" action={<Button onClick={reload}>재시도</Button>}>{error.message}<Button href={error.status === 401 ? '#login' : '#share'}>{error.status === 401 ? '로그인' : '공유 주차로'}</Button></Alert>
   if (!request) return null

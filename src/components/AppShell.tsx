@@ -7,7 +7,7 @@ import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded'
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
 import { AppBar, BottomNavigation, BottomNavigationAction, Box, FormControl, IconButton, MenuItem, Paper, Select, Stack, Toolbar, Typography } from '@mui/material'
 import type { PageId, PageMeta, TabId } from '../types/navigation'
-import { pages, toHash } from '../types/navigation'
+import { hashParams, pages, toHash } from '../types/navigation'
 
 const tabItems: { label: TabId; id: PageId; icon: ReactNode }[] = [
   { label: '배치도', id: 'home', icon: <MapRoundedIcon /> },
@@ -20,6 +20,10 @@ const tabItems: { label: TabId; id: PageId; icon: ReactNode }[] = [
 export default function AppShell({ current, children }: { current: PageMeta; children: ReactNode }) {
   const go = (id: PageId) => { window.location.hash = id }
   const selectedTab = tabItems.findIndex((item) => item.label === current.tab)
+  const params = hashParams()
+  const backHref = current.id === 'request-result' && params.has('garage_id') && params.has('slot_id')
+    ? toHash('garage-detail', { id: params.get('garage_id')!, slot_id: params.get('slot_id')! })
+    : current.backTo ? toHash(current.backTo) : undefined
   return <Box className="app-shell">
     <Paper component="aside" className="page-index" elevation={0}>
       <Stack direction="row" alignItems="center" gap={1.25} px={1} pb={2}><Box sx={{width:38,height:38,borderRadius:2.5,display:'grid',placeItems:'center',bgcolor:'primary.main',color:'#fff'}}><LocalParkingRoundedIcon/></Box><Box><Typography variant="subtitle2">월계 디버깅</Typography><Typography variant="caption" color="text.secondary">UI 화면 미리보기</Typography></Box></Stack>
@@ -27,7 +31,7 @@ export default function AppShell({ current, children }: { current: PageMeta; chi
     </Paper>
     <Box className="mobile-picker"><Typography variant="subtitle2">월계 디버깅</Typography><FormControl size="small"><Select value={current.id} onChange={(event)=>go(event.target.value as PageId)} aria-label="미리 볼 화면 선택">{pages.map((page)=><MenuItem key={page.id} value={page.id}>{page.title}</MenuItem>)}</Select></FormControl></Box>
     <Paper className="phone" elevation={0}>
-      <AppBar position="static" color="inherit" elevation={0} className="app-bar"><Toolbar disableGutters sx={{minHeight:'58px!important',px:1.5}}>{current.backTo?<IconButton component="a" href={toHash(current.backTo)} aria-label="뒤로가기"><ArrowBackRoundedIcon/></IconButton>:<Box sx={{width:48}}/>}<Typography variant="subtitle1" sx={{flex:1,textAlign:'center'}}>{current.title}</Typography><Box sx={{width:48}}/></Toolbar></AppBar>
+      <AppBar position="static" color="inherit" elevation={0} className="app-bar"><Toolbar disableGutters sx={{minHeight:'58px!important',px:1.5}}>{backHref?<IconButton component="a" href={backHref} aria-label="뒤로가기"><ArrowBackRoundedIcon/></IconButton>:<Box sx={{width:48}}/>}<Typography variant="subtitle1" sx={{flex:1,textAlign:'center'}}>{current.title}</Typography><Box sx={{width:48}}/></Toolbar></AppBar>
       <Box component="main" className="page-content">{children}</Box>
       {current.tab && <BottomNavigation value={selectedTab} showLabels onChange={(_,value)=>go(tabItems[value]?.id ?? 'home')} className="bottom-navigation">{tabItems.map((item)=><BottomNavigationAction key={item.label} label={item.label} icon={item.icon}/>)}</BottomNavigation>}
     </Paper>
