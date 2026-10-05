@@ -5,7 +5,7 @@ import { Alert, Box, Button, CircularProgress, Divider, Stack, Typography } from
 import { isApiError } from '../../api/client'
 import { createMoveRequest, getHome, listMyMoveRequests, listNotifications, readAllNotifications, readNotification } from '../../api/parking'
 import { useApi } from '../../api/useApi'
-import { NavButton, PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
+import { NavButton, SectionTitle, StatusChip, Surface } from '../../components/Ui'
 import type { MoveRequestStatus, NotificationItem } from '../../types/parking'
 import { notificationHref, notificationTitle } from '../../utils/notificationLinks'
 import { toHash } from '../../types/navigation'
@@ -52,13 +52,12 @@ export default function NotificationsPage() {
   const readAll = () => run(async () => { await readAllNotifications(); notices.reload() })
   const error = notices.error ?? home.error ?? received.error
   const retry = () => { if (notices.error) notices.reload(); if (home.error) home.reload(); if (received.error) received.reload() }
-  if (error) return <Stack gap={2.25}><PageTitle title="알림" description="막힘 알림과 이동 요청을 한곳에서 확인해요."/><Alert severity="error" action={<Button color="inherit" size="small" onClick={retry}>다시 시도</Button>}>{error.message}</Alert></Stack>
+  if (error) return <Stack gap={2.25}><Alert severity="error" action={<Button color="inherit" size="small" onClick={retry}>다시 시도</Button>}>{error.message}</Alert></Stack>
   if (!notices.data || !home.data || !received.data) return <Box display="grid" minHeight="40vh" sx={{placeItems:'center'}}><CircularProgress size={30}/></Box>
   const { block_alert: blockAlert, my_parking: myParking } = home.data
   const items = notices.data.items
   const hasUnread = items.some((item) => !item.is_read)
   return <Stack gap={2.25}>
-    <PageTitle title="알림" description="막힘 알림과 이동 요청을 한곳에서 확인해요."/>
     {notice && <Alert severity={notice.severity}>{notice.message}</Alert>}
     <SectionTitle action={blockAlert && <StatusChip kind="danger" label="1건"/>}>막힘 사전 알림</SectionTitle>
     {blockAlert ? <Surface sx={{bgcolor:'#FFF7F2',borderColor:'#FFD9BE'}}><Stack gap={1.25}>
