@@ -25,11 +25,20 @@
 | enum | 대문자 문자열 유니온 (`enum` 금지) | `SlotState = 'EMPTY' \| 'SOON_EXIT' \| …` |
 | 204 응답 | `Promise<void>` | `readNotification`, `deleteRecurringSchedule` |
 
-## 3. 목 → 서버 전환
+## 3. 목 → 서버 전환 (#30, 스위치 방식)
 
-1. `client.ts` 에 `request<T>(method, path, { query, body })` 추가: `BASE_URL = http://localhost:8000/api/v1`, `Authorization: Bearer ${getAccessToken()}` (`src/api/auth.ts`, decisions D6), 401이면 `refreshTokens()` 후 **한 번만** 재시도, 실패 응답 `{ error }` 은 `new ApiError(status, code, message, detail)` 로 던진다. 쿼리의 `+` 는 `%2B` (`URLSearchParams` 쓰면 됨).
-2. 각 함수의 `// TODO(api): GET /me/home` 주석 아래 목 코드를 `return request('GET', '/me/home')` 로 바꾼다. 시그니처·타입은 그대로.
-3. 모두 바꾸면 `src/mocks/` 를 지운다. `grep -rn "TODO(api)" src/api` 가 0건이면 끝.
+1. **완료**: `client.ts` 의 `USE_MOCK`·`BASE_URL`·`request<T>(method, path, { query, body, auth })`
+   - `.env.local`(`.env.example` 복사): `VITE_USE_MOCK=false`면 서버, 그 밖에는 목. `VITE_API_BASE_URL` 기본 `http://localhost:8000/api/v1`
+   - `Authorization: Bearer ${getAccessToken()}` (`auth.ts`, decisions D6). 401이면 `refreshTokens()` 후 **한 번만** 재시도, 갱신도 실패하면 처음 401을 던진다. 로그인·가입·토큰 갱신은 `auth: false`
+   - 실패 응답 `{ error }` → `ApiError(status, code, message, detail)`. 본문이 그 모양이 아니면 `UNKNOWN_ERROR`, 서버에 닿지 못하면 `ApiError(0, 'NETWORK_ERROR')` (FE 전용 코드)
+   - 쿼리는 `URLSearchParams`라 `+`가 `%2B`로 간다. `undefined`·`null` 값은 빠진다. 204는 `undefined`
+2. 각 함수 맨 앞에 서버 분기를 넣는다. 시그니처·타입·목 코드는 그대로:
+   ```ts
+   export async function getHome(): Promise<Home> {
+     if (!USE_MOCK) return request('GET', '/me/home')
+     // TODO(api): GET /me/home  ← 목 코드는 6단계에서 지운다
+   ```
+3. test 서버가 안정되면 목을 지운다: `src/mocks/`, `mockDelay`·`mockFail`, `USE_MOCK` 분기. `grep -rn "TODO(api)" src` 가 0건이면 끝.
 
 ## 4. 에러 처리
 

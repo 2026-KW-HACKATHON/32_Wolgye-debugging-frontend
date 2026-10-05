@@ -2,6 +2,8 @@
 
 출처: 백엔드 저장소 `2026-KW-HACKATHON/32_Wolgye-debugging-backend`의 `docs/openapi-mock.yaml`(명세), `README.md`, `CLAUDE.md`, 이슈 #4 결정 댓글. 기준일 2026-10-02. **명세와 이 문서가 다르면 명세가 맞다.**
 
+> 명세는 **[명세 페이지(Swagger)](https://2026-kw-hackathon.github.io/32_Wolgye-debugging-backend/)** 에서 본다 (백엔드가 GitHub Actions + Pages로 `openapi-mock.yaml`을 자동 배포, 2026-10-05~).
+
 ## 1. 공통 규칙
 
 | 항목 | 규칙 |
