@@ -2,12 +2,15 @@ import { isApiError } from '../../api/client'
 import { useEffect, useState } from 'react'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import DirectionsCarRoundedIcon from '@mui/icons-material/DirectionsCarRounded'
-import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Stack, Switch, TextField, Typography } from '@mui/material'
+import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Stack, Switch, TextField, Typography } from '@mui/material'
 import { NavButton, PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
 
 import { createMyVehicle, deleteMyVehicle, isValidPlate, listMyVehicles, updateMyVehicle } from '../../api/vehicles'
 import { hashParams, toHash } from '../../types/navigation'
+import type { VehicleColor } from '../../types/api'
 import type { VehicleListItem } from '../../types/vehicles'
+
+const colors: VehicleColor[] = ['검정', '흰색', '은색', '회색', '파랑', '빨강', '기타']
 
 export default function VehiclesPage() {
   const [vehicles, setVehicles] = useState<VehicleListItem[]>([])
@@ -15,6 +18,7 @@ export default function VehiclesPage() {
   const [deleting, setDeleting] = useState<VehicleListItem | null>(null)
   const [plate, setPlate] = useState('')
   const [alias, setAlias] = useState('')
+  const [color, setColor] = useState<VehicleColor | ''>('')
   const [isDefault, setIsDefault] = useState(true)
   const [loading, setLoading] = useState(true)
   const [pending, setPending] = useState(false)
@@ -59,8 +63,9 @@ export default function VehiclesPage() {
     <SectionTitle>차량 추가</SectionTitle>
     <TextField label="차량 번호" placeholder="12가 3456" value={plate} onChange={e => setPlate(e.target.value)} disabled={pending} error={!!plate && !isValidPlate(plate)} helperText={plate && !isValidPlate(plate) ? '차량 번호를 확인해 주세요.' : ' '}/>
     <TextField label="차량 별칭" placeholder="예: 내 차, 가족 차" value={alias} onChange={e => setAlias(e.target.value)} disabled={pending}/>
+    <TextField select label="색상 (선택)" value={color} onChange={e => setColor(e.target.value as VehicleColor | '')} disabled={pending} helperText="등록 후에는 바꿀 수 없어요."><MenuItem value="">선택 안 함</MenuItem>{colors.map(item => <MenuItem key={item} value={item}>{item}</MenuItem>)}</TextField>
     <FormControlLabel label="대표 차량으로 설정" labelPlacement="start" sx={{ mx: 0, justifyContent: 'space-between' }} control={<Switch checked={isDefault} onChange={e => setIsDefault(e.target.checked)} disabled={pending}/>}/>
-    <Button variant="contained" startIcon={<AddRoundedIcon/>} fullWidth disabled={pending || loading || !isValidPlate(plate)} onClick={() => void mutate(async () => { await createMyVehicle({ plate, alias, is_default: isDefault }); setPlate(''); setAlias('') })}>{pending ? '처리 중…' : '차량 등록'}</Button>
+    <Button variant="contained" startIcon={<AddRoundedIcon/>} fullWidth disabled={pending || loading || !isValidPlate(plate)} onClick={() => void mutate(async () => { await createMyVehicle({ plate, alias, color: color || undefined, is_default: isDefault }); setPlate(''); setAlias(''); setColor('') })}>{pending ? '처리 중…' : '차량 등록'}</Button>
     {hashParams().get('from') === 'parking-register' ? <Button href={toHash('parking-register', hashParams().has('vehicle_id') ? { id: hashParams().get('vehicle_id')! } : undefined)} variant="outlined">주차 등록으로 돌아가기</Button> : <NavButton to="profile" variant="text" fullWidth>설정으로 돌아가기</NavButton>}
     <Dialog open={!!editing} onClose={() => { if (!pending) setEditing(null) }} fullWidth maxWidth="xs" aria-labelledby="vehicle-edit-title">
       <DialogTitle id="vehicle-edit-title">차량 정보 수정</DialogTitle>
