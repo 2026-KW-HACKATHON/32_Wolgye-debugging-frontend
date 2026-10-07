@@ -1,8 +1,7 @@
 import type { BuildingRole, DateTime, Weekday } from '../types/api'
-import { toLotSlots } from '../components/parkingLotGeometry'
-import type { BuildingLayout, ExitSource, LayoutSlot, LotSlot, MoveRequestDetail, MoveRequestBox, NotificationItem, OccupantType, ParkingState, RecurringSchedule, SlotStatus } from '../types/parking'
+import type { BuildingLayout, ExitSource, LayoutSlot, MoveRequestDetail, MoveRequestBox, NotificationItem, OccupantType, ParkingState, RecurringSchedule, SlotStatus } from '../types/parking'
 
-// 목데이터 (docs/decisions.md 확정 값). 배치도 화면용 lotStatus 는 맨 아래에서 layout + slotStatuses() 로 만든다
+// 목데이터 (docs/decisions.md 확정 값)
 // api/*.ts 의 쓰기 함수가 이 값을 직접 바꾼다 (새로고침하면 처음 값으로 돌아감)
 
 /** 목 기준 시각 (2026-09-30 수요일 14:40 KST) */
@@ -96,7 +95,3 @@ export function slotStatuses(isMine: (vehicleId: number | null) => boolean = (ve
     }
   })
 }
-
-// ── 화면용 파생 목 ──
-// TODO(logic): 화면이 GET /buildings/{id}/layout + /status 를 불러 toLotSlots 로 바꾸게 되면 지운다 (#9~#13). 모듈을 처음 읽을 때의 상태라 쓰기 함수 결과는 반영되지 않는다
-export const lotStatus: LotSlot[] = toLotSlots(layout, { updated_at: MOCK_NOW, slots: slotStatuses() })
