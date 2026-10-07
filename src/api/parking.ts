@@ -201,7 +201,7 @@ export async function createMoveRequest(body: MoveRequestCreate): Promise<MoveRe
   if (pending) return mockFail(409, 'MOVE_REQUEST_ALREADY_PENDING', '이 차량에 대기 중인 이동 요청이 이미 있습니다.', { move_request_id: pending.id })
   const mine = myParking()
   const id = Math.max(...moveRequests.map((request) => request.id)) + 1
-  moveRequests.push({ id, box: 'sent', target_parking_id: target.id, status: 'PENDING', requested_at: MOCK_NOW, requester: { label: me.label }, my_vehicle: { plate: target.plate, slot_label: labelOf(target.slot_id), parked_at: target.entered_at }, blocked_vehicle: { plate: mine?.plate ?? '', slot_label: mine ? labelOf(mine.slot_id) : '', needed_at: body.needed_at }, reason: body.reason ?? null, responded_at: null })
+  moveRequests.push({ id, box: 'sent', target_parking_id: target.id, status: 'PENDING', requested_at: MOCK_NOW, requester: { label: me.label }, my_vehicle: { plate: target.plate, slot_label: labelOf(target.slot_id), parked_at: target.entered_at }, blocked_vehicle: mine ? { plate: mine.plate, slot_label: labelOf(mine.slot_id), needed_at: body.needed_at } : null, needed_at: body.needed_at, reason: body.reason ?? null, responded_at: null })
   return mockDelay({ id, status: 'PENDING' })
 }
 
@@ -230,7 +230,7 @@ export async function listMyMoveRequests(query: { box: MoveRequestBox }): Promis
   // TODO(api): GET /me/move-requests?box=received|sent
   // 보낸 요청의 상대는 칸 이름으로 표시 ("P1 차량")
   const items = moveRequests.filter((request) => request.box === query.box).sort((a, b) => b.requested_at.localeCompare(a.requested_at))
-    .map((request) => ({ id: request.id, status: request.status, requested_at: request.requested_at, counterpart_label: request.box === 'received' ? request.requester.label : `${request.my_vehicle.slot_label} 차량`, needed_at: request.blocked_vehicle.needed_at }))
+    .map((request) => ({ id: request.id, status: request.status, requested_at: request.requested_at, counterpart_label: request.box === 'received' ? request.requester.label : `${request.my_vehicle.slot_label ?? request.my_vehicle.plate} 차량`, needed_at: request.needed_at }))
   return mockDelay({ items })
 }
 

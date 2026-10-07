@@ -33,9 +33,9 @@ export default function MoveRequestPage() {
     <PageTitle title="이동 요청"/>
     <Surface sx={{bgcolor:'#FFF7F2',borderColor:'#FFD9BE'}}><Stack direction="row" gap={1.25} alignItems="center"><ErrorRoundedIcon color="warning"/><div><Typography variant="caption" color="warning.main" fontWeight={800}>이웃의 이동 요청</Typography><Typography variant="h6">내 차량을 이동해 주세요</Typography></div></Stack><Divider sx={{my:1.25}}/><InfoRow label="요청 시각" value={timeOf(request.requested_at)}/><InfoRow label="요청자" value={request.requester.label}/></Surface>
     <SectionTitle>이동을 요청받은 내 차량</SectionTitle>
-    <Surface><InfoRow label="차량 번호" value={request.my_vehicle.plate}/><InfoRow label="차량 위치" value={request.my_vehicle.slot_label}/><InfoRow label="주차 시각" value={timeOf(request.my_vehicle.parked_at)}/></Surface>
-    <SectionTitle>출차하려는 이웃 차량</SectionTitle>
-    <Surface><InfoRow label="차량 번호" value={request.blocked_vehicle.plate}/><InfoRow label="차량 위치" value={request.blocked_vehicle.slot_label}/><InfoRow label="출차 필요 시각" value={dateTimeOf(request.blocked_vehicle.needed_at)}/></Surface>
+    <Surface><InfoRow label="차량 번호" value={request.my_vehicle.plate}/><InfoRow label="차량 위치" value={request.my_vehicle.slot_label ?? '출차함'}/>{request.my_vehicle.parked_at && <InfoRow label="주차 시각" value={timeOf(request.my_vehicle.parked_at)}/>}</Surface>
+    {request.blocked_vehicle && <><SectionTitle>출차하려는 이웃 차량</SectionTitle>
+    <Surface><InfoRow label="차량 번호" value={request.blocked_vehicle.plate}/><InfoRow label="차량 위치" value={request.blocked_vehicle.slot_label ?? '출차함'}/><InfoRow label="출차 필요 시각" value={dateTimeOf(request.blocked_vehicle.needed_at)}/></Surface></>}
     <SectionTitle>요청 사유</SectionTitle>
     <Surface><Typography variant="body2" color="text.secondary">{request.reason ?? '요청 사유가 없어요.'}</Typography></Surface>
     {notice && <Alert severity={notice.severity}>{notice.message}</Alert>}
