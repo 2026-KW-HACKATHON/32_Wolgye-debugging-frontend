@@ -8,9 +8,9 @@ import { useApi } from '../../api/useApi'
 import { WEEKDAYS, type Weekday } from '../../types/api'
 import type { AdminSlot, ShareOffer, ShareOfferUpdate } from '../../types/admin'
 import { toHash } from '../../types/navigation'
+import { hourLabel } from '../parking/kstTime'
 
 const HOURS = Array.from({ length: 25 }, (_, hour) => hour)
-const hourLabel = (hour: number) => `${String(hour).padStart(2, '0')}:00`
 const dayLabel: Record<Weekday, string> = { MON: '월', TUE: '화', WED: '수', THU: '목', FRI: '금', SAT: '토', SUN: '일' }
 // 값 '' = 제한 없음 (max_hours null)
 const maxHourOptions = [{ value: '1', label: '1시간' }, { value: '2', label: '2시간' }, { value: '3', label: '3시간' }, { value: '4', label: '4시간' }, { value: '', label: '제한 없음' }]

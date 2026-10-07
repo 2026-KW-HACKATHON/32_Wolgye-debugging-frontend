@@ -60,7 +60,7 @@
 
 | 컴포넌트 | 위치 | 방식 | 쓰는 화면 |
 |---|---|---|---|
-| `ParkingLotMap` | `src/components/ParkingLotMap.tsx` + 건물·벽·입구 상수와 `toLotSlots` `src/components/parkingLotGeometry.ts`, 타입 `src/types/parking.ts`, 목 `lotStatus` `src/mocks/parking.ts` | **SVG + 직접 만든 등각 투영**. `view="iso"`(2.5D, 기본) / `view="top"`(평면) | 홈, 주차 배치 등록, 차량 상세, 관리자 대시보드, 서비스 소개(효재 `WelcomePage`, 목 `lotStatus`) |
+| `ParkingLotMap` | `src/components/ParkingLotMap.tsx` + 건물·벽·입구 상수와 `toLotSlots` `src/components/parkingLotGeometry.ts`, 타입 `src/types/parking.ts` | **SVG + 직접 만든 등각 투영**. `view="iso"`(2.5D, 기본) / `view="top"`(평면) | 홈, 주차 배치 등록, 차량 상세, 관리자 대시보드, 서비스 소개(효재 `WelcomePage`, 화면에 고정한 예시 칸) |
 
 `ParkingLotMap` props: `slots: LotSlot[]`(필수), `view`, `variant: 'resident' | 'admin'`, `selected`, `recommendedId`, `focusId`(이 칸만 진하게), `onSelect`(빈 칸 선택), `onUnavailable`, `onInspect`(홈에서 모든 상태의 칸 정보 확인). 칩 색 범례는 `LotLegend`. 화면별 쓰임은 `docs/figma-wireframe.md` 6장
 

@@ -84,7 +84,7 @@
 
 ## 6. 2.5D 배치도 구현 메모
 
-- 컴포넌트: `src/components/ParkingLotMap.tsx`, 건물·벽·입구 좌표와 `toLotSlots`: `src/components/parkingLotGeometry.ts`, 목데이터 `lotStatus`: `src/mocks/parking.ts`
+- 컴포넌트: `src/components/ParkingLotMap.tsx`, 건물·벽·입구 좌표와 `toLotSlots`: `src/components/parkingLotGeometry.ts`
 - 좌표 출처: `125:2` 안의 `site-surface`(800×610) 기준 px. 칸 `space-01`~`space-08` = P1~P8, `building`, `drive-aisle`, `entrance`, `building-entrance-between-P7-P8`
 - 쓰는 곳: 홈(`ParkingLotMap` + `LotLegend`), 주차 배치 등록(탭 가능 + 선택 칸 미리보기 `view="top" focusId`), 차량 상세(`focusId` = 내 칸), 관리자 대시보드(`variant="admin"`)
 - 칩에는 칸 이름(`label`, P1~P8)만 쓰고 상태는 칩 색으로 나눈다. 칩 안에 시간·상태 글자를 넣으면 대각선으로 붙은 칸끼리 칩이 겹친다 (360px 폭에서 확인)
