@@ -163,7 +163,7 @@ export async function getMyVehicle(vehicleId: number): Promise<VehicleDetail> {
 export async function getRecurringSchedule(vehicleId: number): Promise<RecurringSchedule> {
   if (!USE_MOCK) return request('GET', `/me/vehicles/${vehicleId}/recurring-schedule`)
   // TODO(api): GET /me/vehicles/{vehicle_id}/recurring-schedule
-  // TODO(logic): 반복 일정이 없을 때 응답이 명세에 없다. 목은 404 NOT_FOUND 로 둔다
+  // 반복 일정이 없거나 내 차량이 아니면 404 NOT_FOUND (backend PR #40, FE #39)
   const schedule = recurringByVehicle.get(vehicleId)
   if (!ownVehicle(vehicleId) || !schedule) return notFound()
   return mockDelay(schedule)
