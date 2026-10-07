@@ -57,7 +57,7 @@ export type NotificationPage = Page<NotificationItem>
 
 // ── 홈 GET /me/home ──
 export type HomeSummary = { available: number; soon_exit: number; blocked: number; empty: number }
-export type HomeMyParking = { parking_id: number; vehicle: { id: number; plate: string; /** 백엔드가 색상을 안 받기로 함 — 빠지거나 null 일 수 있다 (backend #36) */ color?: string | null }; slot_label: string; state: ParkingState; expected_exit_at: DateTime | null }
+export type HomeMyParking = { parking_id: number; vehicle: { id: number; plate: string; /** 색상을 고르지 않았으면 null (FE #39) */ color: VehicleColor | null }; slot_label: string; state: ParkingState; expected_exit_at: DateTime | null }
 export type BlockAlert = { blocking_parking_id: number; message: string }
 export type Home = {
   building: { id: number; name: string; role: BuildingRole }
@@ -75,9 +75,10 @@ export type Home = {
 export type VehicleDetail = {
   id: number
   plate: string
-  /** 백엔드가 색상을 안 받기로 함 — 빠지거나 null 일 수 있다 (backend #36) */
-  color?: VehicleColor | null
-  owner: { name: string; unit: string }
+  /** 색상을 고르지 않았으면 null (FE #39) */
+  color: VehicleColor | null
+  /** unit: 프로필에 동·호수가 없으면 null (FE #39) */
+  owner: { name: string; unit: string | null }
   parking: { parking_id: number; slot_id: number; slot_label: string; entered_at: DateTime; state: ParkingState } | null
   /** memo: 출차 예정이 온 일정의 메모 (RECURRING 이면 반복 일정 메모). 메모가 없거나 상시 주차면 null (backend #33·#34) */
   schedule: { expected_exit_at: DateTime | null; exit_source: ExitSource; elapsed_minutes: number; memo: string | null } | null
@@ -105,10 +106,10 @@ export type MoveRequestDetail = {
   requested_at: DateTime
   /** 동까지만 ("101동 입주민") */
   requester: { label: string }
-  /** 이동을 요청받은 차량 */
-  my_vehicle: { plate: string; slot_label: string; parked_at: DateTime }
-  /** 막힌 차량 */
-  blocked_vehicle: { plate: string; slot_label: string; needed_at: DateTime }
+  /** 이동을 요청받은 차량. 이미 출차했으면 slot_label·parked_at 이 null (FE #39) */
+  my_vehicle: { plate: string; slot_label: string | null; parked_at: DateTime | null }
+  /** 막힌 차량. 요청자가 이 빌라에 차를 세워 두지 않았거나 관리인이 보낸 요청이면 null, 이미 출차했으면 slot_label 이 null (FE #39) */
+  blocked_vehicle: { plate: string; slot_label: string | null; needed_at: DateTime } | null
   reason: string | null
   /** "옮겼어요"를 누른 시각. PENDING 이면 null (backend #33·#34) */
   responded_at: DateTime | null

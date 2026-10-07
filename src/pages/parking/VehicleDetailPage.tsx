@@ -38,7 +38,7 @@ export default function VehicleDetailPage() {
   return <Stack gap={2.25}>
     <PageTitle title="내 차량 상세" action={<Button href="#vehicles" size="small">다른 차량</Button>}/>
     {hashParams().get('saved') && <Alert severity="success">{hashParams().get('saved') === 'repeat' ? '반복 일정을 저장했어요.' : '출차 일정을 변경했어요.'}</Alert>}
-    <Surface><Stack direction="row" gap={1.5} alignItems="center"><DirectionsCarRoundedIcon color="primary" sx={{fontSize:36}}/><div><Typography variant="h6">{vehicle.plate}</Typography>{vehicle.color && <Typography variant="caption" color="text.secondary">{vehicle.color}</Typography>}</div></Stack><Divider sx={{my:1.25}}/><InfoRow label="차량 소유자" value={vehicle.owner.name}/><InfoRow label="동·호수" value={vehicle.owner.unit}/></Surface>
+    <Surface><Stack direction="row" gap={1.5} alignItems="center"><DirectionsCarRoundedIcon color="primary" sx={{fontSize:36}}/><div><Typography variant="h6">{vehicle.plate}</Typography>{vehicle.color && <Typography variant="caption" color="text.secondary">{vehicle.color}</Typography>}</div></Stack><Divider sx={{my:1.25}}/><InfoRow label="차량 소유자" value={vehicle.owner.name}/><InfoRow label="동·호수" value={vehicle.owner.unit ?? '-'}/></Surface>
     <SectionTitle>현재 주차 상태</SectionTitle>
     <Surface>{parking ? <><InfoRow label="주차 구역" value={parking.slot_label}/><InfoRow label="입차 시각" value={dayTimeOf(parking.entered_at)}/><InfoRow label="주차 상태" value={parking.state === 'PARKED' ? <StatusChip kind="accepted" label="주차 중"/> : <StatusChip kind="disabled" label="출차"/>}/></> : <Typography variant="caption" color="text.secondary">지금 주차 중이 아니에요.</Typography>}</Surface>
     <SectionTitle>출차 일정</SectionTitle>

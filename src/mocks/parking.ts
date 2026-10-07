@@ -57,11 +57,12 @@ export const blocks: [number, number][] = []
 export const recurringByVehicle = new Map<number, RecurringSchedule>([[MY_VEHICLE_ID, { days: ['MON', 'TUE', 'WED', 'THU', 'FRI'], time: '07:30', memo: '출근 일정' }]])
 export const WEEKDAYS_MON_FRI: Weekday[] = ['MON', 'TUE', 'WED', 'THU', 'FRI']
 
-export type MockMoveRequest = MoveRequestDetail & { box: MoveRequestBox; target_parking_id: number }
+/** needed_at: blocked_vehicle 이 null 이어도 목록(GET /me/move-requests)의 needed_at 을 내려 주려고 따로 둔다 */
+export type MockMoveRequest = MoveRequestDetail & { box: MoveRequestBox; target_parking_id: number; needed_at: DateTime }
 
 // TODO(logic): 받은 이동 요청 44는 화면 시연용 임시 값. 내 차가 P2에 있을 때 받은 요청이고, 막힌 차량(P4)도 P2 뒤가 아니라 실제와 맞지 않는다
 export const moveRequests: MockMoveRequest[] = [
-  { id: 44, box: 'received', target_parking_id: 556, status: 'PENDING', requested_at: '2026-09-30T14:34:00+09:00', requester: { label: '101동 입주민' }, my_vehicle: { plate: '12가 3456', slot_label: 'P2', parked_at: '2026-09-30T08:30:00+09:00' }, blocked_vehicle: { plate: '27가 4821', slot_label: 'P4', needed_at: '2026-09-30T15:00:00+09:00' }, reason: '외출 예정으로 출차가 필요합니다. 차량 이동을 부탁드립니다.', responded_at: null },
+  { id: 44, box: 'received', target_parking_id: 556, status: 'PENDING', requested_at: '2026-09-30T14:34:00+09:00', requester: { label: '101동 입주민' }, my_vehicle: { plate: '12가 3456', slot_label: 'P2', parked_at: '2026-09-30T08:30:00+09:00' }, blocked_vehicle: { plate: '27가 4821', slot_label: 'P4', needed_at: '2026-09-30T15:00:00+09:00' }, needed_at: '2026-09-30T15:00:00+09:00', reason: '외출 예정으로 출차가 필요합니다. 차량 이동을 부탁드립니다.', responded_at: null },
 ]
 
 export const notifications: NotificationItem[] = [
