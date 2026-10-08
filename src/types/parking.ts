@@ -20,8 +20,8 @@ export type AlleyRef = { id: number; name: string }
 export type SlotRect = { x0: number; y0: number; x1: number; y1: number }
 export type LayoutSlot = { id: number; number: number; label: string; front_slot_id: number | null; is_active: boolean; rect: SlotRect | null }
 export type LayoutZone = { id: number; name: string; zone_type: ZoneType; sort_order: number; slots: LayoutSlot[] }
-/** site_key: 배치도 사이트 파일 키 (src/sites/{site_key}.json). null = 사이트 파일 없는 빌라 → 칸 rect 로 그린다. 없으면(백엔드 #47 배포 전) 빌라 이름으로 찾는다 */
-export type BuildingLayout = { building_id: number; name: string; site_key?: string | null; alley: AlleyRef; zones: LayoutZone[] }
+/** site_key: 배치도 사이트 파일 키 (src/sites/{site_key}.json). null = 사이트 파일 없는 빌라 → 칸 rect 로 그린다 */
+export type BuildingLayout = { building_id: number; name: string; site_key: string | null; alley: AlleyRef; zones: LayoutZone[] }
 
 // ── 현황 GET /buildings/{id}/status ──
 export type SlotParking = { id: number; is_mine: boolean; plate: string; occupant_type: OccupantType; expected_exit_at: DateTime | null; exit_source: ExitSource }
