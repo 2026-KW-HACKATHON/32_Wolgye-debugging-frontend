@@ -125,13 +125,14 @@ export async function updateParkingSchedule(parkingId: number, body: ParkingSche
   // TODO(api): PUT /parkings/{parking_id}/schedule
   const parking = parkings.find((item) => item.id === parkingId && item.state === 'PARKED' && isMine(item.vehicle_id))
   if (!parking) return notFound()
-  if (!isDateTime(body.expected_exit_at)) return invalidInput('출차 시간이 올바르지 않습니다.', { field: 'expected_exit_at' })
+  if (!body.is_long_term && !isDateTime(body.expected_exit_at)) return invalidInput('출차 시간이 올바르지 않습니다.', { field: 'expected_exit_at' })
   // TODO(logic): 시간이 바뀌어도 목에서는 막힘 관계를 다시 계산하지 않는다 (서버가 판정)
-  parking.expected_exit_at = body.expected_exit_at
+  parking.expected_exit_at = body.is_long_term ? null : body.expected_exit_at
   parking.exit_source = 'MANUAL'
   // PUT 이라 memo 를 안 보내면 기존 메모가 지워진다 (backend #34). 화면은 받아 온 메모를 늘 다시 보낸다
   parking.memo = body.memo ?? null
-  return mockDelay({ parking_id: parking.id, expected_exit_at: body.expected_exit_at, exit_source: 'MANUAL', memo: parking.memo })
+  // 반복 일정은 별도 저장소에 그대로 둔다. 상시 주차 동안 현황에는 출차 시각을 표시하지 않는다 (backend #48 제안).
+  return mockDelay({ parking_id: parking.id, expected_exit_at: parking.expected_exit_at, exit_source: 'MANUAL', memo: parking.memo })
 }
 
 export async function exitParking(parkingId: number): Promise<ParkingExited> {

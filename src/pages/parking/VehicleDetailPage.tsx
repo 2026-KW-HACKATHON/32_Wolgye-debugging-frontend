@@ -49,7 +49,7 @@ export default function VehicleDetailPage() {
     <Surface>{parking ? <><InfoRow label="주차 구역" value={parking.slot_label}/><InfoRow label="입차 시각" value={dayTimeOf(parking.entered_at)}/><InfoRow label="주차 상태" value={parking.state === 'PARKED' ? <StatusChip kind="accepted" label="주차 중"/> : <StatusChip kind="disabled" label="출차"/>}/>{overdue && <Alert severity="warning" sx={{mt:1.5}}>출차 예정 시각이 지났어요. 이미 차를 뺐다면 '지금 출차!'를 눌러 주세요. 더 주차한다면 출차 일정을 수정해 주세요.</Alert>}{parking.state === 'PARKED' && <Box mt={1.5}><ExitParkingButton parkingId={parking.parking_id} slotLabel={parking.slot_label} onResult={(notice,changed)=>{setExitNotice(notice);if (changed) reload()}}/></Box>}</> : <Typography variant="caption" color="text.secondary">지금 주차 중이 아니에요.</Typography>}</Surface>
     <SectionTitle>출차 일정</SectionTitle>
     <Surface>{schedule ? <>
-      <InfoRow label="예정 출차 시각" value={schedule.expected_exit_at ? dayTimeOf(schedule.expected_exit_at) : '없음'}/>
+      <InfoRow label="예정 출차 시각" value={schedule.expected_exit_at ? dayTimeOf(schedule.expected_exit_at) : '출차 시간 없이 상시 주차 중'}/>
       {/* 등록 유형: 직접 등록 / 반복 / AI 추정 / 없음 */}
       <InfoRow label="등록 유형" value={<Chip size="small" variant="outlined" color="secondary" icon={schedule.exit_source === 'AI_ESTIMATED' ? <AutoAwesomeRoundedIcon/> : undefined} label={sourceLabel[schedule.exit_source]}/>}/>
       <InfoRow label="경과 시간" value={elapsed(schedule.elapsed_minutes)}/>

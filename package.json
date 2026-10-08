@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test:reports": "node --test tests/vehicle-reports.test.cjs",
+    "test:parking": "node --test tests/parking-schedule.test.cjs",
     "preview": "vite preview"
   },
   "dependencies": {
