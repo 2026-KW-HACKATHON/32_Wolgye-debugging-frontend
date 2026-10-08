@@ -1,4 +1,5 @@
-import { getMe, getMockUserId, requireMockSession } from './auth'
+import { IS_GUEST } from './guestMode'
+import { debitGuestTokens, getMe, getMockUserId, requireMockSession } from './auth'
 import { listMyVehicles } from './vehicles'
 import { invalidInput, mockDelay, mockFail, notFound, request, USE_MOCK } from './client'
 import type { Page, PageQuery } from '../types/api'
@@ -77,4 +78,21 @@ export async function listMyShareRequests(query: PageQuery = {}): Promise<Page<S
   const limit = query.limit ?? 20
   const items = all.slice(cursor, cursor + limit)
   return mockDelay({items, next_cursor: cursor + limit < all.length ? String(cursor + limit) : null})
+}
+
+/** Presentation-only result; never changes an actual server request. */
+export async function previewGuestShareResult(id: number, status: 'APPROVED' | 'REJECTED'): Promise<ShareRequestDetail> {
+  if (!IS_GUEST) return mockFail(403,'UNKNOWN_ERROR','체험 모드에서만 사용할 수 있어요.')
+  if (!['APPROVED', 'REJECTED'].includes(status)) return invalidInput('올바른 예시 결과를 선택해 주세요.')
+  requireMockSession()
+  const item = userShareRequests.find(value => value.id === id && value.user_id === getMockUserId())
+  if (!item) return notFound()
+  if (item.status !== 'PENDING') return mockFail(409,'ALREADY_DECIDED','이미 결과를 확인한 요청이에요.')
+  if (status === 'APPROVED') {
+    if (userShareRequests.some(other => other.id !== id && other.offer_id === item.offer_id && other.status === 'APPROVED' && other.request_date === item.request_date && other.start_hour < item.end_hour && item.start_hour < other.end_hour)) return mockFail(409,'GARAGE_TIME_CONFLICT','이미 수락된 예약과 시간이 겹쳐요.')
+    debitGuestTokens(item.total_price)
+  }
+  item.status = status
+  item.reject_reason = status === 'REJECTED' ? '예시: 해당 시간에는 주차 공간을 이용할 수 없어요.' : null
+  return mockDelay(publicRequest(item))
 }

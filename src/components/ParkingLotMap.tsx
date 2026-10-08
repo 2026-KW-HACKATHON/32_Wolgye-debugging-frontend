@@ -1,3 +1,4 @@
+import { parkingStatusColors } from './parkingStatusColors'
 import type { KeyboardEvent, ReactNode } from 'react'
 import { Box } from '@mui/material'
 import { tones } from '../theme'
@@ -27,8 +28,8 @@ const colors = {
   ground: '#F2F4F7', groundEdge: '#D0D5DD', aisle: '#98A2B3',
   building: '#FFFFFF', buildingSide: '#E4E7EC', buildingRoof: '#F9FAFB', buildingLine: '#101828',
   wall: '#2E90FA',
-  emptyFill: tones.mintSoft, emptyLine: '#2CA58D',
-  recommendedFill: '#DDF6EE', disabledFill: '#EEF1F5', disabledLine: '#98A2B3',
+  emptyFill: parkingStatusColors.available.fill, emptyLine: parkingStatusColors.available.line,
+  recommendedFill: parkingStatusColors.recommended.fill, disabledFill: parkingStatusColors.disabled.fill, disabledLine: parkingStatusColors.disabled.line,
   occupiedFill: '#FFFFFF', slotLine: '#D0D5DD',
   mineCar: tones.blue, neighborCar: '#B8C0CC', carWindow: '#1D2939',
   soonBg: '#FFF6D8', soonText: '#986D05',
@@ -145,7 +146,7 @@ export default function ParkingLotMap({ shape, slots, view = 'iso', variant = 'r
     if (blockers.has(slot.id)) return { fill: colors.occupiedFill, stroke: tones.red, dash: undefined, width: 4 }
     if (slot.state === 'unavailable') return { fill: colors.disabledFill, stroke: colors.disabledLine, dash: '6 6', width: 2.5 }
     if (occupied(slot)) return { fill: colors.occupiedFill, stroke: slot.car?.mine && !admin ? tones.blue : colors.slotLine, dash: undefined, width: 2.5 }
-    return { fill: slot.id === recommendedId ? colors.recommendedFill : colors.emptyFill, stroke: isSelected ? tones.blue : colors.emptyLine, dash: isSelected ? undefined : '8 6', width: isSelected ? 4 : 2.5 }
+    return { fill: slot.id === recommendedId ? colors.recommendedFill : colors.emptyFill, stroke: isSelected ? tones.blueDark : slot.id === recommendedId ? parkingStatusColors.recommended.line : colors.emptyLine, dash: isSelected || slot.id === recommendedId ? undefined : '8 6', width: isSelected ? 5 : slot.id === recommendedId ? 3.5 : 2.5 }
   }
 
   const outline = (rect: Rect) => iso ? { d: isoRect(rect) } : { d: `M${rect.x} ${rect.y} h${rect.w} v${rect.h} h${-rect.w} Z` }
@@ -177,10 +178,10 @@ export default function ParkingLotMap({ shape, slots, view = 'iso', variant = 'r
     if (slot.car?.mine) return { text: label, color: '#FFFFFF', bg: slot.blockedBy?.length ? tones.red : tones.blue }
     if (blockers.has(slot.id)) return { text: label, color: '#B82D3B', bg: '#FFFFFF', stroke: tones.red }
     if (slot.state === 'soon_exit') return { text: label, color: colors.soonText, bg: colors.soonBg, stroke: '#F5C451' }
-    if (slot.state === 'empty' && slot.id === selected) return { text: label, color: '#FFFFFF', bg: tones.blue }
-    if (slot.state === 'empty' && slot.id === recommendedId) return { text: `★${label}`, color: '#FFFFFF', bg: '#12B76A' }
-    if (slot.state === 'empty') return { text: label, color: '#087443', bg: '#FFFFFF', stroke: colors.emptyLine }
-    if (slot.state === 'unavailable') return { text: label, color: '#98A2B3', bg: '#F2F4F7', stroke: colors.disabledLine }
+    if (slot.state === 'empty' && slot.id === selected) return { text: slot.id === recommendedId ? `★${label}` : label, color: '#FFFFFF', bg: tones.blueDark }
+    if (slot.state === 'empty' && slot.id === recommendedId) return { text: `★${label}`, color: parkingStatusColors.recommended.text, bg: parkingStatusColors.recommended.bg }
+    if (slot.state === 'empty') return { text: label, color: parkingStatusColors.available.text, bg: parkingStatusColors.available.bg, stroke: colors.emptyLine }
+    if (slot.state === 'unavailable') return { text: `×${label}`, color: parkingStatusColors.disabled.text, bg: parkingStatusColors.disabled.bg, stroke: colors.disabledLine }
     return { text: label, color: '#475467', bg: '#FFFFFF', stroke: colors.slotLine }
   }
   const labelLayer = ordered.map((slot) => {
@@ -246,7 +247,7 @@ export default function ParkingLotMap({ shape, slots, view = 'iso', variant = 'r
   </MapFrame>
 }
 
-const legend = [['내 차', tones.blue, tones.blue], ['막힘', tones.red, tones.red], ['곧 출차', colors.soonBg, '#F5C451'], ['빈 칸', '#FFFFFF', colors.emptyLine], ['사용 불가', '#F2F4F7', colors.disabledLine]] as const
+const legend = [['내 차', tones.blue, tones.blue], ['막힘', tones.red, tones.red], ['곧 출차', colors.soonBg, '#F5C451'], ['빈 칸', colors.emptyFill, colors.emptyLine], ['× 사용 불가', colors.disabledFill, colors.disabledLine]] as const
 
 /** 입주민 배치도 칩 색의 뜻 (관리자 화면은 Figma의 범례 칩을 쓴다) */
 export function LotLegend() {

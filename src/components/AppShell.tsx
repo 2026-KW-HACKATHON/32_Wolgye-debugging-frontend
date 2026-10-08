@@ -1,11 +1,13 @@
+import { IS_GUEST, exitGuestDemo } from '../api/guestMode'
 import type { ReactNode } from 'react'
+import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded'
 import LocalParkingRoundedIcon from '@mui/icons-material/LocalParkingRounded'
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded'
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded'
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
-import { AppBar, BottomNavigation, BottomNavigationAction, Box, FormControl, IconButton, MenuItem, Paper, Select, Stack, Toolbar, Typography } from '@mui/material'
+import { Tooltip, AppBar, BottomNavigation, BottomNavigationAction, Box, FormControl, IconButton, MenuItem, Paper, Select, Stack, Toolbar, Typography } from '@mui/material'
 import type { PageId, PageMeta, TabId } from '../types/navigation'
 import { hashParams, pages, toHash } from '../types/navigation'
 import { getMyRole } from '../api/auth'
@@ -19,6 +21,15 @@ const tabItems: { label: TabId; id: PageId; icon: ReactNode }[] = [
   { label: '프로필', id: 'profile', icon: <PersonRoundedIcon /> },
 ]
 
+function GuestBadge() {
+  return <Stack direction="row" alignItems="center" sx={{width:84,pl:1,bgcolor:'#E8F0FF',borderRadius:'12px',flexShrink:0}}>
+    <Typography variant="caption" color="primary.main" fontWeight={800} sx={{fontSize:10,letterSpacing:0.3}}>GUEST</Typography>
+    <Tooltip title="체험 종료">
+      <IconButton aria-label="게스트 체험 종료" onClick={exitGuestDemo} sx={{width:36,height:36,color:'primary.main'}}><LogoutRoundedIcon sx={{fontSize:18}}/></IconButton>
+    </Tooltip>
+  </Stack>
+}
+
 export default function AppShell({ current, children }: { current: PageMeta; children: ReactNode }) {
   const go = (id: PageId) => { window.location.hash = id }
   // 관리자가 아니면(입주민·로그인 전) 관리 탭·미리보기 목록의 관리 화면을 숨긴다 (2026-10-06 결정). 로그인은 해시 이동으로 끝나서 다시 그릴 때 반영된다
@@ -26,6 +37,7 @@ export default function AppShell({ current, children }: { current: PageMeta; chi
   const tabs = isAdmin ? tabItems : tabItems.filter((item) => item.label !== '관리')
   const visiblePages = isAdmin ? pages : pages.filter((page) => page.tab !== '관리')
   const blocked = current.tab === '관리' && !isAdmin
+  const guestHeader = IS_GUEST && ['home', 'notifications', 'share', 'profile', 'parking-register', 'admin', 'requests', 'slots', 'garage-register'].includes(current.id)
   const selectedTab = tabs.findIndex((item) => item.label === current.tab)
   const params = hashParams()
   const preview = new URLSearchParams(window.location.search).get('preview') === '1'
@@ -46,8 +58,14 @@ export default function AppShell({ current, children }: { current: PageMeta; chi
     </Paper>}
     {preview && <Box className="mobile-picker"><Typography variant="subtitle2">화면 미리보기</Typography><FormControl size="small"><Select value={visiblePages.some((page)=>page.id === current.id) ? current.id : ''} onChange={(event)=>go(event.target.value as PageId)} aria-label="미리 볼 화면 선택">{visiblePages.map((page)=><MenuItem key={page.id} value={page.id}>{page.title}</MenuItem>)}</Select></FormControl></Box>}
     <Paper className="phone" elevation={0}>
-      <AppBar position="static" color="inherit" elevation={0} className="app-bar"><Toolbar disableGutters sx={{minHeight:'58px!important',px:1.5}}>{backHref?<IconButton component="a" href={backHref} aria-label="뒤로가기"><ArrowBackRoundedIcon/></IconButton>:<Box sx={{width:48}}/>}<Typography variant="subtitle1" sx={{flex:1,textAlign:'center'}}>{current.title}</Typography><Box sx={{width:48}}/></Toolbar></AppBar>
-      <Box component="main" className="page-content">{blocked ? <Stack gap={1.5} py={4} textAlign="center"><Typography variant="subtitle1">관리자만 볼 수 있어요</Typography><Typography variant="body2" color="text.secondary">빌라 관리자 계정으로 로그인하면 관리 화면을 쓸 수 있어요.</Typography><NavButton to="home" fullWidth>홈으로 돌아가기</NavButton><NavButton to="role-guide" variant="outlined" fullWidth>역할 및 권한 안내</NavButton></Stack> : children}</Box>
+      <AppBar position="static" color="inherit" elevation={0} className="app-bar">
+        <Toolbar disableGutters sx={{minHeight:'58px!important',px:1.5,...(guestHeader ? {display:'grid',gridTemplateColumns:'84px minmax(0, 1fr) 84px'} : {})}}>
+          <Box sx={{width:guestHeader ? 84 : 48,display:'flex',alignItems:'center'}}>{backHref && <IconButton component="a" href={backHref} aria-label="뒤로가기"><ArrowBackRoundedIcon/></IconButton>}</Box>
+          <Typography variant="subtitle1" sx={{flex:1,minWidth:0,textAlign:'center',overflowWrap:'anywhere'}}>{current.title}</Typography>
+          {guestHeader ? <GuestBadge/> : <Box sx={{width:48}}/>}
+        </Toolbar>
+      </AppBar>
+      <Box component="main" className="page-content">{IS_GUEST && !guestHeader && <Box sx={{mb:2,display:'flex',justifyContent:'flex-end'}}><GuestBadge/></Box>}{blocked ? <Stack gap={1.5} py={4} textAlign="center"><Typography variant="subtitle1">관리자만 볼 수 있어요</Typography><Typography variant="body2" color="text.secondary">빌라 관리자 계정으로 로그인하면 관리 화면을 쓸 수 있어요.</Typography><NavButton to="home" fullWidth>홈으로 돌아가기</NavButton><NavButton to="role-guide" variant="outlined" fullWidth>역할 및 권한 안내</NavButton></Stack> : children}</Box>
       {current.tab && <BottomNavigation value={selectedTab} showLabels onChange={(_,value)=>go(tabs[value]?.id ?? 'home')} className="bottom-navigation">{tabs.map((item)=><BottomNavigationAction key={item.label} label={item.label} icon={item.icon}/>)}</BottomNavigation>}
     </Paper>
   </Box>

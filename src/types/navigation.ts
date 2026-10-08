@@ -78,5 +78,5 @@ export const hashParams = (hash = window.location.hash) => new URLSearchParams(h
 
 export function pageFromHash(hash = window.location.hash): PageId {
   const id = hash.replace('#', '').split('?')[0]
-  return pages.some((page) => page.id === id) ? (id as PageId) : 'home'
+  return pages.some((page) => page.id === id) ? (id as PageId) : 'welcome'
 }

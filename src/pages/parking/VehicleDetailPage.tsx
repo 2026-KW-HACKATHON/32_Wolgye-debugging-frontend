@@ -3,7 +3,7 @@ import DirectionsCarRoundedIcon from '@mui/icons-material/DirectionsCarRounded'
 import { useState } from 'react'
 import { Alert, Box, Button, Chip, CircularProgress, Divider, Stack, Typography } from '@mui/material'
 import { InfoRow, NavButton, PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
-import ParkingLotMap from '../../components/ParkingLotMap'
+import ParkingLotPanel from '../../components/ParkingLotPanel'
 import { toLot } from '../../components/parkingLotGeometry'
 import { getBuildingLayout, getBuildingStatus, getHome, getMyVehicle, getRecurringSchedule } from '../../api/parking'
 import { isApiError } from '../../api/client'
@@ -58,7 +58,7 @@ export default function VehicleDetailPage() {
     <SectionTitle>반복 출차 일정</SectionTitle>
     <Surface>{recurring ? <InfoRow label="매주 반복" value={`${recurring.days.map((day)=>({MON:'월',TUE:'화',WED:'수',THU:'목',FRI:'금',SAT:'토',SUN:'일'}[day])).join(' · ')} ${recurring.time}`}/> : <Typography variant="body2" color="text.secondary">등록된 반복 일정이 없어요.</Typography>}<Button href={toHash('repeat',{id:vehicle.id,from:'vehicle-detail'})} variant="outlined" fullWidth sx={{mt:1.5}}>{recurring ? '반복 일정 변경' : '반복 일정 추가'}</Button></Surface>
     <SectionTitle>주차 위치</SectionTitle>
-    {parking ? <Box sx={{borderRadius:4,bgcolor:'#F8FAFC',border:'1px solid',borderColor:'divider',p:1}}><ParkingLotMap shape={lot.shape} slots={lot.slots} focusId={parking.slot_label}/></Box> : <Typography variant="caption" color="text.secondary">지금 주차 중이 아니에요.</Typography>}
+    {parking ? <ParkingLotPanel shape={lot.shape} slots={lot.slots} focusId={parking.slot_label}/> : <Typography variant="caption" color="text.secondary">지금 주차 중이 아니에요.</Typography>}
     {parking ? <Button href={toHash('departure', { id: vehicle.id })} variant="contained" fullWidth>출차 일정 수정</Button> : <Button href={toHash('parking-register',{id:vehicle.id})} variant="contained" fullWidth>이 차량으로 주차하기</Button>}
   </Stack>
 }

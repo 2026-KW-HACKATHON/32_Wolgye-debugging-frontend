@@ -1,3 +1,4 @@
+import { registerGuestArray, registerGuestMap } from '../api/guestMode'
 import type { BuildingRole, DateTime, Weekday } from '../types/api'
 import type { BuildingLayout, ExitSource, LayoutSlot, MoveRequestDetail, MoveRequestBox, NotificationItem, OccupantType, ParkingState, RecurringSchedule, SlotStatus } from '../types/parking'
 
@@ -96,3 +97,15 @@ export function slotStatuses(isMine: (vehicleId: number | null) => boolean = (ve
     }
   })
 }
+
+registerGuestArray('parkings', parkings)
+
+registerGuestArray('blocks', blocks)
+
+registerGuestArray('moveRequests', moveRequests)
+
+registerGuestArray('notifications', notifications)
+
+registerGuestMap('recurringByVehicle', recurringByVehicle)
+
+for (const zone of layout.zones) registerGuestArray(`layout-slots-${zone.id}`, zone.slots)
