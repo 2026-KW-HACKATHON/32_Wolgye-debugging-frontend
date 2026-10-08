@@ -1,5 +1,6 @@
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
 import DirectionsCarRoundedIcon from '@mui/icons-material/DirectionsCarRounded'
+import { useState } from 'react'
 import { Alert, Box, Button, Chip, CircularProgress, Divider, Stack, Typography } from '@mui/material'
 import { InfoRow, NavButton, PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
 import ParkingLotMap from '../../components/ParkingLotMap'
@@ -10,7 +11,8 @@ import { useApi } from '../../api/useApi'
 import { hashParams, toHash } from '../../types/navigation'
 import type { ExitSource } from '../../types/parking'
 import { getDefaultVehicle } from './defaultVehicle'
-import { dayTimeOf } from './kstTime'
+import ExitParkingButton, { type ExitNotice } from './ExitParkingButton'
+import { dayTimeOf, kstNow } from './kstTime'
 
 const sourceLabel: Record<ExitSource, string> = { MANUAL: '직접 등록', RECURRING: '반복', AI_ESTIMATED: 'AI 추정', NONE: '없음' }
 
@@ -28,6 +30,7 @@ async function loadDetail(paramId: number) {
 export default function VehicleDetailPage() {
   const paramId = Number(hashParams().get('id')) || 0
   const { data, error, reload } = useApi(() => loadDetail(paramId), `vehicle-${paramId}`)
+  const [exitNotice, setExitNotice] = useState<ExitNotice | null>(null)
   // 기본 차량 조회는 로그인 세션이 필요하다 (401)
   if (error?.status === 401) return <Stack gap={2.25}><PageTitle title="차량 상세"/><Alert severity="info" action={<NavButton to="login" variant="text">로그인</NavButton>}>로그인이 필요해요.</Alert></Stack>
   if (error) return <Alert severity="error" action={<Button color="inherit" size="small" onClick={reload}>다시 시도</Button>}>{error.message}</Alert>
@@ -35,12 +38,15 @@ export default function VehicleDetailPage() {
   const { vehicle, recurring, slots } = data
   if (!vehicle) return <Stack gap={2.25}><PageTitle title="차량 상세"/><Typography variant="caption" color="text.secondary">차량 정보를 찾을 수 없어요.</Typography></Stack>
   const { parking, schedule } = vehicle
+  // 서버는 출차 예정 시각이 지나도 자동 출차하지 않는다 (#46)
+  const overdue = parking?.state === 'PARKED' && !!schedule?.expected_exit_at && Date.parse(schedule.expected_exit_at) < Date.parse(kstNow())
   return <Stack gap={2.25}>
     <PageTitle title="내 차량 상세" action={<Button href="#vehicles" size="small">다른 차량</Button>}/>
     {hashParams().get('saved') && <Alert severity="success">{hashParams().get('saved') === 'repeat' ? '반복 일정을 저장했어요.' : '출차 일정을 변경했어요.'}</Alert>}
     <Surface><Stack direction="row" gap={1.5} alignItems="center"><DirectionsCarRoundedIcon color="primary" sx={{fontSize:36}}/><div><Typography variant="h6">{vehicle.plate}</Typography>{vehicle.color && <Typography variant="caption" color="text.secondary">{vehicle.color}</Typography>}</div></Stack><Divider sx={{my:1.25}}/><InfoRow label="차량 소유자" value={vehicle.owner.name}/><InfoRow label="동·호수" value={vehicle.owner.unit ?? '-'}/></Surface>
     <SectionTitle>현재 주차 상태</SectionTitle>
-    <Surface>{parking ? <><InfoRow label="주차 구역" value={parking.slot_label}/><InfoRow label="입차 시각" value={dayTimeOf(parking.entered_at)}/><InfoRow label="주차 상태" value={parking.state === 'PARKED' ? <StatusChip kind="accepted" label="주차 중"/> : <StatusChip kind="disabled" label="출차"/>}/></> : <Typography variant="caption" color="text.secondary">지금 주차 중이 아니에요.</Typography>}</Surface>
+    {exitNotice && <Alert severity={exitNotice.severity} onClose={()=>setExitNotice(null)}>{exitNotice.message}</Alert>}
+    <Surface>{parking ? <><InfoRow label="주차 구역" value={parking.slot_label}/><InfoRow label="입차 시각" value={dayTimeOf(parking.entered_at)}/><InfoRow label="주차 상태" value={parking.state === 'PARKED' ? <StatusChip kind="accepted" label="주차 중"/> : <StatusChip kind="disabled" label="출차"/>}/>{overdue && <Alert severity="warning" sx={{mt:1.5}}>출차 예정 시각이 지났어요. 이미 차를 뺐다면 '지금 출차!'를 눌러 주세요. 더 주차한다면 출차 일정을 수정해 주세요.</Alert>}{parking.state === 'PARKED' && <Box mt={1.5}><ExitParkingButton parkingId={parking.parking_id} slotLabel={parking.slot_label} onResult={(notice,changed)=>{setExitNotice(notice);if (changed) reload()}}/></Box>}</> : <Typography variant="caption" color="text.secondary">지금 주차 중이 아니에요.</Typography>}</Surface>
     <SectionTitle>출차 일정</SectionTitle>
     <Surface>{schedule ? <>
       <InfoRow label="예정 출차 시각" value={schedule.expected_exit_at ? dayTimeOf(schedule.expected_exit_at) : '없음'}/>
