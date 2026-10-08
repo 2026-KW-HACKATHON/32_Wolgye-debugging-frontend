@@ -20,7 +20,8 @@ export type AlleyRef = { id: number; name: string }
 export type SlotRect = { x0: number; y0: number; x1: number; y1: number }
 export type LayoutSlot = { id: number; number: number; label: string; front_slot_id: number | null; is_active: boolean; rect: SlotRect | null }
 export type LayoutZone = { id: number; name: string; zone_type: ZoneType; sort_order: number; slots: LayoutSlot[] }
-export type BuildingLayout = { building_id: number; name: string; alley: AlleyRef; zones: LayoutZone[] }
+/** site_key: 배치도 사이트 파일 키 (src/sites/{site_key}.json). null = 사이트 파일 없는 빌라 → 칸 rect 로 그린다. 없으면(백엔드 #47 배포 전) 빌라 이름으로 찾는다 */
+export type BuildingLayout = { building_id: number; name: string; site_key?: string | null; alley: AlleyRef; zones: LayoutZone[] }
 
 // ── 현황 GET /buildings/{id}/status ──
 export type SlotParking = { id: number; is_mine: boolean; plate: string; occupant_type: OccupantType; expected_exit_at: DateTime | null; exit_source: ExitSource }
@@ -32,6 +33,26 @@ export type BuildingStatus = { updated_at: DateTime; slots: SlotStatus[] }
 export type SlotId = string
 /** 배치도 평면 좌표(px, Figma site-surface 800×610 기준) = API rect(미터) × 50 */
 export type LotRect = { x: number; y: number; w: number; h: number }
+/**
+ * 빌라 배치도 모양 (사이트 파일 src/sites/{site_key}.json, Figma 평면도 px 그대로). 칸 좌표는 칸 이름(P1…)별.
+ * 건물·벽·입구 등은 없어도 된다 (사이트 파일 없는 빌라는 땅과 칸만 그린다)
+ */
+export type LotShape = {
+  name: string
+  site: { w: number; h: number }
+  building?: LotRect
+  buildingDoor?: LotRect
+  walls?: LotRect[]
+  /** 구역 경계 (파란 사각형, 햇살빌라 Figma 171:3) */
+  boundary?: LotRect | null
+  /** 통로 중심선 */
+  aisle?: { x: number; top: number; bottom: number }
+  /** 차량 진입구 (골목 입구) */
+  entrance?: LotRect
+  slots: Record<SlotId, LotRect>
+}
+/** 배치도 한 장 = 빌라 모양 + 칸 */
+export type Lot = { shape: LotShape; slots: LotSlot[] }
 /** API SlotState(EMPTY·SOON_EXIT·OCCUPIED·UNAVAILABLE)와 같은 값 */
 export type LotSlotState = 'empty' | 'soon_exit' | 'occupied' | 'unavailable'
 /** API OccupantType(RESIDENT·EXTERNAL·UNKNOWN)과 같은 값 */

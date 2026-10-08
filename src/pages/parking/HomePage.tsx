@@ -7,7 +7,7 @@ import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import { Alert, Box, Button, Chip, CircularProgress, Divider, Drawer, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
 import { InfoRow, NavButton, PageTitle, SectionTitle, Surface } from '../../components/Ui'
 import ParkingLotMap, { LotLegend, type LotView } from '../../components/ParkingLotMap'
-import { toLotSlots } from '../../components/parkingLotGeometry'
+import { toLot } from '../../components/parkingLotGeometry'
 import { isApiError } from '../../api/client'
 import { createMoveRequest, getBuildingLayout, getBuildingStatus, getHome, readNotification } from '../../api/parking'
 import { listMyVehicles } from '../../api/vehicles'
@@ -22,7 +22,7 @@ type Notice = { severity: 'success' | 'info' | 'error'; message: string }
 const errorMessage = (e: unknown) => isApiError(e) ? e.message : '잠시 후 다시 시도해 주세요'
 const loadLot = async (buildingId: number) => {
   const [layout, status] = await Promise.all([getBuildingLayout(buildingId), getBuildingStatus(buildingId)])
-  return { slots: toLotSlots(layout, status), status }
+  return { ...toLot(layout, status), status }
 }
 function Loading() { return <Box display="grid" py={6} sx={{placeItems:'center'}}><CircularProgress size={30}/></Box> }
 function LoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
@@ -84,7 +84,7 @@ function HomeView({ home, reload }: { home: Home; reload: () => void }) {
     ].map(([label,count,color])=><Box key={label} sx={{p:1.25,bgcolor:'#fff',border:'1px solid',borderColor:'divider',borderRadius:3,textAlign:'center'}}><Typography variant="h5" color={String(color)}>{count}</Typography><Typography variant="caption">{label}</Typography></Box>)}</Box>
     <Surface sx={{boxShadow:'none'}}>
       <Stack direction="row" alignItems="center" justifyContent="space-between" gap={1}><Typography variant="subtitle2">주차 현황</Typography><ToggleButtonGroup color="primary" exclusive size="small" value={view} onChange={(_,value)=>value&&setView(value)} aria-label="배치도 시점"><ToggleButton value="iso">입체</ToggleButton><ToggleButton value="top">평면</ToggleButton></ToggleButtonGroup></Stack>
-      {lot.error ? <LoadError message={lot.error.message} onRetry={lot.reload}/> : lot.data ? <><ParkingLotMap slots={lot.data.slots} view={view} onInspect={inspect}/><LotLegend/><Typography variant="caption" display="block" color="text.secondary" mt={1.5}>칸을 누르면 차량과 출차 예정 시간을 볼 수 있어요.</Typography></> : <Loading/>}
+      {lot.error ? <LoadError message={lot.error.message} onRetry={lot.reload}/> : lot.data ? <><ParkingLotMap shape={lot.data.shape} slots={lot.data.slots} view={view} onInspect={inspect}/><LotLegend/><Typography variant="caption" display="block" color="text.secondary" mt={1.5}>칸을 누르면 차량과 출차 예정 시간을 볼 수 있어요.</Typography></> : <Loading/>}
       <Button size="small" startIcon={<RefreshRoundedIcon/>} onClick={refresh} sx={{mt:1}}>현황 새로고침</Button>
     </Surface>
     {exitNotice && <Alert severity={exitNotice.severity} onClose={()=>setExitNotice(null)}>{exitNotice.message}</Alert>}

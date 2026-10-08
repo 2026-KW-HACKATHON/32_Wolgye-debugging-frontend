@@ -7,7 +7,7 @@ export const sharedGarages: GarageDetail[] = names.map((name,index) => {
   const id = index + 4
   const hourly_price = index === 3 ? 0 : index === 2 || index === 4 ? 1 : 2
   const max_hours = index === 3 ? 2 : index === 2 ? null : 4
-  return { id, name, address:`서울특별시 노원구 광운로19가길 ${20 + index * 2}`, alley:{id:1,name:'광운로19가길'}, summary:{start_hour:index === 2 ? 9 : 7,end_hour:index === 2 ? 24 : 23,min_hourly_price:hourly_price,max_hours}, slots:Array.from({length:index === 0 ? 5 : 1},(_,slotIndex) => {
+  return { id, name, site_key:name === '햇살빌라' ? 'sunny' : null, address:`서울특별시 노원구 광운로19가길 ${20 + index * 2}`, alley:{id:1,name:'광운로19가길'}, summary:{start_hour:index === 2 ? 9 : 7,end_hour:index === 2 ? 24 : 23,min_hourly_price:hourly_price,max_hours}, slots:Array.from({length:index === 0 ? 5 : 1},(_,slotIndex) => {
     const number = index === 2 ? 5 : index === 3 ? 3 : slotIndex+1
     return {slot_id:2100+index*100+number,zone:{id:21+index,name:'공유 주차'},number,label:`P${number}`,state:index === 4 || (index === 0 && [2,3].includes(slotIndex)) ? 'IN_USE' : index === 1 || (index === 0 && slotIndex === 1) ? 'SOON_EXIT' : 'AVAILABLE',estimated_free_at:index === 1 || slotIndex === 1 ? `${SHARED_MOCK_DATE}T15:30:00+09:00` : null,in_use_until:index === 4 || [2,3].includes(slotIndex) ? `${SHARED_MOCK_DATE}T21:00:00+09:00` : null,offer:{id:501+index*100+slotIndex,weekdays:index === 3 ? WEEKDAYS.slice(0,5) : [...WEEKDAYS],start_hour:index === 2 ? 9 : 7,end_hour:index === 2 ? 24 : 23,hourly_price,max_hours,memo:'이용 후 칸을 비워 주세요.'}}
   })}
