@@ -10,7 +10,7 @@ type Props = {
   shape: LotShape
   slots: LotSlot[]
   view?: LotView
-  /** 'admin'이면 차 색을 입주민(파랑)·외부(주황)·미확인(빨강)으로 나누고 번호판을 보여준다 */
+  /** 'admin'이면 차 색을 입주민(파랑)·외부(주황)·미확인(빨강)으로 나눈다. 차량 번호는 칸을 누르면 화면이 보여 준다 (onInspect) */
   variant?: 'resident' | 'admin'
   selected?: SlotId
   recommendedId?: SlotId
@@ -42,7 +42,7 @@ const occupantColor: Record<Occupant, { car: string; tagBg: string; tagText: str
 
 // ── 2.5D 투영: 평면 (x, y) + 높이 z → 화면 좌표. 아래쪽(입구)이 시점 쪽이다.
 const ISO_X = 0.78
-const ISO_Y = 0.42
+const ISO_Y = 0.52
 // 높이·글자 크기는 폭 800px 사이트(한빛빌라) 기준이다. 사이트 폭에 맞춰 줄이거나 늘린다 (scale)
 const BUILDING_HEIGHT = 80
 // floors 가 있는 사이트 파일의 한 층 높이 기본값 (floorHeight 가 없을 때)
