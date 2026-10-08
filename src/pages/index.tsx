@@ -4,6 +4,9 @@ import type { PageId } from '../types/navigation'
 type LazyPage = LazyExoticComponent<ComponentType>
 
 export const pageComponents: Record<PageId, LazyPage> = {
+  'report-new':lazy(()=>import('./reports/ReportPage')),
+  'report-success':lazy(()=>import('./reports/ReportSuccessPage')),
+  'report-detail':lazy(()=>import('./reports/ReportDetailPage')),
   welcome: lazy(() => import('./onboarding/WelcomePage')),
   signup: lazy(() => import('./onboarding/SignupPage')),
   login: lazy(() => import('./onboarding/LoginPage')),

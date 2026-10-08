@@ -1,3 +1,4 @@
+import PhotoCaptureButton from '../reports/PhotoCaptureButton'
 import { useState } from 'react'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import DirectionsCarRoundedIcon from '@mui/icons-material/DirectionsCarRounded'
@@ -76,7 +77,8 @@ function HomeView({ home, reload }: { home: Home; reload: () => void }) {
   }
   function inspect(slot: LotSlot) { setInspectedId(slot.slotId) }
   return <Stack gap={2.25}>
-    <PageTitle eyebrow={home.building.name} title={home.building.role === 'ADMIN' ? '우리 빌라 관리' : '우리 빌라 주차'} action={<Chip label={home.building.role === 'ADMIN' ? '관리자' : '입주민'} size="small" variant="outlined" color="primary"/>}/>
+    <PageTitle eyebrow={home.building.name} title={home.building.role === 'ADMIN' ? '우리 빌라 관리' : '우리 빌라 주차'} action={<Stack alignItems="flex-end" gap={1}><PhotoCaptureButton/><Chip label={home.building.role === 'ADMIN' ? '관리자' : '입주민'} size="small" variant="outlined" color="primary"/></Stack>}/>
+    <Typography variant="caption" color="text.secondary">미등록 차량을 제보하고 500토큰 받기</Typography>
     {home.admin && <Surface sx={{bgcolor:'#E8F0FF',borderColor:'#C6D9FF'}}><Stack gap={1.25}><Typography variant="subtitle2">확인할 공유 요청 {home.admin.pending_share_requests}건</Typography><NavButton to="admin" fullWidth>관리자 대시보드 열기</NavButton></Stack></Surface>}
     {blockAlert && <Surface sx={{bgcolor:'#FFF7F2',borderColor:'#FFD9BE'}}><Stack gap={1.25}><Stack direction="row" gap={1} alignItems="center"><ErrorRoundedIcon color="error"/><Typography variant="subtitle2">내 차가 막혀 있어요</Typography></Stack><Typography variant="body2">{blockAlert.message}</Typography>{moveNotice && <Alert severity={moveNotice.severity}>{moveNotice.message}</Alert>}<Button variant="contained" disabled={sending || sent || !mine} onClick={sendMoveRequest}>{sending ? '보내는 중…' : sent ? '이동 요청을 보냈어요' : '이동 요청 보내기'}</Button><Typography variant="caption" color="text.secondary">{mine?.expected_exit_at ? `${dateTimeOf(mine.expected_exit_at)}까지 이동을 요청해요.` : '지금 출차가 필요하다고 요청해요.'} 전화번호는 공유되지 않아요.</Typography></Stack></Surface>}
     <Surface sx={{boxShadow:'none'}}>
