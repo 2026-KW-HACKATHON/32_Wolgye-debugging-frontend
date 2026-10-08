@@ -44,7 +44,7 @@ export async function getAdminDashboard(buildingId: number, query: AdminDashboar
   return mockDelay({
     building: { id: layout.building_id, name: layout.name },
     pending_requests: shareRequests.filter((request) => request.status === 'PENDING').sort((a, b) => b.created_at.localeCompare(a.created_at))
-      .map((request) => ({ id: request.id, requester: { name: request.masked_name, temperature: request.temperature }, slot_label: request.slot_label, request_date: request.request_date, start_hour: request.start_hour, end_hour: request.end_hour, total_price: request.total_price, created_at: request.created_at })),
+      .map((request) => ({ id: request.id, requester: { name: request.requester.name, temperature: request.temperature }, slot_label: request.slot_label, request_date: request.request_date, start_hour: request.start_hour, end_hour: request.end_hour, total_price: request.total_price, created_at: request.created_at })),
     realtime: {
       available_count: statuses.filter((slot) => slot.state === 'EMPTY' || slot.state === 'SOON_EXIT').length,
       vehicles: statuses.flatMap((slot) => slot.parking && slot.parking.occupant_type !== 'RESIDENT' ? [{ slot_id: slot.slot_id, slot_label: labelOf(slot.slot_id), plate: slot.parking.plate, occupant_type: slot.parking.occupant_type, can_request_move: slot.parking.occupant_type === 'EXTERNAL' }] : []),
