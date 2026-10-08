@@ -206,3 +206,11 @@ export async function joinBuilding(body: { invite_code: string }): Promise<JoinB
 }
 // 목에서 차량 API가 첫 차량 등록 성공 후 호출. 실제 서버는 onboarding_step을 갱신한다.
 export function completeVehicleOnboarding(): void { requireMockSession(); if (session!.profile.building) { session!.profile.onboarding_step = 'DONE'; persist() } }
+
+/** 목 제보 성공 시 현재 계정의 보상을 세션/계정에 함께 반영한다. */
+export function creditMockReportReward(amount: number): number {
+  requireMockSession()
+  session!.profile.token_balance += amount
+  persist()
+  return session!.profile.token_balance
+}

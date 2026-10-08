@@ -24,7 +24,7 @@ export class ApiError extends Error {
 export const isApiError = (error: unknown): error is ApiError => error instanceof ApiError
 
 type Query = Record<string, string | number | boolean | null | undefined>
-type RequestOptions = { query?: Query; body?: unknown; /** false 면 Bearer 를 붙이지 않고 401 재시도도 하지 않는다 (로그인·가입·토큰 갱신) */ auth?: boolean }
+type RequestOptions = { query?: Query; body?: unknown; /** false 면 Bearer 를 붙이지 않고 401 재시도도 하지 않는다 (로그인·가입·토큰 갱신) */ auth?: boolean; responseType?: 'blob' }
 
 const statusCode = (status: number): ErrorCode => status === 401 ? 'UNAUTHORIZED' : status === 404 ? 'NOT_FOUND' : status === 400 ? 'INVALID_INPUT' : 'UNKNOWN_ERROR'
 
@@ -50,11 +50,11 @@ export async function request<T>(method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DEL
   const tokens = auth ? await import('./auth') : null
   const send = async () => {
     const headers: Record<string, string> = { Accept: 'application/json' }
-    if (body !== undefined) headers['Content-Type'] = 'application/json'
+    if (body !== undefined && !(body instanceof FormData)) headers['Content-Type'] = 'application/json'
     const token = tokens?.getAccessToken()
     if (token) headers.Authorization = `Bearer ${token}`
     try {
-      return await fetch(toUrl(path, query), { method, headers, body: body === undefined ? undefined : JSON.stringify(body) })
+      return await fetch(toUrl(path, query), { method, headers, body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body) })
     } catch {
       throw new ApiError(0, 'NETWORK_ERROR', '서버에 연결하지 못했어요. 네트워크를 확인해 주세요.')
     }
@@ -66,6 +66,7 @@ export async function request<T>(method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DEL
     if (refreshed) response = await send()
   }
   if (!response.ok) throw await toApiError(response)
+  if (options.responseType === 'blob') return await response.blob() as T
   if (response.status === 204) return undefined as T
   const text = await response.text()
   return (text ? JSON.parse(text) : undefined) as T

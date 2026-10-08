@@ -1,4 +1,7 @@
 export type PageId =
+  | 'report-new'
+  | 'report-success'
+  | 'report-detail'
   | 'welcome'
   | 'signup'
   | 'login'
@@ -37,6 +40,9 @@ export type PageMeta = {
 }
 
 export const pages: PageMeta[] = [
+  { id:'report-new',title:'미등록 차량 제보',group:'주차',tab:'홈',backTo:'home' },
+  { id:'report-success',title:'제보 완료',group:'주차',tab:'홈' },
+  { id:'report-detail',title:'제보 상세',group:'주차',tab:'알림',backTo:'notifications' },
   { id: 'welcome', title: '서비스 소개', group: '시작하기' },
   { id: 'signup', title: '회원가입', group: '시작하기', backTo: 'welcome' },
   { id: 'login', title: '로그인', group: '시작하기', backTo: 'welcome' },

@@ -10,8 +10,8 @@ export type ExitSource = 'MANUAL' | 'RECURRING' | 'AI_ESTIMATED' | 'NONE'
 export type ParkingState = 'PARKED' | 'EXITED'
 export type ZoneType = 'PILOTI_IN' | 'PILOTI_OUT' | 'ROADSIDE'
 export type MoveRequestStatus = 'PENDING' | 'MOVED' | 'DECLINED'
-export type NotificationType = 'BLOCK_ALERT' | 'MOVE_REQUEST' | 'EXIT_DONE' | 'SHARE_REQUEST' | 'SHARE_RESULT'
-export type NotificationScreen = 'MOVE_REQUEST' | 'SHARE_REQUEST' | 'HOME'
+export type NotificationType = 'BLOCK_ALERT' | 'MOVE_REQUEST' | 'EXIT_DONE' | 'SHARE_REQUEST' | 'SHARE_RESULT' | 'VEHICLE_REPORT'
+export type NotificationScreen = 'MOVE_REQUEST' | 'SHARE_REQUEST' | 'HOME' | 'VEHICLE_REPORT'
 
 export type AlleyRef = { id: number; name: string }
 
@@ -83,7 +83,7 @@ export type LotSlot = {
 
 // ── 알림 ──
 export type NotificationLink = { screen: NotificationScreen; id: number | null }
-export type NotificationItem = { id: number; type: NotificationType; title: string; body: string; link: NotificationLink | null; is_read: boolean; created_at: DateTime }
+export type NotificationItem = { recipient_id?:number; photo_url?:string; id: number; type: NotificationType; title: string; body: string; link: NotificationLink | null; is_read: boolean; created_at: DateTime }
 export type NotificationPage = Page<NotificationItem>
 
 // ── 홈 GET /me/home ──

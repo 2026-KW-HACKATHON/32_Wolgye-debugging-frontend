@@ -157,7 +157,7 @@ export default function ParkingLotMap({ shape, slots, view = 'iso', variant = 'r
 
   // 탭 영역은 건물·벽·차·칩보다 위, 맨 마지막에 투명하게 깐다 (입체에서 다른 도형에 가려도 눌린다, FE #47).
   // 칸 바닥 모양 그대로라 평면·입체 모두 같은 칸이 같은 자리에서 눌린다
-  const hitLayer = interactive ? ordered.map((slot) => <path key={slot.id} className="slot-hit" {...outline(slot.rect)} fill="transparent" role="button" tabIndex={0} aria-label={`${slot.label} · ${describe(slot)}`} aria-pressed={onInspect ? undefined : slot.id === selected} onClick={() => tap(slot)} onKeyDown={(event) => onKey(event, slot)} style={{ cursor: 'pointer' }}/>) : null
+  const hitLayer = interactive ? ordered.map((slot) => <path key={slot.id} className="slot-hit" {...outline(slot.rect)} fill="transparent" role="button" tabIndex={onSelect && !onInspect && slot.state !== 'empty' ? -1 : 0} aria-disabled={Boolean(onSelect && !onInspect && slot.state !== 'empty')} aria-label={`${slot.label} · ${describe(slot)}`} aria-pressed={onInspect ? undefined : slot.id === selected} onClick={() => tap(slot)} onKeyDown={(event) => onKey(event, slot)} style={{ cursor: 'pointer' }}/>) : null
   const carLayer = ordered.map((slot) => {
     const rect = slot.rect
     const ghost = slot.state === 'empty' && slot.id === selected
