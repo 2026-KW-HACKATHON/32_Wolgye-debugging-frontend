@@ -65,11 +65,18 @@ export default function ParkingRegisterPage() {
 function RegisterView({ home, vehicle, vehicles, schedule, reloadBase, initialSlotId }: { home: Home; vehicle: VehicleListItem; vehicles: VehicleListItem[]; schedule: RecurringSchedule | null; reloadBase: () => void; initialSlotId: number }) {
   const draftKey = `parking-${vehicle.id}`
   const [draft] = useState(() => readDraft<ParkingDraft>(draftKey))
+  // 저장된 입력값의 날짜는 그대로 남는다. 어제 고른 '내일'이 오늘이 되는 식으로 그새 지난 출차 시각이면 날짜·시간만 기본값(내일 07:30)으로 (#50)
+  const [draftWhen] = useState(() => {
+    if (!draft) return null
+    const draftTime = draft.time === CUSTOM_TIME ? draft.customTime : draft.time
+    const stale = !isDate(draft.date) || draft.date < kstDate() || (!draft.longTerm && draft.date === kstDate() && draftTime <= kstClock())
+    return stale ? null : draft
+  })
   const buildingId = home.building.id
-  const [date, setDate] = useState(draft?.date ?? kstDate(1))
+  const [date, setDate] = useState(draftWhen?.date ?? kstDate(1))
   const [dateOpen, setDateOpen] = useState(false)
-  const [time, setTime] = useState(draft?.time ?? '07:30')
-  const [customTime, setCustomTime] = useState(draft?.customTime ?? '08:00')
+  const [time, setTime] = useState(draftWhen?.time ?? '07:30')
+  const [customTime, setCustomTime] = useState(draftWhen?.customTime ?? '08:00')
   const [longTerm, setLongTerm] = useState(draft?.longTerm ?? false)
   const [repeat, setRepeat] = useState(draft?.repeat ?? false)
   const [memo, setMemo] = useState(draft?.memo ?? '')
