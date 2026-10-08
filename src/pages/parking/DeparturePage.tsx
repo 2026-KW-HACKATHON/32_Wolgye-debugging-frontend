@@ -9,9 +9,22 @@ import { hashParams, toHash } from '../../types/navigation'
 import type { VehicleDetail } from '../../types/parking'
 import { halfHourOptions } from './timeOptions'
 import { readDraft, writeDraft, removeDraft } from '../../utils/formDrafts'
-import { kstClock, kstDate } from './kstTime'
+import { dateTimeOf, kstClock, kstDate, kstPartsOf } from './kstTime'
 
 const TIME_OPTIONS = halfHourOptions('06:00','23:30')
+
+type Choice = { day: string; customDate: string; time: string }
+const dateOfChoice = ({ day, customDate }: Choice) => day === 'today' ? kstDate() : day === 'tomorrow' ? kstDate(1) : customDate
+const toChoice = (date: string, time: string): Choice => ({ day: date === kstDate() ? 'today' : date === kstDate(1) ? 'tomorrow' : 'custom', customDate: date, time })
+// 오늘 이미 지난 시각 (서버도 400 INVALID_INPUT, 2026-10-04 결정)
+const isPastAt = (date: string, time: string) => date < kstDate() || (date === kstDate() && time <= kstClock())
+
+/** 처음 보여 줄 날짜·시간 (#50). 지금 일정이 아직 안 지났으면 그대로, 지났거나 없으면 다음 30분 선택지 (오늘 남은 선택지가 없으면 내일 첫 시각) */
+function initialChoice(current: { date: string; clock: string } | null): Choice {
+  if (current && !isPastAt(current.date, current.clock)) return toChoice(current.date, current.clock)
+  const next = TIME_OPTIONS.find((value) => !isPastAt(kstDate(), value))
+  return next ? toChoice(kstDate(), next) : toChoice(kstDate(1), TIME_OPTIONS[0])
+}
 
 // 차량 id 는 #departure?id=7. 없으면(화면 목록에서 직접 연 경우) 홈의 내 주차 차량을 쓴다
 async function loadVehicle(paramId: number) {
@@ -30,20 +43,22 @@ export default function DeparturePage() {
 
 function DepartureForm({ vehicle, parking }: { vehicle: VehicleDetail; parking: NonNullable<VehicleDetail['parking']> }) {
   const draftKey = `departure-${vehicle.id}`
-  const [draft] = useState(()=>readDraft<{day:string;customDate:string;time:string;memo:string}>(draftKey))
+  const [draft] = useState(()=>readDraft<Choice & {memo:string}>(draftKey))
   const current = vehicle.schedule?.expected_exit_at ?? null
-  const currentDate = current?.slice(0, 10)
-  const [day, setDay] = useState(draft?.day ?? (!currentDate ? 'tomorrow' : currentDate === kstDate() ? 'today' : currentDate === kstDate(1) ? 'tomorrow' : 'custom'))
-  const [customDate, setCustomDate] = useState(draft?.customDate ?? currentDate ?? '')
-  // 지금 출차 시각이 선택지(06:00~14:00) 밖이면 기본값 07:30
-  const [time, setTime] = useState(draft?.time ?? (current && TIME_OPTIONS.includes(current.slice(11, 16)) ? current.slice(11, 16) : '07:30'))
+  const currentAt = current ? kstPartsOf(current) : null
+  // 지금 출차 시각(예: 15:57)이 30분 선택지에 없으면 선택지에 넣어 그대로 고를 수 있게 한다
+  const timeOptions = currentAt && !TIME_OPTIONS.includes(currentAt.clock) ? [...TIME_OPTIONS, currentAt.clock].sort() : TIME_OPTIONS
+  // 저장하지 않고 나간 입력값이 그새 지난 시각이 됐거나 선택지에 없으면 버리고 기본값으로 연다
+  const [initial] = useState(()=>draft && timeOptions.includes(draft.time) && !isPastAt(dateOfChoice(draft), draft.time) ? draft : initialChoice(currentAt))
+  const [day, setDay] = useState(initial.day)
+  const [customDate, setCustomDate] = useState(initial.customDate)
+  const [time, setTime] = useState(initial.time)
   // 지금 일정의 메모로 채운다. PUT 이라 저장할 때 메모 칸 값을 늘 같이 보낸다 (안 보내면 기존 메모가 지워짐, backend #34)
   const [memo, setMemo] = useState(draft?.memo ?? vehicle.schedule?.memo ?? '')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   useEffect(()=>{writeDraft(draftKey,{day,customDate,time,memo})},[draftKey,day,customDate,time,memo])
   const date = day === 'today' ? kstDate() : day === 'tomorrow' ? kstDate(1) : customDate
-  // 오늘 이미 지난 시각은 고를 수 없다 (서버도 400 INVALID_INPUT, 2026-10-04 결정)
   const isPast = (value: string) => date === kstDate() && value <= kstClock()
   const pastTime = isPast(time)
 
@@ -68,9 +83,10 @@ function DepartureForm({ vehicle, parking }: { vehicle: VehicleDetail; parking: 
     <Divider/>
     {hashParams().get('saved') === 'repeat' && <Alert severity="success">반복 일정을 저장했어요. 출차 일정 입력은 그대로 유지했어요.</Alert>}
     <SectionTitle>출차 일시</SectionTitle>
+    <Typography variant="body2" color="text.secondary">지금 일정: {current ? `${dateTimeOf(current)} 출차 예정` : '등록된 출차 시간 없음'}{current && currentAt && isPastAt(currentAt.date, currentAt.clock) && ' (지난 시각)'}</Typography>
     <TextField select label="날짜 선택" value={day} onChange={(event)=>setDay(event.target.value)}>{[['today','오늘'],['tomorrow','내일'],['custom','날짜 직접 선택']].map(([value,label])=><MenuItem key={value} value={value}>{label}</MenuItem>)}</TextField>
     {day === 'custom' && <TextField type="date" label="날짜" value={customDate} onChange={(event)=>setCustomDate(event.target.value)} slotProps={{inputLabel:{shrink:true},htmlInput:{min:kstDate()}}}/>}
-    <TextField select label="출차 시간" value={time} onChange={(event)=>setTime(event.target.value)}>{TIME_OPTIONS.map((value)=><MenuItem key={value} value={value} disabled={isPast(value)}>{value}</MenuItem>)}</TextField>
+    <TextField select label="출차 시간" value={time} onChange={(event)=>setTime(event.target.value)}>{timeOptions.map((value)=><MenuItem key={value} value={value} disabled={isPast(value)}>{value}{currentAt && value === currentAt.clock && date === currentAt.date ? ' (지금 일정)' : ''}</MenuItem>)}</TextField>
     {pastTime && <Typography variant="caption" color="error">이미 지난 시각이에요. 이후 시각을 골라 주세요</Typography>}
     <Divider/>
     <SectionTitle>반복 설정</SectionTitle>

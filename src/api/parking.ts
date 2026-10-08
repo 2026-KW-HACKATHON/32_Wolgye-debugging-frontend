@@ -29,6 +29,7 @@ function myParking(vehicleId?: number) {
   const mine = parkings.filter((parking) => parking.state === 'PARKED' && isMine(parking.vehicle_id) && (vehicleId === undefined || parking.vehicle_id === vehicleId))
   return mine.find((parking) => ownVehicle(parking.vehicle_id!)?.is_default) ?? mine[0]
 }
+const myNotifications = () => notifications.filter((item)=>item.recipient_id === undefined || item.recipient_id === getMockUserId())
 const myStatuses = () => slotStatuses(isMine)
 const myVehicleOf = (vehicleId: number) => { const vehicle = ownVehicle(vehicleId); return { id: vehicleId, plate: vehicle?.plate ?? '', color: vehicle?.color ?? null } }
 
@@ -54,12 +55,12 @@ export async function getHome(): Promise<Home> {
   const blockerParking = blocker === undefined ? undefined : parkedAt(blocker)
   return mockDelay({
     building: { id: MY_BUILDING_ID, name: layout.name, role: getMyRole() ?? me.role },
-    unread_notification_count: notifications.filter((item) => !item.is_read).length,
+    unread_notification_count: myNotifications().filter((item) => !item.is_read).length,
     summary: { available: count('EMPTY') + count('SOON_EXIT'), soon_exit: count('SOON_EXIT'), blocked: statuses.filter((slot) => slot.parking?.occupant_type === 'RESIDENT' && slot.blocked_by.length > 0).length, empty: count('EMPTY') },
     my_parking: mine ? { parking_id: mine.id, vehicle: myVehicleOf(mine.vehicle_id!), slot_label: labelOf(mine.slot_id), state: mine.state, expected_exit_at: mine.expected_exit_at } : null,
     block_alert: blockerParking ? { blocking_parking_id: blockerParking.id, message: `내 차량이 ${labelOf(blockerParking.slot_id)} 차량에 의해 막혀 있습니다.` } : null,
     admin: (getMyRole() ?? me.role) === 'ADMIN' ? { pending_share_requests: shareRequests.filter((request) => request.status === 'PENDING').length } : null,
-    recent_notifications: byNewest(notifications).slice(0, 2),
+    recent_notifications: byNewest(myNotifications()).slice(0, 2),
   })
 }
 
@@ -241,7 +242,7 @@ export async function listNotifications(query: PageQuery = {}): Promise<Page<Not
   // TODO(api): GET /notifications?cursor&limit (목 커서는 시작 위치 숫자)
   const limit = Math.min(Math.max(query.limit ?? 20, 1), 50)
   const start = Number(query.cursor ?? 0) || 0
-  const sorted = byNewest(notifications)
+  const sorted = byNewest(myNotifications())
   const end = start + limit
   return mockDelay({ items: sorted.slice(start, end), next_cursor: end < sorted.length ? String(end) : null })
 }
@@ -249,7 +250,7 @@ export async function listNotifications(query: PageQuery = {}): Promise<Page<Not
 export async function readNotification(notificationId: number): Promise<void> {
   if (!USE_MOCK) return request<void>('POST', `/notifications/${notificationId}/read`)
   // TODO(api): POST /notifications/{notification_id}/read
-  const item = notifications.find((notification) => notification.id === notificationId)
+  const item = myNotifications().find((notification) => notification.id === notificationId)
   if (!item) return notFound()
   item.is_read = true
   return mockDelay(undefined)
@@ -258,6 +259,6 @@ export async function readNotification(notificationId: number): Promise<void> {
 export async function readAllNotifications(): Promise<void> {
   if (!USE_MOCK) return request<void>('POST', '/notifications/read-all')
   // TODO(api): POST /notifications/read-all
-  notifications.forEach((notification) => { notification.is_read = true })
+  myNotifications().forEach((notification) => { notification.is_read = true })
   return mockDelay(undefined)
 }

@@ -22,6 +22,7 @@
    gh issue list -R 2026-KW-HACKATHON/32_Wolgye-debugging-backend --state open   # FE가 백엔드에 요청한 이슈의 답변
    ```
 3. `git status`와 `git log --oneline -10`으로 작업 트리를 확인한 뒤, 다음에 할 이슈를 사람에게 한 줄로 알린다.
+4. 새 작업은 `git fetch` 후 **`origin/dev`에서** 브랜치를 만든다 (`git switch -c <브랜치> origin/dev`). PR 대상도 `dev`다. `main`은 Vercel Production이라 건드리지 않는다 (`decisions.md` 브랜치·배포). `dev` PR 본문에는 `Refs #번호`를 쓰고, 이슈는 `dev` → `main` 배포 PR의 `Closes`로 닫는다 (`decisions.md` 이슈 닫기)
 
 ## 1. 담당 이슈와 순서
 
