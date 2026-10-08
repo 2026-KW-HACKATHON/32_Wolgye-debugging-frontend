@@ -1,0 +1,40 @@
+const test = require('node:test')
+const assert = require('node:assert/strict')
+const { runtime } = require('./helpers/runtime.cjs')
+
+test('long-term conversion clears all displayed exit times, preserves recurring schedule and allows return to timed parking', async () => {
+  const rt = runtime(), auth = rt.load('src/api/auth.ts'), api = rt.load('src/api/parking.ts')
+  await auth.login({email: 'kim@kw.ac.kr', password: 'chagok1234'})
+  const me = rt.load('src/mocks/parking.ts'), vehicleId = me.MY_VEHICLE_ID
+  const recurring = JSON.stringify(await api.getRecurringSchedule(vehicleId))
+  const created = await api.createParking({slot_id: 1002, vehicle_id: vehicleId, expected_exit_at: '2099-10-09T15:57:00+09:00', memo: '기존 메모'})
+  await assert.rejects(api.updateParkingSchedule(created.id, {is_long_term: false}), e => e.code === 'INVALID_INPUT')
+  assert.equal((await api.getMyVehicle(vehicleId)).schedule.expected_exit_at, '2099-10-09T15:57:00+09:00')
+  const updated = await api.updateParkingSchedule(created.id, {is_long_term: true, memo: '상시 주차 메모'})
+  assert.equal(updated.expected_exit_at, null)
+  assert.equal(updated.memo, '상시 주차 메모')
+  assert.equal((await api.getHome()).my_parking.expected_exit_at, null)
+  assert.equal((await api.getMyVehicle(vehicleId)).schedule.expected_exit_at, null)
+  const slot = (await api.getBuildingStatus(me.MY_BUILDING_ID)).slots.find(s => s.slot_id === 1002)
+  assert.equal(slot.state, 'OCCUPIED')
+  assert.equal(slot.parking.expected_exit_at, null)
+  assert.equal(JSON.stringify(await api.getRecurringSchedule(vehicleId)), recurring)
+  const timed = await api.updateParkingSchedule(created.id, {is_long_term: false, expected_exit_at: '2099-10-10T18:30:00+09:00', memo: '다시 출차 예약'})
+  assert.equal(timed.expected_exit_at, '2099-10-10T18:30:00+09:00')
+  assert.equal((await api.getHome()).my_parking.expected_exit_at, timed.expected_exit_at)
+  await api.exitParking(created.id)
+  await assert.rejects(api.updateParkingSchedule(created.id, {is_long_term: true}), e => e.code === 'NOT_FOUND')
+})
+
+test('server schedule transport sends long-term without an exit time and accepts null response', async () => {
+  const calls = []
+  const rt = runtime(false, async (url, init) => {
+    calls.push({url, init})
+    return new Response(JSON.stringify({parking_id: 12, expected_exit_at: null, exit_source: 'MANUAL', memo: '메모'}), {status: 200})
+  })
+  const result = await rt.load('src/api/parking.ts').updateParkingSchedule(12, {is_long_term: true, memo: '메모'})
+  assert.equal(calls[0].url, 'https://backend.example/api/v1/parkings/12/schedule')
+  assert.equal(calls[0].init.method, 'PUT')
+  assert.deepEqual(JSON.parse(calls[0].init.body), {is_long_term: true, memo: '메모'})
+  assert.equal(result.expected_exit_at, null)
+})

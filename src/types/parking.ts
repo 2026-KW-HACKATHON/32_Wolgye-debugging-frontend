@@ -110,7 +110,7 @@ export type VehicleDetail = {
   color: VehicleColor | null
   /** unit: 프로필에 동·호수가 없으면 null (FE #39) */
   owner: { name: string; unit: string | null }
-  parking: { parking_id: number; slot_id: number; slot_label: string; entered_at: DateTime; state: ParkingState } | null
+  parking: { parking_id: number; slot_id: number; slot_label: string; entered_at: DateTime; state: ParkingState; /** backend #51 배포 전에는 생략 */ is_shared?: boolean } | null
   /** memo: 출차 예정이 온 일정의 메모 (RECURRING 이면 반복 일정 메모). 메모가 없거나 상시 주차면 null (backend #33·#34) */
   schedule: { expected_exit_at: DateTime | null; exit_source: ExitSource; elapsed_minutes: number; memo: string | null } | null
 }
@@ -124,8 +124,9 @@ export type SlotRecommendation = { slot_id: number; tag: SlotTag; label: string;
 export type SlotRecommendations = { slots: SlotRecommendation[] }
 export type ParkingCreate = { slot_id: number; vehicle_id: number; is_long_term?: boolean; expected_exit_at?: DateTime; /** 평일(월~금) 반복. 이름은 복수형이지만 boolean */ repeat_weekdays?: boolean; memo?: string }
 export type ParkingCreated = { id: number; slot_id: number; state: ParkingState; expected_exit_at: DateTime | null; exit_source: ExitSource; blocking: number[] }
-export type ParkingScheduleUpdate = { expected_exit_at: DateTime; memo?: string | null }
-export type ParkingScheduleUpdated = { parking_id: number; expected_exit_at: DateTime; exit_source: ExitSource; memo: string | null }
+/** backend #48 제안 계약. 상시 주차는 출차 시각을 보내지 않는다. */
+export type ParkingScheduleUpdate = ({ is_long_term: true; expected_exit_at?: never } | { is_long_term?: false; expected_exit_at: DateTime }) & { memo?: string | null }
+export type ParkingScheduleUpdated = { parking_id: number; expected_exit_at: DateTime | null; exit_source: ExitSource; memo: string | null }
 export type ParkingExited = { id: number; state: ParkingState; actual_exit_at: DateTime; on_time: boolean }
 
 // ── 이동 요청 ──
