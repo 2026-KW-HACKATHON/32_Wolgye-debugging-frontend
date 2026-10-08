@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded'
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import { Alert, Box, Button, Chip, CircularProgress, Divider, Drawer, MenuItem, Stack, TextField, Typography } from '@mui/material'
 import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded'
-import { kstClock, kstDate, dateTimeOf } from '../parking/kstTime'
+import { dateTimeOf } from '../parking/kstTime'
 import { InfoRow, PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
 import { hashParams, toHash } from '../../types/navigation'
 import { createShareRequest, getGarage } from '../../api/sharedParking'
@@ -19,6 +19,7 @@ import { toGarageLot, toLot } from '../../components/parkingLotGeometry'
 import type { LotSlot } from '../../types/parking'
 import type { GarageSlot } from '../../types/sharedParking'
 import { hourLabel, isValidRequestDate, todayKst } from './requestPreview'
+import { initialRequestTime, isElapsedStartHour, isOngoingRequest, requestTimeError } from './shareRequestTime'
 
 export default function GarageDetailPage() {
   const garageId = Number(hashParams().get('id') ?? 4)
@@ -51,25 +52,37 @@ export default function GarageDetailPage() {
   const [submitError,setSubmitError] = useState('')
   const [needsLogin,setNeedsLogin] = useState(false)
   const submitting = useRef(false)
+  const [now,setNow] = useState(()=>new Date())
+  useEffect(()=>{
+    if (!selected) return
+    const refresh = ()=>setNow(new Date())
+    const timer = window.setInterval(refresh,1000)
+    window.addEventListener('focus',refresh)
+    return ()=>{window.clearInterval(timer);window.removeEventListener('focus',refresh)}
+  },[selected])
   const offer = selected?.offer
   const day = (['SUN','MON','TUE','WED','THU','FRI','SAT'] as const)[new Date(`${date}T12:00:00+09:00`).getUTCDay()]
   const dateError = !isValidRequestDate(date) ? '오늘 이후 날짜를 선택해 주세요.' : offer && !offer.weekdays.includes(day) ? '이 요일에는 공유하지 않아요. 아래 공유 요일을 확인해 주세요.' : ''
-  const timeError = offer && (!Number.isInteger(start) || !Number.isInteger(end) || end <= start || start < offer.start_hour || end > offer.end_hour || (offer.max_hours !== null && end-start > offer.max_hours)) ? '운영 시간과 최대 이용 시간에 맞춰 선택해 주세요.' : date === kstDate() && `${String(start).padStart(2,'0')}:00` < kstClock() ? '이미 지난 시작 시간이에요. 이후 시간이나 다른 날짜를 선택해 주세요.' : ''
+  const timeError = offer ? requestTimeError(offer,date,start,end,now) : ''
+  const ongoing = !dateError && !timeError && isOngoingRequest(date,start,end,now)
   const total = (offer?.hourly_price ?? 0) * Math.max(0,end-start)
   const insufficient = !!data && total > data.me.token_balance
   const invalid = !!dateError || !!timeError || !offer || insufficient || !data?.vehicles.some((item)=>item.id === Number(vehicle))
   const openRequest = (spot:GarageSlot) => {
     setSelected(spot);setSubmitError('');setNeedsLogin(false)
-    for (let offset=0;offset<8;offset++) {
-      const nextDate=kstDate(offset)
-      const nextDay=(['SUN','MON','TUE','WED','THU','FRI','SAT'] as const)[new Date(`${nextDate}T12:00:00Z`).getUTCDay()]
-      const nextStart=offset === 0 ? Math.max(spot.offer.start_hour,Number(kstClock().slice(0,2))+(kstClock().slice(3) !== '00' ? 1 : 0)) : spot.offer.start_hour
-      if (spot.offer.weekdays.includes(nextDay) && nextStart<spot.offer.end_hour) { setDate(nextDate);setStart(nextStart);setEnd(nextStart+1);break }
-    }
+    // Event handler: take a fresh clock snapshot when opening the form.
+    // oxlint-disable-next-line react/purity
+    const current = new Date()
+    setNow(current)
+    const initial = initialRequestTime(spot.offer,current)
+    if (initial) {setDate(initial.date);setStart(initial.start);setEnd(initial.end)}
+    else {setDate(todayKst());setStart(spot.offer.start_hour);setEnd(spot.offer.start_hour);setSubmitError('선택할 수 있는 공유 시간이 없어요.')}
     setVehicle(String(data?.vehicles.find((item)=>item.is_default)?.id ?? data?.vehicles[0]?.id ?? ''))
   }
   const sendRequest = async () => {
     if (invalid || !offer || submitting.current) return
+    const freshError = requestTimeError(offer,date,start,end)
+    if (freshError) {setNow(new Date());setSubmitError(freshError);return}
     submitting.current = true;setBusy(true);setSubmitError('');setNeedsLogin(false)
     try {const result = await createShareRequest({offer_id:offer.id,vehicle_id:Number(vehicle),request_date:date,start_hour:start,end_hour:end});window.location.hash = toHash('request-result',{id:result.id,garage_id:garageId,slot_id:selected!.slot_id,q:hashParams().get('q') ?? ''})}
     catch(e) {setSubmitError(isApiError(e) ? e.message : '잠시 후 다시 시도해 주세요.');setNeedsLogin(isApiError(e) && e.status === 401)}
@@ -105,8 +118,9 @@ export default function GarageDetailPage() {
     <Drawer anchor="bottom" open={selected !== null} onClose={()=>{if (!busy) setSelected(null)}} slotProps={{paper:{sx:{maxWidth:440,mx:'auto',borderTopLeftRadius:20,borderTopRightRadius:20,maxHeight:'90dvh'}}}}><Stack gap={2} p={3} pb="calc(24px + env(safe-area-inset-bottom))" component="form" onSubmit={(event)=>{event.preventDefault();void sendRequest()}}>
       <Typography variant="h6">공유 요청 · {selected?.label}</Typography>
       {vehicles.length === 0 ? <Alert severity="info" action={<Button href="#vehicles">차량 등록</Button>}>이용할 차량을 먼저 등록해 주세요.</Alert> : <TextField select label="이용 차량" value={vehicle} disabled={busy} onChange={(event)=>setVehicle(event.target.value)}>{vehicles.map((item)=><MenuItem key={item.id} value={String(item.id)}>{item.plate}{item.alias ? ` · ${item.alias}` : ''}</MenuItem>)}</TextField>}
-      <TextField label="이용 날짜" type="date" error={!!dateError} helperText={dateError} value={date} disabled={busy} onChange={(event)=>setDate(event.target.value)} slotProps={{inputLabel:{shrink:true},htmlInput:{min:todayKst()}}}/>
-      <Stack direction="row" gap={1}><TextField select fullWidth error={!!timeError} label="시작 시간" value={start} disabled={busy} onChange={(event)=>{const next=Number(event.target.value);setStart(next);setEnd(next+1)}}>{Array.from({length:(offer?.end_hour ?? 23)-(offer?.start_hour ?? 7)},(_,i)=>(offer?.start_hour ?? 7)+i).map((hour)=><MenuItem key={hour} value={hour}>{hourLabel(hour)}</MenuItem>)}</TextField><TextField select fullWidth label="종료 시간" error={!!timeError} value={end} disabled={busy} onChange={(event)=>setEnd(Number(event.target.value))}>{Array.from({length:Math.min(offer?.max_hours ?? 24,(offer?.end_hour ?? 23)-start)},(_,i)=>start+i+1).map((hour)=><MenuItem key={hour} value={hour}>{hourLabel(hour)}</MenuItem>)}</TextField></Stack>
+      <TextField label="이용 날짜" type="date" error={!!dateError} helperText={dateError} value={date} disabled={busy} onChange={(event)=>{const nextDate=event.target.value;setDate(nextDate);setSubmitError('');if (offer && isElapsedStartHour(nextDate,start)) {const initial=initialRequestTime(offer);if (initial?.date === nextDate) {setStart(initial.start);setEnd(initial.end)}}}} slotProps={{inputLabel:{shrink:true},htmlInput:{min:todayKst()}}}/>
+      <Stack direction="row" gap={1}><TextField select fullWidth error={!!timeError} label="시작 시간" value={start} disabled={busy} onChange={(event)=>{const next=Number(event.target.value);setStart(next);setEnd(next+1)}}>{Array.from({length:(offer?.end_hour ?? 23)-(offer?.start_hour ?? 7)},(_,i)=>(offer?.start_hour ?? 7)+i).map((hour)=><MenuItem key={hour} value={hour} disabled={isElapsedStartHour(date,hour,now)}>{hourLabel(hour)}</MenuItem>)}</TextField><TextField select fullWidth label="종료 시간" error={!!timeError} value={end} disabled={busy} onChange={(event)=>setEnd(Number(event.target.value))}>{Array.from({length:Math.min(offer?.max_hours ?? 24,(offer?.end_hour ?? 23)-start)},(_,i)=>start+i+1).map((hour)=><MenuItem key={hour} value={hour}>{hourLabel(hour)}</MenuItem>)}</TextField></Stack>
+      {ongoing && <Alert severity="info">지금부터 {hourLabel(end)}까지 이용해요.<br/>관리자 수락 후 주차할 수 있어요. 남은 시간이 1시간 미만이어도 선택한 {end-start}시간 요금이 적용돼요.</Alert>}
       {timeError && <Typography variant="caption" color="error">{timeError}</Typography>}{offer && <><Typography variant="body2">공유 요일: {offer.weekdays.map((day)=>({MON:'월',TUE:'화',WED:'수',THU:'목',FRI:'금',SAT:'토',SUN:'일'}[day])).join(' · ')}</Typography><Typography variant="body2">총 이용 요금 {total.toLocaleString()}토큰 · {offer.max_hours === null ? '시간 제한 없음' : `최대 ${offer.max_hours}시간`}</Typography><Typography variant="caption" color="text.secondary">보유 {me.token_balance.toLocaleString()}토큰 · 수락 시 차감됩니다.</Typography></>}
       {insufficient && <Alert severity="warning">보유 토큰이 부족해요. 이용 시간을 줄이거나 무료 주차 칸을 찾아보세요.</Alert>}{submitError && <Alert severity="error" action={needsLogin ? <Button href="#login">로그인</Button> : undefined}>{submitError}</Alert>}
       <Typography variant="caption" color="text.secondary">요청만으로 이용이 확정되지는 않아요. 관리자 수락 후 이용해 주세요.</Typography><Button type="submit" variant="contained" disabled={invalid || busy}>{busy ? '요청 중…' : '요청 보내기'}</Button><Button disabled={busy} onClick={()=>setSelected(null)}>닫기</Button>
