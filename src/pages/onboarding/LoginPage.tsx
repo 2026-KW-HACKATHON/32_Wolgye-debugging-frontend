@@ -1,3 +1,5 @@
+import { IS_GUEST } from '../../api/guestMode'
+import GuestEntryButton from '../../components/GuestEntryButton'
 import { useState } from 'react'
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
 import VisibilityOffRoundedIcon from '@mui/icons-material/VisibilityOffRounded'
@@ -22,7 +24,8 @@ export default function LoginPage() {
     <TextField name="email" label="이메일" type="email" required disabled={pending} autoComplete="email" value={email} onChange={(event)=>setEmail(event.target.value)}/>
     <TextField name="password" label="비밀번호" type={showPassword ? 'text' : 'password'} required disabled={pending} autoComplete="current-password" value={password} onChange={(event)=>setPassword(event.target.value)} slotProps={{input:{endAdornment:<InputAdornment position="end"><IconButton aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 보기'} onClick={()=>setShowPassword(!showPassword)} edge="end">{showPassword ? <VisibilityOffRoundedIcon/> : <VisibilityRoundedIcon/>}</IconButton></InputAdornment>}}}/>
     <Button type="submit" variant="contained" fullWidth disabled={pending}>{pending ? '로그인 중…' : '로그인'}</Button>
+    <GuestEntryButton/>
     <NavButton to="signup" variant="text" fullWidth>처음이라면 회원가입</NavButton>
-    {USE_MOCK && <Surface sx={{bgcolor:'#F1F6FF',boxShadow:'none'}}><Stack gap={1.25}><Typography variant="subtitle2">회원가입 없이 체험해 보세요</Typography><Typography variant="body2" color="text.secondary">계정을 선택하면 로그인 정보가 채워져요.</Typography><Stack direction="row" gap={1}><Button type="button" variant="outlined" fullWidth disabled={pending} onClick={()=>fillDemo(DEMO_EMAIL)}>입주민 체험</Button><Button type="button" variant="outlined" fullWidth disabled={pending} onClick={()=>fillDemo(ADMIN_DEMO_EMAIL)}>관리자 체험</Button></Stack></Stack></Surface>}
+    {USE_MOCK && !IS_GUEST && <Surface sx={{bgcolor:'#F1F6FF',boxShadow:'none'}}><Stack gap={1.25}><Typography variant="subtitle2">회원가입 없이 체험해 보세요</Typography><Typography variant="body2" color="text.secondary">계정을 선택하면 로그인 정보가 채워져요.</Typography><Stack direction="row" gap={1}><Button type="button" variant="outlined" fullWidth disabled={pending} onClick={()=>fillDemo(DEMO_EMAIL)}>입주민 체험</Button><Button type="button" variant="outlined" fullWidth disabled={pending} onClick={()=>fillDemo(ADMIN_DEMO_EMAIL)}>관리자 체험</Button></Stack></Stack></Surface>}
   </Stack>
 }

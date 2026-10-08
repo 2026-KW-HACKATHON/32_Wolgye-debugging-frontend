@@ -7,7 +7,7 @@ import { isApiError } from '../../api/client'
 import { isValidPlate } from '../../api/vehicles'
 import { useApi } from '../../api/useApi'
 import { PageTitle, SectionTitle, Surface } from '../../components/Ui'
-import ParkingLotMap from '../../components/ParkingLotMap'
+import ParkingLotPanel from '../../components/ParkingLotPanel'
 import { toLot } from '../../components/parkingLotGeometry'
 import { getReportDraft, finishReport } from './reportDraft'
 import PhotoCaptureButton from './PhotoCaptureButton'
@@ -52,7 +52,7 @@ export default function ReportPage() {
     <Surface><Stack gap={1.5}>{hasPhoto && url ? <Box component="img" src={url} alt="제보할 차량 사진" sx={{width:'100%',maxHeight:280,objectFit:'contain',borderRadius:2,bgcolor:'#F1F4F8'}}/> : <Alert severity="info">사진을 다시 찍어 주세요.</Alert>}<PhotoCaptureButton label={hasPhoto ? '다시 찍기' : '차량 사진 찍기'} disabled={busy} onProcessingChange={setPhotoBusy} onPhoto={()=>setDraft(getReportDraft())}/></Stack></Surface>
     <TextField label="차량 번호" placeholder="예: 45다 6789" value={plate} disabled={busy} autoComplete="off" required error={!!plate && !isValidPlate(plate)} helperText={plate && !isValidPlate(plate) ? '숫자 2~3자리 + 한글 + 숫자 4자리로 입력해 주세요.' : '사진에 찍힌 번호판을 입력해 주세요.'} onChange={(event)=>setPlate(event.target.value)}/>
     <SectionTitle action={slot && <Chip label={`${slot.label} 선택`} color="primary" size="small"/>}>주차된 칸</SectionTitle>
-    <Surface>{state.data ? <><ParkingLotMap shape={state.data.lot.shape} slots={state.data.lot.slots} selected={picked} onSelect={busy ? undefined : setPicked}/><Typography variant="caption" color="text.secondary">빈 칸만 선택할 수 있어요. 선택한 칸에 제보 차량을 등록해요.</Typography></> : <Typography variant="body2">배치도 불러오는 중…</Typography>}</Surface>
+    {state.data ? <ParkingLotPanel shape={state.data.lot.shape} slots={state.data.lot.slots} selected={picked} onSelect={busy ? undefined : setPicked} description="빈 칸만 선택할 수 있어요. 선택한 칸에 제보 차량을 등록해요."/> : <Typography variant="body2">배치도 불러오는 중…</Typography>}
     <Alert severity="info">제보가 완료되면 500토큰을 드려요.</Alert>
     {error && <Alert severity="error">{error}{registered && <Button href="#notifications">이동 요청 확인</Button>}</Alert>}
     <Button type="submit" variant="contained" fullWidth disabled={busy || photoBusy || state.loading || !!state.error || !hasPhoto || !slot || !isValidPlate(plate)}>{busy ? '제보 보내는 중…' : '제보하기'}</Button>

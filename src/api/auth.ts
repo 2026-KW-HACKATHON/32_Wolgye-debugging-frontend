@@ -1,13 +1,19 @@
 import { ApiError, mockDelay, request, USE_MOCK } from './client'
-import { accounts } from '../mocks/auth'
+import { IS_GUEST, GUEST_ROLE, GUEST_SESSION_KEY } from './guestMode'
+import { accounts, demoUser, adminDemoUser } from '../mocks/auth'
 import type { BuildingRole } from '../types/api'
 import type { AuthTokens, JoinBuildingResponse, LoginRequest, SignupRequest, UpdateMeRequest, UserMe } from '../types/auth'
 
 export { ADMIN_DEMO_EMAIL, DEMO_EMAIL, DEMO_PASSWORD } from '../mocks/auth'
-const KEY = 'chagok.auth'
+const KEY = IS_GUEST ? GUEST_SESSION_KEY : 'chagok.auth'
 type Session = { tokens: AuthTokens; profile: UserMe; accessExpiresAt: number; refreshExpiresAt: number }
 type ServerSession = { mode: 'server'; tokens: AuthTokens; profile: UserMe | null }
+const guestUser = GUEST_ROLE === 'ADMIN' ? adminDemoUser : demoUser
 let session: Session | null = readSession()
+if (IS_GUEST && (!session || session.profile.id !== guestUser.id || session.profile.building?.role !== GUEST_ROLE)) {
+  session = { profile: structuredClone(guestUser), tokens: {access_token:'guest.access',refresh_token:'guest.refresh',user:{id:guestUser.id,nickname:guestUser.nickname,onboarding_step:'DONE'}}, accessExpiresAt:Date.now()+30*60_000, refreshExpiresAt:Date.now()+14*86400_000 }
+  persist()
+}
 let serverSession: ServerSession | null = readServerSession()
 let pendingRefresh: Promise<AuthTokens> | null = null
 if (session) {
@@ -18,7 +24,7 @@ function readSession(): Session | null {
   if (!USE_MOCK) return null
   try {
     const value = JSON.parse(localStorage.getItem(KEY) ?? 'null') as Session | null
-    if (!value || (value as Session & { mode?: string }).mode === 'server' || !value.tokens?.access_token || !value.tokens?.refresh_token || !value.profile?.id || !Number.isFinite(value.accessExpiresAt) || !Number.isFinite(value.refreshExpiresAt) || !['JOIN_BUILDING', 'REGISTER_VEHICLE', 'DONE'].includes(value.profile.onboarding_step) || value.refreshExpiresAt <= Date.now()) return null
+    if (!value || (value as Session & { mode?: string }).mode === 'server' || !value.tokens?.access_token || !value.tokens?.refresh_token || !value.profile?.id || !Number.isFinite(value.accessExpiresAt) || !Number.isFinite(value.refreshExpiresAt) || !['JOIN_BUILDING', 'REGISTER_VEHICLE', 'DONE'].includes(value.profile.onboarding_step) || (!IS_GUEST && value.refreshExpiresAt <= Date.now())) return null
     return value
   } catch { return null }
 }
@@ -73,7 +79,7 @@ export function clearSession() { session = null; serverSession = null; pendingRe
 function unauthorized(): never { clearSession(); throw new ApiError(401, 'UNAUTHORIZED', '로그인이 필요합니다. 다시 로그인해 주세요.') }
 export function requireMockSession(): void {
   if (!USE_MOCK) throw new ApiError(401, 'UNAUTHORIZED', '이 기능은 아직 서버에 연결되지 않았습니다.')
-  if (!session || session.refreshExpiresAt <= Date.now()) unauthorized()
+  if (!session || (!IS_GUEST && session.refreshExpiresAt <= Date.now())) unauthorized()
   if (session.accessExpiresAt <= Date.now()) {
     session.tokens.access_token = `mock.access.${crypto.randomUUID()}`
     session.accessExpiresAt = Date.now() + 30 * 60_000
@@ -94,6 +100,7 @@ const emailKey = (email: string) => email.trim().toLowerCase()
 function invalid(message: string, field: string): never { throw new ApiError(400, 'INVALID_INPUT', message, { field }) }
 // TODO(api): POST /auth/signup
 export async function signup(body: SignupRequest): Promise<AuthTokens> {
+  if (IS_GUEST) throw new ApiError(403, 'UNKNOWN_ERROR', '체험을 종료한 뒤 회원가입해 주세요.')
   if (!USE_MOCK) return startServerSession('/auth/signup', body)
   await mockDelay(undefined)
   const email = emailKey(body.email)
@@ -108,6 +115,7 @@ export async function signup(body: SignupRequest): Promise<AuthTokens> {
 }
 // TODO(api): POST /auth/login
 export async function login(body: LoginRequest): Promise<AuthTokens> {
+  if (IS_GUEST) throw new ApiError(403, 'UNKNOWN_ERROR', '체험을 종료한 뒤 로그인해 주세요.')
   if (!USE_MOCK) return startServerSession('/auth/login', body)
   await mockDelay(undefined)
   const account = accounts.get(emailKey(body.email))
@@ -213,4 +221,12 @@ export function creditMockReportReward(amount: number): number {
   session!.profile.token_balance += amount
   persist()
   return session!.profile.token_balance
+}
+
+export function debitGuestTokens(amount: number) {
+  if (!IS_GUEST || !session || !Number.isFinite(amount) || amount < 0) throw new ApiError(403,'UNKNOWN_ERROR','체험 모드에서만 사용할 수 있어요.')
+  requireMockSession()
+  if (session.profile.token_balance < amount) throw new ApiError(409,'INSUFFICIENT_TOKENS','토큰이 부족해요.')
+  session.profile.token_balance -= amount
+  persist()
 }
