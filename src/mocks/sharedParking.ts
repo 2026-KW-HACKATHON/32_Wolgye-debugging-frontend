@@ -1,6 +1,9 @@
 import { WEEKDAYS } from '../types/api'
 import type { GarageDetail, GarageListItem, ShareRequestDetail } from '../types/sharedParking'
 
+const kst = (date: Date) => new Intl.DateTimeFormat('sv-SE', {timeZone:'Asia/Seoul'}).format(date)
+const kstHour = (date: Date) => Number(new Intl.DateTimeFormat('en-GB', {timeZone:'Asia/Seoul',hour:'2-digit',hour12:false}).format(date))
+const KST_HOUR = kstHour(new Date())
 export const SHARED_MOCK_DATE = new Intl.DateTimeFormat('sv-SE', {timeZone:'Asia/Seoul'}).format(new Date(Date.now() + 86400000))
 const names = ['햇살빌라','초록빌라','미래빌라','하늘빌라','푸른빌라']
 export const sharedGarages: GarageDetail[] = names.map((name,index) => {
@@ -16,4 +19,8 @@ export const sharedGarageItems: GarageListItem[] = sharedGarages.flatMap((garage
 export type StoredShareRequest = ShareRequestDetail & { user_id: number; offer_id: number; vehicle_id: number | null }
 // 사용자 1의 상태별 시연 요청. 새 요청은 PENDING에 머무른다.
 export const userShareRequests: StoredShareRequest[] = (['PENDING','APPROVED','REJECTED'] as const).map((status,index) => ({id:701+index,status,reject_reason:status === 'REJECTED' ? '주차 구역 용량 초과' : null,garage:{id:4,name:'햇살빌라'},slot_id:2101,slot_label:'P1',request_date:SHARED_MOCK_DATE,start_hour:15,end_hour:18,total_price:6,user_id:1,offer_id:501,vehicle_id:7}))
+// 지금 이용 시간인 승인된 공유 (햇살빌라 P1, 지금 시각부터 2시간). 요청 결과 화면에서 '여기에 주차했어요'를 시험한다 (#61)
+userShareRequests.push({id:704,status:'APPROVED',reject_reason:null,garage:{id:4,name:'햇살빌라'},slot_id:2101,slot_label:'P1',request_date:kst(new Date()),start_hour:KST_HOUR,end_hour:Math.min(KST_HOUR + 2, 24),total_price:4,user_id:1,offer_id:501,vehicle_id:7})
 export const offerOwnerId = 999
+/** 지금(KST) 이용 시간인 승인된 공유 */
+export const sharingNow = (item: StoredShareRequest) => { const now = new Date(); return item.status === 'APPROVED' && item.request_date === kst(now) && item.start_hour <= kstHour(now) && kstHour(now) < item.end_hour }

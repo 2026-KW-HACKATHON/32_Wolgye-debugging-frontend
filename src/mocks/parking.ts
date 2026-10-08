@@ -1,5 +1,6 @@
 import type { BuildingRole, DateTime, Weekday } from '../types/api'
 import type { BuildingLayout, ExitSource, LayoutSlot, MoveRequestDetail, MoveRequestBox, NotificationItem, OccupantType, ParkingState, RecurringSchedule, SlotStatus } from '../types/parking'
+import { sharedGarages } from './sharedParking'
 
 // 목데이터 (docs/decisions.md 확정 값)
 // api/*.ts 의 쓰기 함수가 이 값을 직접 바꾼다 (새로고침하면 처음 값으로 돌아감)
@@ -76,7 +77,8 @@ export const notifications: NotificationItem[] = [
 // ── 목 상태에서 계산하는 값 (서버가 하는 일을 흉내) ──
 export const allSlots = (): LayoutSlot[] => layout.zones.flatMap((zone) => zone.slots)
 export const findSlot = (slotId: number) => allSlots().find((slot) => slot.id === slotId)
-export const labelOf = (slotId: number) => findSlot(slotId)?.label ?? ''
+// 공유 주차한 다른 빌라 칸도 이름을 찾는다 (#61)
+export const labelOf = (slotId: number) => findSlot(slotId)?.label ?? sharedGarages.flatMap((garage) => garage.slots).find((slot) => slot.slot_id === slotId)?.label ?? ''
 export const parkedAt = (slotId: number) => parkings.find((parking) => parking.slot_id === slotId && parking.state === 'PARKED')
 /** 1시간 이내 출차 */
 export const isSoonExit = (exitAt: DateTime | null) => exitAt !== null && Date.parse(exitAt) - Date.parse(MOCK_NOW) <= 60 * 60 * 1000

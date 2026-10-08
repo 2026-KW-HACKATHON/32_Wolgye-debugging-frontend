@@ -6,6 +6,7 @@ import { vehiclesByUser } from '../mocks/vehicles'
 import { getMockUserId, getMyRole } from './auth'
 import type { VehicleListItem } from '../types/vehicles'
 import { shareRequests } from '../mocks/admin'
+import { sharedGarages, sharingNow, userShareRequests } from '../mocks/sharedParking'
 
 // 입주민 API. 함수 이름 = 명세 operationId. 지금은 목데이터를 돌려주고, 서버 연결 시 함수 안쪽만 바꾼다 (docs/api-layer.md)
 
@@ -100,8 +101,9 @@ export async function getSlotRecommendations(buildingId: number, query: SlotReco
 export async function createParking(body: ParkingCreate): Promise<ParkingCreated> {
   if (!USE_MOCK) return request('POST', '/parkings', { body })
   // TODO(api): POST /parkings
-  const slot = findSlot(body.slot_id)
   const vehicle = ownVehicle(body.vehicle_id)
+  if (!findSlot(body.slot_id) && vehicle) return createSharedParking(body, vehicle.id, vehicle.plate)
+  const slot = findSlot(body.slot_id)
   if (!slot || !vehicle) return notFound()
   const longTerm = body.is_long_term ?? false
   if (!longTerm && !isDateTime(body.expected_exit_at)) return invalidInput('출차 시간을 입력해 주세요.', { field: 'expected_exit_at' })
@@ -117,6 +119,20 @@ export async function createParking(body: ParkingCreate): Promise<ParkingCreated
   will_block.forEach((behind) => blocks.push([slot.id, behind]))
   if (body.repeat_weekdays && expected) recurringByVehicle.set(vehicle.id, { days: WEEKDAYS_MON_FRI, time: expected.slice(11, 16), memo: body.memo ?? null })
   return mockDelay({ id, slot_id: slot.id, state: 'PARKED', expected_exit_at: expected, exit_source: longTerm ? 'NONE' : 'MANUAL', blocking: will_block })
+}
+
+/** 다른 빌라 칸: 지금 이용 시간인 내 승인된 공유 칸이면 주차할 수 있다 (서버 create_parking 과 같음, #61) */
+function createSharedParking(body: ParkingCreate, vehicleId: number, plate: string): Promise<ParkingCreated> {
+  if (!sharedGarages.some((garage) => garage.slots.some((slot) => slot.slot_id === body.slot_id))) return notFound()
+  const share = userShareRequests.find((item) => item.slot_id === body.slot_id && item.user_id === getMockUserId() && sharingNow(item))
+  if (!share) return notMember()
+  if (!isDateTime(body.expected_exit_at)) return invalidInput('출차 시간을 입력해 주세요.', { field: 'expected_exit_at' })
+  if (parkedAt(body.slot_id)) return mockFail(409, 'SLOT_OCCUPIED', '이미 다른 차량이 주차 중인 칸입니다.')
+  const current = myParking(vehicleId)
+  if (current) return mockFail(409, 'VEHICLE_ALREADY_PARKED', '이미 주차 중인 차량입니다.', { parking_id: current.id })
+  const id = Math.max(...parkings.map((parking) => parking.id)) + 1
+  parkings.push({ id, slot_id: body.slot_id, vehicle_id: vehicleId, plate, occupant_type: 'EXTERNAL', state: 'PARKED', entered_at: MOCK_NOW, expected_exit_at: body.expected_exit_at, exit_source: 'MANUAL', memo: body.memo ?? null })
+  return mockDelay({ id, slot_id: body.slot_id, state: 'PARKED', expected_exit_at: body.expected_exit_at, exit_source: 'MANUAL', blocking: [] })
 }
 
 export async function updateParkingSchedule(parkingId: number, body: ParkingScheduleUpdate): Promise<ParkingScheduleUpdated> {
