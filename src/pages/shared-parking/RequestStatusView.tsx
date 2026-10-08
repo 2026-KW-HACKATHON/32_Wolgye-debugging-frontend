@@ -9,7 +9,7 @@ import { hourLabel } from './requestPreview'
 export default function RequestStatusView() {
   const params = hashParams()
   const id = Number(params.get('id'))
-  const search = { q: params.get('q') ?? '', filter: params.get('filter') ?? 'all' }
+  const search = { q: params.get('q') ?? '' }
   const shareHref = toHash('share', search)
   const {data:request,error,loading,reload} = useApi(()=>getShareRequest(id),String(id))
   useEffect(() => {
@@ -18,7 +18,7 @@ export default function RequestStatusView() {
     const garageId = Number(params.get('garage_id'))
     const slotId = Number(params.get('slot_id'))
     if (garageId === request.garage.id && slotId === request.slot_id) return
-    const next = toHash('request-result', { id: request.id, garage_id: request.garage.id, slot_id: request.slot_id, q: params.get('q') ?? '', filter: params.get('filter') ?? 'all' })
+    const next = toHash('request-result', { id: request.id, garage_id: request.garage.id, slot_id: request.slot_id, q: params.get('q') ?? '' })
     window.history.replaceState(null, '', next)
     window.dispatchEvent(new HashChangeEvent('hashchange'))
   }, [request])

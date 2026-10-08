@@ -30,14 +30,14 @@ export default function AppShell({ current, children }: { current: PageMeta; chi
   const params = hashParams()
   const preview = new URLSearchParams(window.location.search).get('preview') === '1'
   const from = params.get('from')
-  const contextualBack = current.id === 'garage-detail' ? toHash('share',{q:params.get('q') ?? '',filter:params.get('filter') ?? 'all'})
+  const contextualBack = current.id === 'garage-detail' ? toHash('share',{q:params.get('q') ?? ''})
     : current.id === 'repeat' && ['parking-register', 'departure', 'vehicle-detail'].includes(from ?? '')
     ? toHash(from as PageId, params.has('id') ? { id: params.get('id')! } : undefined)
     : current.id === 'departure' && params.has('id') ? toHash('vehicle-detail', { id: params.get('id')! })
     : current.id === 'vehicles' && from === 'parking-register' ? toHash('parking-register', params.has('vehicle_id') ? { id: params.get('vehicle_id')! } : undefined)
     : undefined
   const backHref = current.id === 'request-result' && params.has('garage_id') && params.has('slot_id')
-    ? toHash('garage-detail', { id: params.get('garage_id')!, slot_id: params.get('slot_id')!, q: params.get('q') ?? '', filter: params.get('filter') ?? 'all' })
+    ? toHash('garage-detail', { id: params.get('garage_id')!, slot_id: params.get('slot_id')!, q: params.get('q') ?? '' })
     : contextualBack ?? (current.backTo ? toHash(current.backTo) : undefined)
   return <Box className={`app-shell${preview ? ' app-shell--preview' : ''}`}>
     {preview && <Paper component="aside" className="page-index" elevation={0}>
