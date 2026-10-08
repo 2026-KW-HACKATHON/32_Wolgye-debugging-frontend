@@ -124,6 +124,7 @@ export default function ParkingLotMap({ shape, slots, view = 'iso', variant = 'r
   const font = { tag: FONT[view].tag * scale }
   const interactive = Boolean(onSelect || onInspect)
   // 골목 입구가 땅 아래 가장자리에 있으면(한빛빌라) 입구 아래에, 옆 가장자리에 있으면(햇살빌라) 땅 안쪽 입구 옆에 글자를 둔다
+  // 화살표는 글자에서 입구 쪽을 가리킨다 (입체에서 왼쪽 가장자리는 화면 왼쪽 위)
   const entranceAtBottom = !!entrance && entrance.y + entrance.h >= site.h - 1
   // 내 차를 막고 있는 칸 (빨간 테두리로 표시)
   const blockers = new Set(admin ? [] : slots.filter((slot) => slot.car?.mine).flatMap((slot) => slot.blockedBy ?? []))
@@ -206,7 +207,7 @@ export default function ParkingLotMap({ shape, slots, view = 'iso', variant = 'r
       {/* 필로티 지붕은 차 위에 반투명으로 덮어 아래 칸·차가 보이게 한다. 칩과 탭 영역은 그 위 */}
       {roof && <g opacity={0.35} pointerEvents="none"><IsoBox rect={roof} z0={roofZ0} z1={roofZ1} top={colors.buildingRoof} side={colors.buildingSide} front="#D0D5DD" stroke={colors.buildingLine}/></g>}
       {labelLayer}
-      {entrance && (() => { const [x, y] = entranceAtBottom ? isoPoint(entrance.x + entrance.w / 2, entrance.y + entrance.h, -30 * scale) : isoPoint(entrance.x + entrance.w + 90 * scale, entrance.y + entrance.h / 2); return <Tag x={x} y={y} label={entranceAtBottom ? '골목 입구 ↑' : '← 골목 입구'} color="#475467" bg="#FFFFFF" size={font.tag}/> })()}
+      {entrance && (() => { const [x, y] = entranceAtBottom ? isoPoint(entrance.x + entrance.w / 2, entrance.y + entrance.h, -30 * scale) : isoPoint(entrance.x + entrance.w + 90 * scale, entrance.y + entrance.h / 2); return <Tag x={x} y={y} label={entranceAtBottom ? '골목 입구 ↑' : '↖ 골목 입구'} color="#475467" bg="#FFFFFF" size={font.tag}/> })()}
       {hitLayer}
     </MapFrame>
   }
