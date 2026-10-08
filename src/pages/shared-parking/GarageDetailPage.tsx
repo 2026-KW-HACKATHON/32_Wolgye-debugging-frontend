@@ -32,7 +32,7 @@ export default function GarageDetailPage() {
       if (!isApiError(error) || error.status !== 404 || me.building?.building_id !== garageId) throw error
       const [layout,status] = await Promise.all([getBuildingLayout(garageId),getBuildingStatus(garageId)])
       ownLot = toLot(layout,status)
-      garage = {id:garageId,name:layout.name,address:'',alley:layout.alley,summary:{start_hour:null,end_hour:null,min_hourly_price:null,max_hours:null},slots:[]}
+      garage = {id:garageId,name:layout.name,site_key:layout.site_key,address:'',alley:layout.alley,summary:{start_hour:null,end_hour:null,min_hourly_price:null,max_hours:null},slots:[]}
     }
     if (!ownLot && garage.slots.length === 0 && me.building?.building_id === garageId) {
       const [layout,status] = await Promise.all([getBuildingLayout(garageId),getBuildingStatus(garageId)])
