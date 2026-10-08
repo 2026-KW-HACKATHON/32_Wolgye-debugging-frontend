@@ -48,5 +48,6 @@ FE GitHub 이슈 #4~#18 본문은 Manyfast 기준으로 쓰였다. 이 문서와
 | 관리 메뉴 표시 (2026-10-06) | **관리자(`ADMIN`)에게만** 하단 '관리' 탭과 화면 미리보기 목록의 관리 화면을 보인다. 입주민·로그인 전에는 숨기고, 관리 화면 주소로 직접 오면 "관리자만 볼 수 있어요". 역할은 `auth.ts` `getMyRole()`(프로필 `building.role`). 목도 서버처럼 관리자 API는 403 `NOT_BUILDING_ADMIN` |
 | 관리자 체험 계정 (2026-10-06) | `admin@kw.ac.kr` / `chagok1234` (박관리, 월계 한빛빌라 `ADMIN`, 목 id 2 = 공유 조건 host). 김지수는 입주민 그대로. 이전 "관리자 화면도 김지수로 시연"은 폐기 |
 | #17 브라우저 QA 수정 (2026-10-06) | **효재 담당**. QA 결과는 민솔이 효재에게 따로 전달. 효재는 민솔 파일(parking·admin)도 고칠 수 있다. 인수인계는 [#17 댓글](https://github.com/2026-KW-HACKATHON/32_Wolgye-debugging-frontend/issues/17#issuecomment-5997853755). 민솔은 #30 test 서버 연결 담당 |
+| 브랜치·배포 (2026-10-08) | 작업 브랜치는 **`dev`에서** 만들고 PR도 **`dev`로** 올린다 (`dev`에 직접 push하지 않는다). `dev`는 Vercel Preview, `main`은 Vercel **Production**(시연 배포 주소)이라 `main`에는 직접 push·PR하지 않고 정해진 시점에 `dev` → `main`으로만 올린다 |
 
 결정 대기 항목은 없다. 새로 생기면 이 표 아래에 `## 결정 대기`를 다시 만든다.
