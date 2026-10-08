@@ -31,11 +31,7 @@ export const SITES: Record<string, LotShape> = Object.fromEntries(Object.entries
   return []
 }))
 
-// TODO(api): 백엔드 #47 의 site_key 가 test 서버에 배포되면 지운다. 그 전에는 site_key 가 응답에 없어 빌라 이름으로 찾는다
-const SITE_KEY_BY_NAME: Record<string, string> = { '월계 한빛빌라': 'hanbit', '햇살빌라': 'sunny' }
-
-/** layout·차고지 상세 응답 → 사이트 모양. site_key 가 null(사이트 파일 없는 빌라)이거나 파일이 없으면 null */
-export function siteFor({ site_key, name }: { site_key?: string | null; name: string }): LotShape | null {
-  const key = site_key === undefined ? SITE_KEY_BY_NAME[name] : site_key
-  return key && Object.hasOwn(SITES, key) ? SITES[key] : null
+/** layout·차고지 상세 응답 → 사이트 모양. site_key 가 null(사이트 파일 없는 빌라)이거나 그 키의 파일이 없으면 null */
+export function siteFor({ site_key }: { site_key: string | null }): LotShape | null {
+  return site_key && Object.hasOwn(SITES, site_key) ? SITES[site_key] : null
 }
