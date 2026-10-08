@@ -57,7 +57,9 @@ export function toGarageLot(garage: GarageDetail): Lot | null {
     const rect = site.slots[slot.label]
     if (!rect) return []
     const state = garageState[slot.state]
-    return [{ id: slot.label, slotId: slot.slot_id, label: slot.label, rect, state, ...(state === 'empty' ? {} : { car: { parkingId: 0, plate: '', mine: false, occupant: 'resident' as const } }) }]
+    const exitAt = slot.estimated_free_at ?? slot.in_use_until
+    const car = { parkingId: 0, plate: '', mine: false, occupant: 'resident' as const, ...(exitAt ? { exitAt: hhmm(exitAt) } : {}) }
+    return [{ id: slot.label, slotId: slot.slot_id, label: slot.label, rect, state, ...(state === 'empty' ? {} : { car }) }]
   })
   return slots.length ? { shape: site, slots } : null
 }
