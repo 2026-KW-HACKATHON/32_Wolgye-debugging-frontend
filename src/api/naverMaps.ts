@@ -1,6 +1,8 @@
 export type MapInstance = { destroy: () => void; setSize: (size: unknown) => void; setCenter: (center: unknown) => void; setZoom: (zoom: number) => void }
 type MapsSdk = {
   Map: new (element: HTMLElement, options: Record<string, unknown>) => MapInstance
+  Marker: new (options: Record<string, unknown>) => { setMap: (map: MapInstance | null) => void }
+  Point: new (x: number, y: number) => unknown
   LatLng: new (lat: number, lng: number) => unknown
   LatLngBounds: new (southwest: unknown, northeast: unknown) => unknown
   Size: new (width: number, height: number) => unknown
