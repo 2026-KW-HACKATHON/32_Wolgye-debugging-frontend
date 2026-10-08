@@ -26,12 +26,12 @@ FE GitHub 이슈 #4~#18 본문은 Manyfast 기준으로 쓰였다. 이 문서와
 | "옮겼어요" 후 | 요청자에게 알림 없음 (완료 화면 문구도 맞춘다) |
 | 공유 시간 | 정시 단위, 요일은 칩 여러 개 |
 | 배치도 | 모든 화면에서 `ParkingLotMap`(SVG 2.5D). 구조는 [`tech-stack.md`](./tech-stack.md) 4장 |
-| 배치도 건물·벽·입구 (D3) | FE 상수로 둔다 (`src/components/parkingLotGeometry.ts`). API는 칸 좌표·상태만 준다 |
+| 배치도 건물·벽·입구 (D3) | ~~FE 상수~~ → 2026-10-08 #56: **빌라별 사이트 파일** `src/sites/{site_key}.json`(건물·벽·입구 + 칸 이름별 좌표, Figma px). 백엔드는 `site_key`만 준다(backend #47, layout·차고지 상세). 칸 좌표는 사이트 파일 → 없으면 서버 `rect`. `site_key`가 null인 빌라는 땅과 서버 `rect` 칸만 그린다. 모양을 바꿀 때는 JSON만 고친다 (`src/api/sites.ts`가 형식 검사) |
 | 화면 간 id 전달 (D5) | 해시 쿼리: `#move?id=44`. 만들 때 `toHash('move', { id: 44 })`, 읽을 때 `hashParams().get('id')` (`src/types/navigation.ts`) |
 | 토큰·빌라 id (D6) | 토큰 저장·갱신은 `src/api/auth.ts`(효재)가 맡고 `getAccessToken()`, `refreshTokens()`, `getMyBuildingId()`를 export한다. `src/api/client.ts`(민솔)는 이 함수만 불러 헤더를 붙이고 401이면 한 번 갱신 후 재시도한다. 저장소는 `localStorage` 키 `chagok.auth` |
 | 외부 차량 이동 요청 (D8) | 대시보드 응답의 외부 차량에는 칸 번호(`slot_id`)만 있고, 이동 요청 API는 주차 번호(`parking_id`)가 필요하다. → 백엔드 변경 없이 **FE가 `/buildings/{id}/status`에서 같은 `slot_id`의 `parking.id`를 찾아 쓴다** |
 | 온보딩 (D9) | "골목 등록" → **"건물 합류"(초대코드)** 로 변경 완료. PageId `join-building`, `src/pages/onboarding/JoinBuildingPage.tsx` |
-| 시연 시작 상태 (2026-10-04) | **내 차는 주차 안 함**으로 시작한다. 목 `parkings` 556(P2)은 `EXITED`. 주차 배치 등록에서 배치하면 홈·막힘 흐름이 이어진다. 출차 처리 버튼은 만들지 않는다 |
+| 시연 시작 상태 (2026-10-04) | **내 차는 주차 안 함**으로 시작한다. 목 `parkings` 556(P2)은 `EXITED`. 주차 배치 등록에서 배치하면 홈·막힘 흐름이 이어진다. ~~출차 처리 버튼은 만들지 않는다~~ → 2026-10-08 #46으로 **홈 내 차량 카드에 '지금 출차!' 추가** (한 번 더 눌러 확인) |
 | 주차 화면의 내 차량 (2026-10-05) | 효재 `src/api/vehicles.ts`의 `listMyVehicles`로 찾는다 (`src/pages/parking/defaultVehicle.ts`: 대표 차량 → 첫 차). 임시 함수는 삭제. 주차 목은 **로그인한 사용자의 차량 전부**를 내 차로 다룬다(대표 차량 변경·새 차량도 배치 가능). 반복 일정은 차량별 |
 | 시연 시작 (2026-10-05) | **체험 계정 로그인부터** 시작한다. 로그인 전에는 차량이 필요한 주차 화면에 '로그인이 필요해요' 안내 |
 | 반복을 끄고 배치 (`repeat_weekdays:false`) | 기존 반복 일정은 그대로 둔다. 백엔드 확인 완료 ([backend #34](https://github.com/2026-KW-HACKATHON/32_Wolgye-debugging-backend/pull/34)) |

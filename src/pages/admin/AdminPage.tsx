@@ -6,7 +6,7 @@ import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded'
 import { Alert, Avatar, Box, Button, CircularProgress, Divider, IconButton, Stack, ToggleButton, ToggleButtonGroup, Tooltip, Typography } from '@mui/material'
 import { NavButton, PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
 import ParkingLotMap, { type LotView } from '../../components/ParkingLotMap'
-import { toLotSlots } from '../../components/parkingLotGeometry'
+import { toLot } from '../../components/parkingLotGeometry'
 import { decideShareRequest, getAdminDashboard } from '../../api/admin'
 import { isApiError } from '../../api/client'
 import { createMoveRequest, getBuildingLayout, getBuildingStatus, getHome } from '../../api/parking'
@@ -32,7 +32,7 @@ function timeAgo(dateTime: string) {
   const minutes = Math.max(0, Math.floor((Date.now() - Date.parse(dateTime)) / 60000))
   return minutes < 1 ? '방금' : minutes < 60 ? `${minutes}분 전` : minutes < 1440 ? `${Math.floor(minutes / 60)}시간 전` : `${Math.floor(minutes / 1440)}일 전`
 }
-const loadLot = async (buildingId: number) => { const [layout, status] = await Promise.all([getBuildingLayout(buildingId), getBuildingStatus(buildingId)]); return { slots: toLotSlots(layout, status), updatedAt: status.updated_at } }
+const loadLot = async (buildingId: number) => { const [layout, status] = await Promise.all([getBuildingLayout(buildingId), getBuildingStatus(buildingId)]); return { ...toLot(layout, status), updatedAt: status.updated_at } }
 
 function Loading() {
   return <Box display="grid" py={6} sx={{placeItems:'center'}}><CircularProgress size={30}/></Box>
@@ -126,7 +126,7 @@ function AdminView({ buildingId }: { buildingId: number }) {
       <Stack direction="row" gap={1}><Button variant="outlined" color="error" fullWidth disabled={updating} onClick={() => setRejecting(request)}>거절</Button><Button variant="contained" fullWidth disabled={updating} onClick={() => decide(request.id, { status: 'APPROVED' })}>수락</Button></Stack>
     </Stack></Surface>) : <Typography variant="caption" color="text.secondary">대기 중인 공유 요청이 없어요.</Typography>}
     <SectionTitle action={<StatusChip kind="available" label={`주차 가능 ${realtime.available_count}곳`}/>}>● 관리 구역 · 실시간</SectionTitle>
-    <Surface sx={{boxShadow:'none'}}><Stack direction="row" justifyContent="flex-end"><ToggleButtonGroup color="primary" exclusive size="small" value={view} onChange={(_,value)=>value&&setView(value)} aria-label="관리 배치도 시점"><ToggleButton value="iso">입체</ToggleButton><ToggleButton value="top">평면</ToggleButton></ToggleButtonGroup></Stack><ParkingLotMap slots={lot.data.slots} view={view} variant="admin"/></Surface>
+    <Surface sx={{boxShadow:'none'}}><Stack direction="row" justifyContent="flex-end"><ToggleButtonGroup color="primary" exclusive size="small" value={view} onChange={(_,value)=>value&&setView(value)} aria-label="관리 배치도 시점"><ToggleButton value="iso">입체</ToggleButton><ToggleButton value="top">평면</ToggleButton></ToggleButtonGroup></Stack><ParkingLotMap shape={lot.data.shape} slots={lot.data.slots} view={view} variant="admin"/></Surface>
     {realtime.vehicles.length ? <Surface><Stack divider={<Divider flexItem/>} gap={1.25}>{realtime.vehicles.map((vehicle)=>{const sent=sentSlots.includes(vehicle.slot_id);const parked=lot.data?.slots.some((slot) => slot.slotId === vehicle.slot_id && slot.car);return <Stack key={vehicle.slot_id} direction="row" justifyContent="space-between" alignItems="center" gap={1}><Box><Typography variant="caption" color="text.secondary">{vehicle.occupant_type === 'EXTERNAL' ? '외부 차량 · 공유 이용자 (앱 가입)' : '미확인 차량 (관리자 등록)'}</Typography><Typography variant="subtitle2">{vehicle.plate} · {vehicle.slot_label}</Typography></Box>{vehicle.can_request_move ? <Button size="small" variant="contained" disabled={updating || sent || !parked} onClick={() => requestMove(vehicle.slot_id)}>{sent ? '요청 보냄' : '이동 요청'}</Button> : <Typography variant="caption" color="text.secondary">앱으로 연락 불가</Typography>}</Stack>})}</Stack></Surface> : <Typography variant="caption" color="text.secondary">외부·미확인 차량이 없어요.</Typography>}
     <Stack direction="row" gap={0.75} flexWrap="wrap"><StatusChip kind="recommended" label="입주민 차량"/><StatusChip kind="external" label="외부 차량"/><StatusChip kind="danger" label="미확인 차량"/><StatusChip kind="available" label="빈 칸"/></Stack>
     <Surface>
