@@ -48,7 +48,7 @@ export default function GarageDetailPage() {
   const sendRequest = async () => {
     if (invalid || !offer || submitting.current) return
     submitting.current = true;setBusy(true);setSubmitError('');setNeedsLogin(false)
-    try {const result = await createShareRequest({offer_id:offer.id,vehicle_id:Number(vehicle),request_date:date,start_hour:start,end_hour:end});window.location.hash = toHash('request-result',{id:result.id,garage_id:garageId,slot_id:selected!.slot_id,q:hashParams().get('q') ?? '',filter:hashParams().get('filter') ?? 'all'})}
+    try {const result = await createShareRequest({offer_id:offer.id,vehicle_id:Number(vehicle),request_date:date,start_hour:start,end_hour:end});window.location.hash = toHash('request-result',{id:result.id,garage_id:garageId,slot_id:selected!.slot_id,q:hashParams().get('q') ?? ''})}
     catch(e) {setSubmitError(isApiError(e) ? e.message : '잠시 후 다시 시도해 주세요.');setNeedsLogin(isApiError(e) && e.status === 401)}
     finally {submitting.current = false;setBusy(false)}
   }
