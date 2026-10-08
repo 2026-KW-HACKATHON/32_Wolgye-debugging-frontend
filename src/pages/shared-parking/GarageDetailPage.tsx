@@ -12,15 +12,33 @@ import { listMyVehicles } from '../../api/vehicles'
 import { isApiError } from '../../api/client'
 import { useApi } from '../../api/useApi'
 import ParkingLotMap from '../../components/ParkingLotMap'
-import { toGarageLot } from '../../components/parkingLotGeometry'
+import { getBuildingLayout, getBuildingStatus } from '../../api/parking'
+import type { GarageDetail } from '../../types/sharedParking'
+import type { Lot } from '../../types/parking'
+import { toGarageLot, toLot } from '../../components/parkingLotGeometry'
 import type { LotSlot } from '../../types/parking'
 import type { GarageSlot } from '../../types/sharedParking'
 import { hourLabel, isValidRequestDate, todayKst } from './requestPreview'
 
 export default function GarageDetailPage() {
   const garageId = Number(hashParams().get('id') ?? 4)
-  const highlightedSlotId = Number(hashParams().get('slot_id'))
-  const {data,error,loading,reload} = useApi(async()=>{const [garage,vehicles,me] = await Promise.all([getGarage(garageId),listMyVehicles(),getMe()]);return {garage,vehicles:vehicles.items,me}},String(garageId))
+  const slotParam = hashParams().get('slot_id')
+  const highlightedSlotId = slotParam === null ? undefined : Number(slotParam)
+  const {data,error,loading,reload} = useApi(async()=>{const [vehicles,me] = await Promise.all([listMyVehicles(),getMe()])
+    let garage: GarageDetail
+    let ownLot: Lot | null = null
+    try { garage = await getGarage(garageId) }
+    catch (error) {
+      if (!isApiError(error) || error.status !== 404 || me.building?.building_id !== garageId) throw error
+      const [layout,status] = await Promise.all([getBuildingLayout(garageId),getBuildingStatus(garageId)])
+      ownLot = toLot(layout,status)
+      garage = {id:garageId,name:layout.name,address:'',alley:layout.alley,summary:{start_hour:null,end_hour:null,min_hourly_price:null,max_hours:null},slots:[]}
+    }
+    if (!ownLot && garage.slots.length === 0 && me.building?.building_id === garageId) {
+      const [layout,status] = await Promise.all([getBuildingLayout(garageId),getBuildingStatus(garageId)])
+      ownLot = toLot(layout,status)
+    }
+    return {garage,vehicles:vehicles.items,me,ownLot}},String(garageId))
   const [filter,setFilter] = useState('all')
   // 배치도와 목록에서 함께 표시하는 칸. 처음에는 탐색에서 고른 칸(slot_id)
   const [picked,setPicked] = useState(highlightedSlotId)
@@ -61,6 +79,13 @@ export default function GarageDetailPage() {
   if (error) return <Alert severity="error" action={<Button onClick={reload}>재시도</Button>}>{error.message}<Button href={error.status === 401 ? '#login' : '#share'}>{error.status === 401 ? '로그인' : '다시 탐색'}</Button></Alert>
   if (!data) return null
   const {garage,vehicles,me} = data
+  if (data.ownLot) return <Stack gap={2.25}>
+    <PageTitle eyebrow="공유 주차장" title={garage.name}/>
+    <Surface sx={{bgcolor:'#F1F6FF',boxShadow:'none'}}><Typography variant="subtitle2">{garage.alley.name}</Typography></Surface>
+    <Alert severity="info">현재 공유 중인 칸이 없어요. 남은 공유 칸은 0칸이에요.</Alert>
+    <SectionTitle>주차면 현황</SectionTitle>
+    <Surface sx={{bgcolor:'#F8FAFC',boxShadow:'none',p:1}}><ParkingLotMap shape={data.ownLot.shape} slots={data.ownLot.slots}/><Typography variant="caption" display="block" color="text.secondary" textAlign="center">내 빌라 전체 주차 현황이에요.</Typography></Surface>
+  </Stack>
   const lot = toGarageLot(garage)
   const pickedLabel = garage.slots.find((spot)=>spot.slot_id === picked)?.label
   // 배치도에서 칸을 누르면 목록의 그 칸으로 내려간다 (필터에 걸려 숨어 있으면 전체로 바꾼다)

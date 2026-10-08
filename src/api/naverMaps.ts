@@ -2,6 +2,7 @@ export type MapInstance = { destroy: () => void; setSize: (size: unknown) => voi
 type MapsSdk = {
   Map: new (element: HTMLElement, options: Record<string, unknown>) => MapInstance
   Marker: new (options: Record<string, unknown>) => { setMap: (map: MapInstance | null) => void }
+  Event: { addListener: (target: unknown, event: string, callback: () => void) => unknown; removeListener: (listener: unknown) => void }
   Point: new (x: number, y: number) => unknown
   LatLng: new (lat: number, lng: number) => unknown
   LatLngBounds: new (southwest: unknown, northeast: unknown) => unknown
