@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import EventRepeatRoundedIcon from '@mui/icons-material/EventRepeatRounded'
-import { Alert, Box, Button, CircularProgress, Divider, MenuItem, Stack, TextField, Typography } from '@mui/material'
+import { Alert, Box, Button, CircularProgress, Divider, FormControlLabel, MenuItem, Stack, Switch, TextField, Typography } from '@mui/material'
 import { PageTitle, SectionTitle, Surface } from '../../components/Ui'
 import { isApiError } from '../../api/client'
 import { getHome, getMyVehicle, updateParkingSchedule } from '../../api/parking'
@@ -37,13 +37,13 @@ export default function DeparturePage() {
   const { data, error, reload } = useApi(() => loadVehicle(paramId), `departure-${paramId}`)
   if (error) return <Alert severity="error" action={<Button color="inherit" size="small" onClick={reload}>다시 시도</Button>}>{error.message}</Alert>
   if (data === undefined) return <Box display="grid" py={6} sx={{placeItems:'center'}}><CircularProgress size={30}/></Box>
-  if (!data?.parking) return <Stack gap={2.25}><PageTitle title="출차 일정 수정"/><Typography variant="caption" color="text.secondary">주차 중인 차량이 없어 출차 일정을 바꿀 수 없어요.</Typography></Stack>
+  if (!data?.parking || data.parking.state !== 'PARKED') return <Stack gap={2.25}><PageTitle title="출차 일정 수정"/><Typography variant="caption" color="text.secondary">주차 중인 차량이 없어 출차 일정을 바꿀 수 없어요.</Typography></Stack>
   return <DepartureForm key={data.id} vehicle={data} parking={data.parking}/>
 }
 
 function DepartureForm({ vehicle, parking }: { vehicle: VehicleDetail; parking: NonNullable<VehicleDetail['parking']> }) {
   const draftKey = `departure-${vehicle.id}`
-  const [draft] = useState(()=>readDraft<Choice & {memo:string}>(draftKey))
+  const [draft] = useState(()=>readDraft<Choice & {memo:string;longTerm?:boolean}>(draftKey))
   const current = vehicle.schedule?.expected_exit_at ?? null
   const currentAt = current ? kstPartsOf(current) : null
   // 지금 출차 시각(예: 15:57)이 30분 선택지에 없으면 선택지에 넣어 그대로 고를 수 있게 한다
@@ -53,28 +53,33 @@ function DepartureForm({ vehicle, parking }: { vehicle: VehicleDetail; parking: 
   const [day, setDay] = useState(initial.day)
   const [customDate, setCustomDate] = useState(initial.customDate)
   const [time, setTime] = useState(initial.time)
+  const [longTerm, setLongTerm] = useState(()=>!parking.is_shared && (draft?.longTerm ?? Boolean(vehicle.schedule && current === null)))
   // 지금 일정의 메모로 채운다. PUT 이라 저장할 때 메모 칸 값을 늘 같이 보낸다 (안 보내면 기존 메모가 지워짐, backend #34)
   const [memo, setMemo] = useState(draft?.memo ?? vehicle.schedule?.memo ?? '')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
-  useEffect(()=>{writeDraft(draftKey,{day,customDate,time,memo})},[draftKey,day,customDate,time,memo])
+  const savingRef = useRef(false)
+  useEffect(()=>{writeDraft(draftKey,{day,customDate,time,memo,longTerm})},[draftKey,day,customDate,time,memo,longTerm])
   const date = day === 'today' ? kstDate() : day === 'tomorrow' ? kstDate(1) : customDate
   const isPast = (value: string) => date === kstDate() && value <= kstClock()
-  const pastTime = isPast(time)
+  const pastTime = !longTerm && isPast(time)
+  const invalidDate = !longTerm && (!date || date < kstDate())
 
   async function save() {
-    if (saving) return
-    if (!date || date < kstDate()) return setSaveError('오늘 이후 날짜를 골라 주세요.')
+    if (savingRef.current) return
+    if (invalidDate) return setSaveError('오늘 이후 날짜를 골라 주세요.')
     if (pastTime) return
     setSaving(true)
+    savingRef.current = true
     setSaveError(null)
     try {
-      await updateParkingSchedule(parking.parking_id, { expected_exit_at: `${date}T${time}:00+09:00`, memo: memo.trim() || null })
+      await updateParkingSchedule(parking.parking_id, { ...(longTerm ? { is_long_term: true as const } : { is_long_term: false as const, expected_exit_at: `${date}T${time}:00+09:00` }), memo: memo.trim() || null })
       removeDraft(draftKey)
       window.location.hash = toHash('vehicle-detail', { id: vehicle.id, saved: 'departure' })
     } catch (e) {
       setSaveError(isApiError(e) ? e.message : '잠시 후 다시 시도해 주세요')
       setSaving(false)
+      savingRef.current = false
     }
   }
 
@@ -82,18 +87,22 @@ function DepartureForm({ vehicle, parking }: { vehicle: VehicleDetail; parking: 
     <PageTitle title="출차 일정 수정" description={`${vehicle.plate} · ${parking.slot_label}에 주차 중 · 출차 예정 시간을 변경해요`}/>
     <Divider/>
     {hashParams().get('saved') === 'repeat' && <Alert severity="success">반복 일정을 저장했어요. 출차 일정 입력은 그대로 유지했어요.</Alert>}
+    <Typography variant="body2" color="text.secondary">지금 일정: {current ? `${dateTimeOf(current)} 출차 예정` : '출차 시간 없이 상시 주차 중'}{current && currentAt && isPastAt(currentAt.date, currentAt.clock) && ' (지난 시각)'}</Typography>
+    <FormControlLabel control={<Switch checked={longTerm} disabled={saving || parking.is_shared === true} onChange={(_,checked)=>{setLongTerm(checked);setSaveError(null)}}/>} label="상시 주차 여부" sx={{justifyContent:'space-between',mx:0}} labelPlacement="start"/>
+    {parking.is_shared && <Typography variant="caption" color="text.secondary">공유 주차장에서는 이용 종료 시각까지 출차해야 해요.</Typography>}
+    {longTerm ? <Typography variant="caption" color="text.secondary">상시 주차는 출차 시간 없이 배치해요. 기존 반복 일정은 삭제하지 않아요.</Typography> : <>
     <SectionTitle>출차 일시</SectionTitle>
-    <Typography variant="body2" color="text.secondary">지금 일정: {current ? `${dateTimeOf(current)} 출차 예정` : '등록된 출차 시간 없음'}{current && currentAt && isPastAt(currentAt.date, currentAt.clock) && ' (지난 시각)'}</Typography>
-    <TextField select label="날짜 선택" value={day} onChange={(event)=>setDay(event.target.value)}>{[['today','오늘'],['tomorrow','내일'],['custom','날짜 직접 선택']].map(([value,label])=><MenuItem key={value} value={value}>{label}</MenuItem>)}</TextField>
-    {day === 'custom' && <TextField type="date" label="날짜" value={customDate} onChange={(event)=>setCustomDate(event.target.value)} slotProps={{inputLabel:{shrink:true},htmlInput:{min:kstDate()}}}/>}
-    <TextField select label="출차 시간" value={time} onChange={(event)=>setTime(event.target.value)}>{timeOptions.map((value)=><MenuItem key={value} value={value} disabled={isPast(value)}>{value}{currentAt && value === currentAt.clock && date === currentAt.date ? ' (지금 일정)' : ''}</MenuItem>)}</TextField>
+    <TextField disabled={saving} select label="날짜 선택" value={day} onChange={(event)=>setDay(event.target.value)}>{[['today','오늘'],['tomorrow','내일'],['custom','날짜 직접 선택']].map(([value,label])=><MenuItem key={value} value={value}>{label}</MenuItem>)}</TextField>
+    {day === 'custom' && <TextField disabled={saving} type="date" label="날짜" value={customDate} onChange={(event)=>setCustomDate(event.target.value)} slotProps={{inputLabel:{shrink:true},htmlInput:{min:kstDate()}}}/>}
+    <TextField disabled={saving} select label="출차 시간" value={time} onChange={(event)=>setTime(event.target.value)}>{timeOptions.map((value)=><MenuItem key={value} value={value} disabled={isPast(value)}>{value}{currentAt && value === currentAt.clock && date === currentAt.date ? ' (지금 일정)' : ''}</MenuItem>)}</TextField>
     {pastTime && <Typography variant="caption" color="error">이미 지난 시각이에요. 이후 시각을 골라 주세요</Typography>}
     <Divider/>
     <SectionTitle>반복 설정</SectionTitle>
-    <Surface><Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}><Stack direction="row" gap={1.25} alignItems="center"><EventRepeatRoundedIcon color="primary"/><div><Typography variant="subtitle2">반복 일정 설정</Typography><Typography variant="caption" color="text.secondary">매주·매일 반복 출차 일정을 등록합니다</Typography></div></Stack><Button component="a" href={toHash('repeat', { id: vehicle.id, from: 'departure' })} variant="outlined">설정</Button></Stack></Surface>
+    <Surface><Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}><Stack direction="row" gap={1.25} alignItems="center"><EventRepeatRoundedIcon color="primary"/><div><Typography variant="subtitle2">반복 일정 설정</Typography><Typography variant="caption" color="text.secondary">매주·매일 반복 출차 일정을 등록합니다</Typography></div></Stack><Button disabled={saving} component="a" href={toHash('repeat', { id: vehicle.id, from: 'departure' })} variant="outlined">설정</Button></Stack></Surface>
+    </>}
     <Divider/>
-    <TextField label="메모 (선택)" multiline rows={2} value={memo} onChange={(event)=>setMemo(event.target.value)}/>
+    <TextField disabled={saving} label="메모 (선택)" multiline rows={2} value={memo} onChange={(event)=>setMemo(event.target.value)}/>
     {saveError && <Alert severity="error">{saveError}</Alert>}
-    <Button variant="contained" fullWidth disabled={saving || pastTime || !date || date < kstDate()} onClick={save}>{saving ? '저장 중…' : '변경 사항 저장'}</Button>
+    <Button variant="contained" fullWidth disabled={saving || pastTime || invalidDate} onClick={save}>{saving ? '저장 중…' : '변경 사항 저장'}</Button>
   </Stack>
 }
