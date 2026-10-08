@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import EventRepeatRoundedIcon from '@mui/icons-material/EventRepeatRounded'
 import { Alert, Box, Button, CircularProgress, Divider, MenuItem, Stack, TextField, Typography } from '@mui/material'
 import { PageTitle, SectionTitle, Surface } from '../../components/Ui'
-import { isApiError } from '../../api/client'
+import { errorReason, isApiError } from '../../api/client'
 import { getHome, getMyVehicle, updateParkingSchedule } from '../../api/parking'
 import { useApi } from '../../api/useApi'
 import { hashParams, toHash } from '../../types/navigation'
@@ -73,7 +73,8 @@ function DepartureForm({ vehicle, parking }: { vehicle: VehicleDetail; parking: 
       removeDraft(draftKey)
       window.location.hash = toHash('vehicle-detail', { id: vehicle.id, saved: 'departure' })
     } catch (e) {
-      setSaveError(isApiError(e) ? e.message : '잠시 후 다시 시도해 주세요')
+      // 공유 칸은 공유 종료 시각까지만 (backend #51): detail.reason 에 "공유 이용 시간(22:00)까지 출차해야 합니다."
+      setSaveError(isApiError(e) ? errorReason(e) : '잠시 후 다시 시도해 주세요')
       setSaving(false)
     }
   }

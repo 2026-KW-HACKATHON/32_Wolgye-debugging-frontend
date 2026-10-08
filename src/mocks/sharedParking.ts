@@ -24,3 +24,5 @@ userShareRequests.push({id:704,status:'APPROVED',reject_reason:null,garage:{id:4
 export const offerOwnerId = 999
 /** 지금(KST) 이용 시간인 승인된 공유 */
 export const sharingNow = (item: StoredShareRequest) => { const now = new Date(); return item.status === 'APPROVED' && item.request_date === kst(now) && item.start_hour <= kstHour(now) && kstHour(now) < item.end_hour }
+/** 공유 종료 시각 (24시는 다음 날 00:00) */
+export const shareEndsAt = (item: StoredShareRequest) => item.end_hour < 24 ? `${item.request_date}T${String(item.end_hour).padStart(2,'0')}:00:00+09:00` : `${kst(new Date(Date.parse(`${item.request_date}T12:00:00+09:00`) + 86400000))}T00:00:00+09:00`

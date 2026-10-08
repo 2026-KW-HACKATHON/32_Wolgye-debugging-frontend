@@ -1,12 +1,12 @@
 import { USE_MOCK, invalidInput, mockDelay, mockFail, notFound, request } from './client'
 import type { Page, PageQuery } from '../types/api'
 import type { BuildingLayout, BuildingStatus, Home, LayoutSlot, MoveRequestBox, MoveRequestCreate, MoveRequestCreated, MoveRequestDetail, MoveRequestDone, MoveRequestListItem, NotificationItem, ParkingCreate, ParkingCreated, ParkingExited, ParkingScheduleUpdate, ParkingScheduleUpdated, RecurringSchedule, SlotRecommendation, SlotRecommendationQuery, SlotRecommendations, VehicleDetail } from '../types/parking'
-import { MOCK_NOW, MY_BUILDING_ID, WEEKDAYS_MON_FRI, allSlots, blocks, findSlot, labelOf, layout, me, minutesSince, moveRequests, notifications, parkedAt, parkings, recurringByVehicle, slotStatuses } from '../mocks/parking'
+import { MOCK_NOW, MY_BUILDING_ID, WEEKDAYS_MON_FRI, allSlots, blocks, findSlot, labelOf, layout, me, parkedIn, minutesSince, moveRequests, notifications, parkedAt, parkings, recurringByVehicle, slotStatuses } from '../mocks/parking'
 import { vehiclesByUser } from '../mocks/vehicles'
 import { getMockUserId, getMyRole } from './auth'
 import type { VehicleListItem } from '../types/vehicles'
 import { shareRequests } from '../mocks/admin'
-import { sharedGarages, sharingNow, userShareRequests } from '../mocks/sharedParking'
+import { shareEndsAt, sharedGarages, sharingNow, userShareRequests } from '../mocks/sharedParking'
 
 // 입주민 API. 함수 이름 = 명세 operationId. 지금은 목데이터를 돌려주고, 서버 연결 시 함수 안쪽만 바꾼다 (docs/api-layer.md)
 
@@ -57,7 +57,7 @@ export async function getHome(): Promise<Home> {
     building: { id: MY_BUILDING_ID, name: layout.name, role: getMyRole() ?? me.role },
     unread_notification_count: notifications.filter((item) => !item.is_read).length,
     summary: { available: count('EMPTY') + count('SOON_EXIT'), soon_exit: count('SOON_EXIT'), blocked: statuses.filter((slot) => slot.parking?.occupant_type === 'RESIDENT' && slot.blocked_by.length > 0).length, empty: count('EMPTY') },
-    my_parking: mine ? { parking_id: mine.id, vehicle: myVehicleOf(mine.vehicle_id!), slot_label: labelOf(mine.slot_id), state: mine.state, expected_exit_at: mine.expected_exit_at } : null,
+    my_parking: mine ? { ...parkedIn(mine.slot_id), parking_id: mine.id, vehicle: myVehicleOf(mine.vehicle_id!), slot_label: labelOf(mine.slot_id), state: mine.state, expected_exit_at: mine.expected_exit_at } : null,
     block_alert: blockerParking ? { blocking_parking_id: blockerParking.id, message: `내 차량이 ${labelOf(blockerParking.slot_id)} 차량에 의해 막혀 있습니다.` } : null,
     admin: (getMyRole() ?? me.role) === 'ADMIN' ? { pending_share_requests: shareRequests.filter((request) => request.status === 'PENDING').length } : null,
     recent_notifications: byNewest(notifications).slice(0, 2),
@@ -121,12 +121,20 @@ export async function createParking(body: ParkingCreate): Promise<ParkingCreated
   return mockDelay({ id, slot_id: slot.id, state: 'PARKED', expected_exit_at: expected, exit_source: longTerm ? 'NONE' : 'MANUAL', blocking: will_block })
 }
 
+/** 공유 칸은 공유 종료 시각까지만 세울 수 있다 (backend #51 → 400 INVALID_INPUT) */
+function overShareEnd(share: (typeof userShareRequests)[number], exitAt: string) {
+  const ends = shareEndsAt(share)
+  return Date.parse(exitAt) > Date.parse(ends) ? invalidInput('입력값이 올바르지 않습니다.', { field: 'expected_exit_at', reason: `공유 이용 시간(${ends.slice(11, 16)})까지 출차해야 합니다.`, share_ends_at: ends }) : null
+}
+
 /** 다른 빌라 칸: 지금 이용 시간인 내 승인된 공유 칸이면 주차할 수 있다 (서버 create_parking 과 같음, #61) */
 function createSharedParking(body: ParkingCreate, vehicleId: number, plate: string): Promise<ParkingCreated> {
   if (!sharedGarages.some((garage) => garage.slots.some((slot) => slot.slot_id === body.slot_id))) return notFound()
   const share = userShareRequests.find((item) => item.slot_id === body.slot_id && item.user_id === getMockUserId() && sharingNow(item))
   if (!share) return notMember()
   if (!isDateTime(body.expected_exit_at)) return invalidInput('출차 시간을 입력해 주세요.', { field: 'expected_exit_at' })
+  const overShare = overShareEnd(share, body.expected_exit_at)
+  if (overShare) return overShare
   if (parkedAt(body.slot_id)) return mockFail(409, 'SLOT_OCCUPIED', '이미 다른 차량이 주차 중인 칸입니다.')
   const current = myParking(vehicleId)
   if (current) return mockFail(409, 'VEHICLE_ALREADY_PARKED', '이미 주차 중인 차량입니다.', { parking_id: current.id })
@@ -141,6 +149,9 @@ export async function updateParkingSchedule(parkingId: number, body: ParkingSche
   const parking = parkings.find((item) => item.id === parkingId && item.state === 'PARKED' && isMine(item.vehicle_id))
   if (!parking) return notFound()
   if (!isDateTime(body.expected_exit_at)) return invalidInput('출차 시간이 올바르지 않습니다.', { field: 'expected_exit_at' })
+  const share = userShareRequests.find((item) => item.slot_id === parking.slot_id && item.user_id === getMockUserId() && sharingNow(item))
+  const overShare = share && overShareEnd(share, body.expected_exit_at)
+  if (overShare) return overShare
   // TODO(logic): 시간이 바뀌어도 목에서는 막힘 관계를 다시 계산하지 않는다 (서버가 판정)
   parking.expected_exit_at = body.expected_exit_at
   parking.exit_source = 'MANUAL'
@@ -171,7 +182,7 @@ export async function getMyVehicle(vehicleId: number): Promise<VehicleDetail> {
   return mockDelay({
     id: vehicle.id, plate: vehicle.plate, color: vehicle.color,
     owner: { name: me.name, unit: me.unit },
-    parking: parking ? { parking_id: parking.id, slot_id: parking.slot_id, slot_label: labelOf(parking.slot_id), entered_at: parking.entered_at, state: parking.state } : null,
+    parking: parking ? { ...parkedIn(parking.slot_id), parking_id: parking.id, slot_id: parking.slot_id, slot_label: labelOf(parking.slot_id), entered_at: parking.entered_at, state: parking.state } : null,
     schedule: parking ? { expected_exit_at: parking.expected_exit_at, exit_source: parking.exit_source, elapsed_minutes: minutesSince(parking.entered_at), memo: parking.expected_exit_at === null ? null : parking.exit_source === 'RECURRING' ? recurringByVehicle.get(vehicleId)?.memo ?? null : parking.memo } : null,
   })
 }

@@ -88,7 +88,9 @@ export type NotificationPage = Page<NotificationItem>
 
 // ── 홈 GET /me/home ──
 export type HomeSummary = { available: number; soon_exit: number; blocked: number; empty: number }
-export type HomeMyParking = { parking_id: number; vehicle: { id: number; plate: string; /** 색상을 고르지 않았으면 null (FE #39) */ color: VehicleColor | null }; slot_label: string; state: ParkingState; expected_exit_at: DateTime | null }
+/** 차가 서 있는 빌라 (backend #51). 배포 전 서버는 주지 않는다 */
+export type ParkedIn = { building?: { id: number; name: string }; /** 내 빌라가 아닌 공유 주차장 칸이면 true */ is_shared?: boolean }
+export type HomeMyParking = ParkedIn & { parking_id: number; vehicle: { id: number; plate: string; /** 색상을 고르지 않았으면 null (FE #39) */ color: VehicleColor | null }; slot_label: string; state: ParkingState; expected_exit_at: DateTime | null }
 export type BlockAlert = { blocking_parking_id: number; message: string }
 export type Home = {
   building: { id: number; name: string; role: BuildingRole }
@@ -110,7 +112,7 @@ export type VehicleDetail = {
   color: VehicleColor | null
   /** unit: 프로필에 동·호수가 없으면 null (FE #39) */
   owner: { name: string; unit: string | null }
-  parking: { parking_id: number; slot_id: number; slot_label: string; entered_at: DateTime; state: ParkingState } | null
+  parking: (ParkedIn & { parking_id: number; slot_id: number; slot_label: string; entered_at: DateTime; state: ParkingState }) | null
   /** memo: 출차 예정이 온 일정의 메모 (RECURRING 이면 반복 일정 메모). 메모가 없거나 상시 주차면 null (backend #33·#34) */
   schedule: { expected_exit_at: DateTime | null; exit_source: ExitSource; elapsed_minutes: number; memo: string | null } | null
 }

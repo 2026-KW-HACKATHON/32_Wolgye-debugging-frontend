@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Alert, Button, MenuItem, Stack, TextField, Typography } from '@mui/material'
 import { Surface } from '../../components/Ui'
-import { isApiError } from '../../api/client'
+import { errorReason, isApiError } from '../../api/client'
 import { createParking } from '../../api/parking'
 import { listMyVehicles } from '../../api/vehicles'
 import { useApi } from '../../api/useApi'
@@ -42,7 +42,7 @@ export default function SharedParkingRegister({ request }: { request: ShareReque
       setDone(true); setNotice({ severity: 'success', message: `${place}에 주차를 등록했어요. 다 쓰면 홈에서 '지금 출차!'를 눌러 주세요.` })
     } catch (e) {
       if (isApiError(e) && e.code === 'VEHICLE_ALREADY_PARKED') setNotice({ severity: 'error', message: '이 차는 이미 다른 칸에 주차 중이에요. 홈에서 먼저 출차한 뒤 다시 눌러 주세요.' })
-      else setNotice({ severity: 'error', message: isApiError(e) ? e.message : '잠시 후 다시 시도해 주세요' })
+      else setNotice({ severity: 'error', message: isApiError(e) ? errorReason(e) : '잠시 후 다시 시도해 주세요' })
     } finally { setSending(false) }
   }
 

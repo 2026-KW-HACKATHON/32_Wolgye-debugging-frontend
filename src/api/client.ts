@@ -22,6 +22,8 @@ export class ApiError extends Error {
 }
 
 export const isApiError = (error: unknown): error is ApiError => error instanceof ApiError
+/** 400 INVALID_INPUT 등에서 서버가 detail.reason 으로 준 구체적인 이유. 없으면 message */
+export const errorReason = (error: ApiError) => typeof error.detail?.reason === 'string' ? error.detail.reason : error.message
 
 type Query = Record<string, string | number | boolean | null | undefined>
 type RequestOptions = { query?: Query; body?: unknown; /** false 면 Bearer 를 붙이지 않고 401 재시도도 하지 않는다 (로그인·가입·토큰 갱신) */ auth?: boolean }

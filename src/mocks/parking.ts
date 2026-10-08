@@ -78,6 +78,9 @@ export const notifications: NotificationItem[] = [
 export const allSlots = (): LayoutSlot[] => layout.zones.flatMap((zone) => zone.slots)
 export const findSlot = (slotId: number) => allSlots().find((slot) => slot.id === slotId)
 // 공유 주차한 다른 빌라 칸도 이름을 찾는다 (#61)
+const sharedGarageOf = (slotId: number) => sharedGarages.find((garage) => garage.slots.some((slot) => slot.slot_id === slotId))
+/** 차가 서 있는 빌라 (backend #51). 목에서는 공유 차고지 id 를 빌라 id 로 쓴다 */
+export const parkedIn = (slotId: number) => { const garage = sharedGarageOf(slotId); return garage ? { building: { id: garage.id, name: garage.name }, is_shared: true } : { building: { id: MY_BUILDING_ID, name: layout.name }, is_shared: false } }
 export const labelOf = (slotId: number) => findSlot(slotId)?.label ?? sharedGarages.flatMap((garage) => garage.slots).find((slot) => slot.slot_id === slotId)?.label ?? ''
 export const parkedAt = (slotId: number) => parkings.find((parking) => parking.slot_id === slotId && parking.state === 'PARKED')
 /** 1시간 이내 출차 */
