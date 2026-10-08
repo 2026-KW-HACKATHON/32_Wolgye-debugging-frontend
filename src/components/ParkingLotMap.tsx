@@ -10,7 +10,7 @@ type Props = {
   shape: LotShape
   slots: LotSlot[]
   view?: LotView
-  /** 'admin'이면 차 색을 입주민(파랑)·외부(주황)·미확인(빨강)으로 나누고 번호판을 보여준다 */
+  /** 'admin'이면 차 색을 입주민(파랑)·외부(주황)·미확인(빨강)으로 나눈다. 차량 번호는 칸을 누르면 화면이 보여 준다 (onInspect) */
   variant?: 'resident' | 'admin'
   selected?: SlotId
   recommendedId?: SlotId
@@ -42,8 +42,9 @@ const occupantColor: Record<Occupant, { car: string; tagBg: string; tagText: str
 
 // ── 2.5D 투영: 평면 (x, y) + 높이 z → 화면 좌표. 아래쪽(입구)이 시점 쪽이다.
 const ISO_X = 0.78
-const ISO_Y = 0.42
-// 높이·글자 크기는 폭 800px 사이트(한빛빌라) 기준이다. 사이트 폭에 맞춰 줄이거나 늘린다 (scale)
+const ISO_Y = 0.52
+// 높이·글자 크기는 800×610px 사이트(한빛빌라) 기준이다. 그려지는 폭에 맞춰 줄이거나 늘린다 (scale)
+// 입체는 화면 폭이 사이트 폭+길이에 비례하고, 평면은 사이트 폭에 비례한다
 const BUILDING_HEIGHT = 80
 // floors 가 있는 사이트 파일의 한 층 높이 기본값 (floorHeight 가 없을 때)
 const FLOOR_HEIGHT = 40
@@ -111,7 +112,7 @@ export default function ParkingLotMap({ shape, slots, view = 'iso', variant = 'r
   const iso = view === 'iso'
   const admin = variant === 'admin'
   const { site, building, buildingExtra = [], roof, pillars = [], buildingDoor, walls = [], boundary, aisle, entrance } = shape
-  const scale = site.w / 800
+  const scale = iso ? (site.w + site.h) / 1410 : site.w / 800
   const floorHeight = shape.floorHeight ?? FLOOR_HEIGHT
   // 층수가 있으면 층수 × 층 높이, 없으면 기본 건물 높이 (한빛빌라처럼 층수 없는 사이트 파일)
   const heightOf = (block: LotBlock) => block.floors === undefined ? BUILDING_HEIGHT * scale : block.floors * floorHeight
@@ -122,6 +123,9 @@ export default function ParkingLotMap({ shape, slots, view = 'iso', variant = 'r
   const pillarHeight = roof ? roofZ0 : floorHeight
   const font = { tag: FONT[view].tag * scale }
   const interactive = Boolean(onSelect || onInspect)
+  // 골목 입구가 땅 아래 가장자리에 있으면(한빛빌라) 입구 아래에, 옆 가장자리에 있으면(햇살빌라) 땅 안쪽 입구 옆에 글자를 둔다
+  // 화살표는 차가 입구로 들어오는 방향 (홈의 '골목 입구 ↑'와 같음). 입체에서 왼쪽 가장자리로 들어오면 화면 오른쪽 아래
+  const entranceAtBottom = !!entrance && entrance.y + entrance.h >= site.h - 1
   // 내 차를 막고 있는 칸 (빨간 테두리로 표시)
   const blockers = new Set(admin ? [] : slots.filter((slot) => slot.car?.mine).flatMap((slot) => slot.blockedBy ?? []))
   const tap = (slot: LotSlot) => onInspect ? onInspect(slot) : slot.state === 'empty' ? onSelect?.(slot.id) : onUnavailable?.(slot)
@@ -201,15 +205,15 @@ export default function ParkingLotMap({ shape, slots, view = 'iso', variant = 'r
       {pillars.map((pillar, index) => <IsoBox key={index} rect={pillar} z1={pillarHeight} top="#98A2B3" side="#667085" front="#475467"/>)}
       {carLayer}
       {/* 필로티 지붕은 차 위에 반투명으로 덮어 아래 칸·차가 보이게 한다. 칩과 탭 영역은 그 위 */}
-      {roof && <g opacity={0.55} pointerEvents="none"><IsoBox rect={roof} z0={roofZ0} z1={roofZ1} top={colors.buildingRoof} side={colors.buildingSide} front="#D0D5DD" stroke={colors.buildingLine}/></g>}
+      {roof && <g opacity={0.35} pointerEvents="none"><IsoBox rect={roof} z0={roofZ0} z1={roofZ1} top={colors.buildingRoof} side={colors.buildingSide} front="#D0D5DD" stroke={colors.buildingLine}/></g>}
       {labelLayer}
-      {entrance && (() => { const [x, y] = isoPoint(entrance.x + entrance.w / 2, entrance.y + entrance.h); return <Tag x={x} y={y + 30 * scale} label="골목 입구 ↑" color="#475467" bg="#FFFFFF" size={font.tag}/> })()}
+      {entrance && (() => { const [x, y] = entranceAtBottom ? isoPoint(entrance.x + entrance.w / 2, entrance.y + entrance.h, -30 * scale) : isoPoint(entrance.x + entrance.w + 90 * scale, entrance.y + entrance.h / 2); return <Tag x={x} y={y} label={entranceAtBottom ? '골목 입구 ↑' : '골목 입구 ↘'} color="#475467" bg="#FFFFFF" size={font.tag}/> })()}
       {hitLayer}
     </MapFrame>
   }
 
   // 골목 입구 글자 자리 (입구가 있을 때만)
-  const bottom = entrance ? 56 * scale : 10 * scale
+  const bottom = entranceAtBottom ? 56 * scale : 10 * scale
   return <MapFrame viewBox={`${-10 * scale} ${-10 * scale} ${site.w + 20 * scale} ${site.h + 10 * scale + bottom}`} label="주차 배치도 (평면)">
     <rect x={0} y={0} width={site.w} height={site.h} rx={8 * scale} fill={colors.ground} stroke={colors.groundEdge} strokeWidth={2 * scale}/>
     {boundary && <rect x={boundary.x} y={boundary.y} width={boundary.w} height={boundary.h} rx={6 * scale} fill="none" stroke={colors.wall} strokeWidth={4 * scale}/>}
@@ -230,7 +234,7 @@ export default function ParkingLotMap({ shape, slots, view = 'iso', variant = 'r
     </>}
     {entrance && <>
       <rect x={entrance.x} y={entrance.y} width={entrance.w} height={entrance.h} fill="#FFFFFF"/>
-      <text x={entrance.x + entrance.w / 2} y={site.h + 34 * scale} textAnchor="middle" fontSize={font.tag} fontWeight={800} fill="#475467">골목 입구</text>
+      {entranceAtBottom ? <text x={entrance.x + entrance.w / 2} y={site.h + 34 * scale} textAnchor="middle" fontSize={font.tag} fontWeight={800} fill="#475467">골목 입구</text> : <text x={entrance.x + entrance.w + 12 * scale} y={entrance.y + entrance.h / 2 + font.tag * 0.35} fontSize={font.tag} fontWeight={800} fill="#475467">골목 입구 →</text>}
     </>}
     {slotLayer}
     {carLayer}
