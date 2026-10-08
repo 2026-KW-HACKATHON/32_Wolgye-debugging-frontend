@@ -5,15 +5,22 @@ import type { LotRect, LotShape } from '../types/parking'
 
 const isNum = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value)
 const isObj = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)
-const isRect = (value: unknown): value is LotRect => isObj(value) && isNum(value.x) && isNum(value.y) && isNum(value.w) && isNum(value.h) && value.w > 0 && value.h > 0
+const isRect = (value: unknown): value is LotRect & Record<string, unknown> => isObj(value) && isNum(value.x) && isNum(value.y) && isNum(value.w) && isNum(value.h) && value.w > 0 && value.h > 0
 const optional = (value: unknown, check: (v: unknown) => boolean) => value === undefined || value === null || check(value)
+
+const isCount = (value: unknown) => isNum(value) && value >= 0
+const isBlock = (value: unknown) => isRect(value) && optional(value.floors, isCount)
+const listOf = (check: (v: unknown) => boolean) => (value: unknown) => Array.isArray(value) && value.every(check)
 
 export function isLotShape(value: unknown): value is LotShape {
   if (!isObj(value) || typeof value.name !== 'string' || !isObj(value.site) || !isNum(value.site.w) || !isNum(value.site.h)) return false
   if (!isObj(value.slots) || !Object.values(value.slots).every(isRect)) return false
   const aisle = (v: unknown) => isObj(v) && isNum(v.x) && isNum(v.top) && isNum(v.bottom)
-  return optional(value.building, isRect) && optional(value.buildingDoor, isRect) && optional(value.boundary, isRect) && optional(value.entrance, isRect)
-    && optional(value.aisle, aisle) && optional(value.walls, (v) => Array.isArray(v) && v.every(isRect))
+  const roof = (v: unknown) => isRect(v) && optional(v.elevation, isCount) && optional(v.floors, isCount)
+  return optional(value.floorHeight, (v) => isNum(v) && v > 0) && optional(value.building, isBlock) && optional(value.buildingExtra, listOf(isBlock))
+    && optional(value.roof, roof) && optional(value.pillars, listOf(isRect))
+    && optional(value.buildingDoor, isRect) && optional(value.boundary, isRect) && optional(value.entrance, isRect)
+    && optional(value.aisle, aisle) && optional(value.walls, listOf(isRect))
 }
 
 const files = import.meta.glob<unknown>('../sites/*.json', { eager: true, import: 'default' })
