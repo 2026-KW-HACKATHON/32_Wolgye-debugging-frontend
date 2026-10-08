@@ -1,7 +1,7 @@
 import type { KeyboardEvent, ReactNode } from 'react'
 import { Box } from '@mui/material'
 import { tones } from '../theme'
-import type { LotRect as Rect, LotShape, LotSlot, Occupant, SlotId } from '../types/parking'
+import type { LotBlock, LotRect as Rect, LotShape, LotSlot, Occupant, SlotId } from '../types/parking'
 
 export type LotView = 'top' | 'iso'
 
@@ -45,9 +45,12 @@ const ISO_X = 0.78
 const ISO_Y = 0.42
 // 높이·글자 크기는 폭 800px 사이트(한빛빌라) 기준이다. 사이트 폭에 맞춰 줄이거나 늘린다 (scale)
 const BUILDING_HEIGHT = 80
+// floors 가 있는 사이트 파일의 한 층 높이 기본값 (floorHeight 가 없을 때)
+const FLOOR_HEIGHT = 40
 const isoPoint = (x: number, y: number, z = 0): [number, number] => [(x - y) * ISO_X, (x + y) * ISO_Y - z]
-const isoBounds = ({ site, building }: LotShape, scale: number) => {
-  const corners = [isoPoint(0, 0), isoPoint(site.w, 0), isoPoint(0, site.h), isoPoint(site.w, site.h), ...(building ? [isoPoint(building.x, building.y, BUILDING_HEIGHT * scale)] : [])]
+/** 땅 네 모서리 + 높이 있는 도형의 가장 먼 윗모서리까지 들어가는 범위 */
+const isoBounds = ({ site }: LotShape, tops: [Rect, number][], scale: number) => {
+  const corners = [isoPoint(0, 0), isoPoint(site.w, 0), isoPoint(0, site.h), isoPoint(site.w, site.h), ...tops.flatMap(([r, z]) => [isoPoint(r.x, r.y, z), isoPoint(r.x + r.w, r.y, z), isoPoint(r.x, r.y + r.h, z)])]
   const xs = corners.map(([x]) => x)
   const ys = corners.map(([, y]) => y)
   return { minX: Math.min(...xs) - 12 * scale, minY: Math.min(...ys) - 40 * scale, maxX: Math.max(...xs) + 12 * scale, maxY: Math.max(...ys) + 40 * scale }
@@ -107,8 +110,16 @@ const occupied = (slot: LotSlot) => slot.state === 'occupied' || slot.state === 
 export default function ParkingLotMap({ shape, slots, view = 'iso', variant = 'resident', selected, recommendedId, focusId, onSelect, onUnavailable, onInspect }: Props) {
   const iso = view === 'iso'
   const admin = variant === 'admin'
-  const { site, building, buildingDoor, walls = [], boundary, aisle, entrance } = shape
+  const { site, building, buildingExtra = [], roof, pillars = [], buildingDoor, walls = [], boundary, aisle, entrance } = shape
   const scale = site.w / 800
+  const floorHeight = shape.floorHeight ?? FLOOR_HEIGHT
+  // 층수가 있으면 층수 × 층 높이, 없으면 기본 건물 높이 (한빛빌라처럼 층수 없는 사이트 파일)
+  const heightOf = (block: LotBlock) => block.floors === undefined ? BUILDING_HEIGHT * scale : block.floors * floorHeight
+  // 입체에서 먼 덩어리(x+y가 작은 것)부터 그린다
+  const blocks = [...(building ? [building] : []), ...buildingExtra].sort((a, b) => (a.x + a.y) - (b.x + b.y))
+  const roofZ0 = roof ? (roof.elevation ?? 1) * floorHeight : 0
+  const roofZ1 = roof ? roofZ0 + (roof.floors ? roof.floors * floorHeight : 8 * scale) : 0
+  const pillarHeight = roof ? roofZ0 : floorHeight
   const font = { tag: FONT[view].tag * scale }
   const interactive = Boolean(onSelect || onInspect)
   // 내 차를 막고 있는 칸 (빨간 테두리로 표시)
@@ -178,17 +189,19 @@ export default function ParkingLotMap({ shape, slots, view = 'iso', variant = 'r
   })
 
   if (iso) {
-    const { minX, minY, maxX, maxY } = isoBounds(shape, scale)
-    const buildingHeight = BUILDING_HEIGHT * scale
+    const { minX, minY, maxX, maxY } = isoBounds(shape, [...blocks.map((block): [Rect, number] => [block, heightOf(block)]), ...(roof ? [[roof, roofZ1] as [Rect, number]] : [])], scale)
     return <MapFrame viewBox={`${minX} ${minY} ${maxX - minX} ${maxY - minY}`} label="주차 배치도 (입체)">
       <path d={isoRect({ x: 0, y: 0, w: site.w, h: site.h })} fill={colors.ground} stroke={colors.groundEdge} strokeWidth={2 * scale}/>
       {boundary && <path d={isoRect(boundary)} fill="none" stroke={colors.wall} strokeWidth={4 * scale}/>}
       {aisle && <path d={toPath([isoPoint(aisle.x, aisle.bottom), isoPoint(aisle.x, aisle.top)])} stroke={colors.aisle} strokeWidth={3 * scale} strokeDasharray={`${12 * scale} ${10 * scale}`} fill="none"/>}
       {slotLayer}
-      {building && <IsoBox rect={building} z1={buildingHeight} top={colors.buildingRoof} side={colors.buildingSide} front="#D0D5DD" stroke={colors.buildingLine}/>}
+      {blocks.map((block, index) => <IsoBox key={index} rect={block} z1={heightOf(block)} top={colors.buildingRoof} side={colors.buildingSide} front="#D0D5DD" stroke={colors.buildingLine}/>)}
       {building && buildingDoor && <path d={toPath([isoPoint(buildingDoor.x, building.y + building.h, 0), isoPoint(buildingDoor.x + buildingDoor.w, building.y + building.h, 0), isoPoint(buildingDoor.x + buildingDoor.w, building.y + building.h, 46 * scale), isoPoint(buildingDoor.x, building.y + building.h, 46 * scale)])} fill="#475467"/>}
       {walls.map((wall, index) => <IsoBox key={index} rect={wall} z1={28 * scale} top={colors.wall} side={shade(colors.wall, -30)} front={shade(colors.wall, -45)}/>)}
+      {pillars.map((pillar, index) => <IsoBox key={index} rect={pillar} z1={pillarHeight} top="#98A2B3" side="#667085" front="#475467"/>)}
       {carLayer}
+      {/* 필로티 지붕은 차 위에 반투명으로 덮어 아래 칸·차가 보이게 한다. 칩과 탭 영역은 그 위 */}
+      {roof && <g opacity={0.55} pointerEvents="none"><IsoBox rect={roof} z0={roofZ0} z1={roofZ1} top={colors.buildingRoof} side={colors.buildingSide} front="#D0D5DD" stroke={colors.buildingLine}/></g>}
       {labelLayer}
       {entrance && (() => { const [x, y] = isoPoint(entrance.x + entrance.w / 2, entrance.y + entrance.h); return <Tag x={x} y={y + 30 * scale} label="골목 입구 ↑" color="#475467" bg="#FFFFFF" size={font.tag}/> })()}
       {hitLayer}
@@ -200,6 +213,7 @@ export default function ParkingLotMap({ shape, slots, view = 'iso', variant = 'r
   return <MapFrame viewBox={`${-10 * scale} ${-10 * scale} ${site.w + 20 * scale} ${site.h + 10 * scale + bottom}`} label="주차 배치도 (평면)">
     <rect x={0} y={0} width={site.w} height={site.h} rx={8 * scale} fill={colors.ground} stroke={colors.groundEdge} strokeWidth={2 * scale}/>
     {boundary && <rect x={boundary.x} y={boundary.y} width={boundary.w} height={boundary.h} rx={6 * scale} fill="none" stroke={colors.wall} strokeWidth={4 * scale}/>}
+    {buildingExtra.map((block, index) => <rect key={index} x={block.x} y={block.y} width={block.w} height={block.h} fill={colors.building} stroke={colors.buildingLine} strokeWidth={6 * scale}/>)}
     {building && <>
       <rect x={building.x} y={building.y} width={building.w} height={building.h} fill={colors.building} stroke={colors.buildingLine} strokeWidth={6 * scale}/>
       <text x={building.x + building.w / 2} y={building.y + building.h / 2} textAnchor="middle" fontSize={34 * scale} fontWeight={800} fill={colors.buildingLine}>건물</text>
@@ -220,6 +234,9 @@ export default function ParkingLotMap({ shape, slots, view = 'iso', variant = 'r
     </>}
     {slotLayer}
     {carLayer}
+    {/* 필로티 지붕: 아래 칸이 보이도록 옅은 면 + 점선 테두리 */}
+    {roof && <rect x={roof.x} y={roof.y} width={roof.w} height={roof.h} fill={colors.buildingLine} fillOpacity={0.06} stroke={colors.buildingLine} strokeWidth={3 * scale} strokeDasharray={`${12 * scale} ${8 * scale}`} pointerEvents="none"/>}
+    {pillars.map((pillar, index) => <rect key={index} x={pillar.x} y={pillar.y} width={pillar.w} height={pillar.h} fill="#475467" pointerEvents="none"/>)}
     {labelLayer}
     {hitLayer}
   </MapFrame>

@@ -37,10 +37,20 @@ export type LotRect = { x: number; y: number; w: number; h: number }
  * 빌라 배치도 모양 (사이트 파일 src/sites/{site_key}.json, Figma 평면도 px 그대로). 칸 좌표는 칸 이름(P1…)별.
  * 건물·벽·입구 등은 없어도 된다 (사이트 파일 없는 빌라는 땅과 칸만 그린다)
  */
+/** 높이가 있는 도형. floors 를 주면 높이 = floors × LotShape.floorHeight, 없으면 기본 높이 */
+export type LotBlock = LotRect & { floors?: number }
 export type LotShape = {
   name: string
   site: { w: number; h: number }
-  building?: LotRect
+  /** 한 층 높이(px). 없으면 40 */
+  floorHeight?: number
+  building?: LotBlock
+  /** 본 건물에 붙은 다른 건물 덩어리 (ㄱ자 건물 등). 평면에 "건물" 글자는 본 건물에만 쓴다 */
+  buildingExtra?: LotBlock[]
+  /** 필로티 지붕: elevation 층 높이에 떠 있고 floors 층 두께. 아래 칸이 보이도록 반투명으로 그린다 */
+  roof?: LotRect & { elevation?: number; floors?: number }
+  /** 필로티 기둥: 땅에서 지붕 아래(없으면 한 층)까지 */
+  pillars?: LotRect[]
   buildingDoor?: LotRect
   walls?: LotRect[]
   /** 구역 경계 (파란 사각형, 햇살빌라 Figma 171:3) */
