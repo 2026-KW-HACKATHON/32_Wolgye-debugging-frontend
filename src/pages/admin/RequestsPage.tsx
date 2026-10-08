@@ -15,6 +15,8 @@ type Notice = { severity: 'success' | 'warning' | 'error'; message: string }
 
 const filters: [Filter, string][] = [['all', '전체'], ['PENDING', '대기 중'], ['APPROVED', '수락됨'], ['REJECTED', '거절됨']]
 const statusKind = { PENDING: 'pending', APPROVED: 'accepted', REJECTED: 'rejected' } as const
+// 필터 칩 안 건수 배지 색
+const badgeColor: Record<Filter, [string, string]> = { all: ['#E8EFFF', '#2563EB'], PENDING: ['#FFF4D6', '#B7791F'], APPROVED: ['#E3F6EA', '#1F8A4C'], REJECTED: ['#FDE8E8', '#C53030'] }
 // 처리 중 상태가 바뀐 요청. 안내 후 다시 불러온다
 const DECIDE_CONFLICTS = ['INSUFFICIENT_TOKENS', 'GARAGE_TIME_CONFLICT', 'ALREADY_DECIDED']
 
@@ -70,15 +72,20 @@ function RequestsView({ buildingId }: { buildingId: number }) {
   }
 
   const counts = list.data?.counts
+  const countOf = (value: Filter) => counts && (value === 'all' ? counts.PENDING + counts.APPROVED + counts.REJECTED : counts[value])
+  const chipLabel = (value: Filter, label: string, active: boolean) => {
+    const count = countOf(value)
+    const [bg, fg] = active ? ['#fff', 'primary.main'] : badgeColor[value]
+    return <Stack direction="row" alignItems="center" gap={0.75}>{label}{count !== undefined && <Box component="span" sx={{minWidth:18,px:0.6,borderRadius:9,bgcolor:bg,color:fg,fontSize:11,fontWeight:700,lineHeight:'18px',textAlign:'center'}}>{count}</Box>}</Stack>
+  }
   return <Stack gap={2.25}>
     <PageTitle title="공유 요청 관리" description="대기 요청을 확인하고 이용 가능 여부를 결정해요."/>
-    <Box sx={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:1}}>{([['PENDING','대기 중'],['APPROVED','수락됨'],['REJECTED','거절됨']] as const).map(([status,label],index)=><Surface key={status} sx={{boxShadow:'none',bgcolor:index===0?'#FFF9E8':'#fff'}}><Typography variant="caption" color="text.secondary">{label}</Typography><Typography variant="h6" mt={0.25}>{counts ? `${counts[status]}건` : '-'}</Typography></Surface>)}</Box>
     <TextField placeholder="요청자 또는 차량번호 검색" value={input} onChange={(event) => setInput(event.target.value)} slotProps={{input:{startAdornment:<InputAdornment position="start"><SearchRoundedIcon/></InputAdornment>}}}/>
-    <Stack direction="row" gap={0.75} flexWrap="wrap">{filters.map(([value,label])=><Chip key={value} label={label} clickable color={filter===value?'primary':'default'} variant={filter===value?'filled':'outlined'} onClick={() => setFilter(value)}/>)}</Stack>
+    <Stack direction="row" gap={0.75} flexWrap="wrap">{filters.map(([value,label])=><Chip key={value} label={chipLabel(value,label,filter===value)} clickable color={filter===value?'primary':'default'} variant={filter===value?'filled':'outlined'} onClick={() => setFilter(value)}/>)}</Stack>
     {notice && <Alert severity={notice.severity} onClose={() => setNotice(null)}>{notice.message}</Alert>}
     {list.error ? <LoadError message={list.error.message} onRetry={list.reload}/> : !list.data ? <Loading/> : list.data.items.length ? list.data.items.map((request)=><Surface key={request.id}><Stack gap={1.25}>
       <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={1}><Box minWidth={0}><Typography variant="subtitle2">{request.requester.name}</Typography><Typography variant="caption" color="text.secondary" display="block">{[request.plate, request.requester.unit].filter(Boolean).join(' · ')}</Typography><Typography variant="caption" color="text.secondary" display="block">요청 칸: {request.slot_label} · {requestTime(request.request_date, request.start_hour, request.end_hour)}</Typography></Box><StatusChip kind={statusKind[request.status]}/></Stack>
-      {request.status==='PENDING' && <><Divider/><Stack direction="row" gap={1}><Button size="small" variant="outlined" color="error" fullWidth disabled={updating} onClick={() => setRejectingId(request.id)}>거절</Button><Button size="small" variant="contained" fullWidth disabled={updating} onClick={() => decide(request.id, { status: 'APPROVED' })}>수락</Button></Stack></>}
+      {request.status==='PENDING' && <><Divider/><Stack direction="row" gap={1}><Button size="small" variant="outlined" fullWidth disabled={updating} onClick={() => setRejectingId(request.id)}>거절</Button><Button size="small" variant="contained" fullWidth disabled={updating} onClick={() => decide(request.id, { status: 'APPROVED' })}>수락</Button></Stack></>}
     </Stack></Surface>) : <Typography variant="caption" color="text.secondary">{q || filter !== 'all' ? '조건에 맞는 요청이 없어요.' : '받은 공유 요청이 없어요.'}</Typography>}
     <RejectDialog key={rejectingId ?? 'none'} open={rejectingId !== null} busy={updating} onClose={() => setRejectingId(null)} onReject={(reason) => rejectingId !== null && decide(rejectingId, { status: 'REJECTED', reject_reason: reason })}/>
   </Stack>
