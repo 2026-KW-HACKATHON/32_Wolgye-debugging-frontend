@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test:reports": "node --test tests/vehicle-reports.test.cjs",
     "preview": "vite preview"
   },
   "dependencies": {
