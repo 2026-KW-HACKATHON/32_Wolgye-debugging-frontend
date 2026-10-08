@@ -3,8 +3,8 @@ import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import ChevronLeftRoundedIcon from '@mui/icons-material/ChevronLeftRounded'
 import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded'
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded'
-import { Alert, Avatar, Box, Button, CircularProgress, Divider, IconButton, Stack, ToggleButton, ToggleButtonGroup, Tooltip, Typography } from '@mui/material'
-import { NavButton, PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
+import { Alert, Avatar, Box, Button, CircularProgress, Divider, Drawer, IconButton, Stack, ToggleButton, ToggleButtonGroup, Tooltip, Typography } from '@mui/material'
+import { InfoRow, NavButton, PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
 import ParkingLotMap, { type LotView } from '../../components/ParkingLotMap'
 import { toLot } from '../../components/parkingLotGeometry'
 import { decideShareRequest, getAdminDashboard } from '../../api/admin'
@@ -12,7 +12,7 @@ import { isApiError } from '../../api/client'
 import { createMoveRequest, getBuildingLayout, getBuildingStatus, getHome } from '../../api/parking'
 import { useApi } from '../../api/useApi'
 import type { AdminPendingRequest, CongestionDay } from '../../types/admin'
-import { kstAfter, pad } from '../parking/kstTime'
+import { dateTimeOf, kstAfter, pad } from '../parking/kstTime'
 import RejectDialog from './RejectDialog'
 
 type Notice = { severity: 'success' | 'info' | 'warning' | 'error'; message: string }
@@ -20,6 +20,7 @@ type Notice = { severity: 'success' | 'info' | 'warning' | 'error'; message: str
 // 처리 중 상태가 바뀐 요청. 안내 후 다시 불러온다
 const DECIDE_CONFLICTS = ['INSUFFICIENT_TOKENS', 'GARAGE_TIME_CONFLICT', 'ALREADY_DECIDED']
 const WEEKDAY_NAMES = ['일', '월', '화', '수', '목', '금', '토']
+const OCCUPANT_LABEL = { RESIDENT: '입주민 차량', EXTERNAL: '외부 차량 · 공유 이용자', UNKNOWN: '미확인 차량' }
 
 const errorMessage = (e: unknown) => isApiError(e) ? e.message : '잠시 후 다시 시도해 주세요'
 // "2026-10-03" → 요일 번호 (KST 날짜라 UTC 정오로 계산해도 요일이 같다)
@@ -32,7 +33,7 @@ function timeAgo(dateTime: string) {
   const minutes = Math.max(0, Math.floor((Date.now() - Date.parse(dateTime)) / 60000))
   return minutes < 1 ? '방금' : minutes < 60 ? `${minutes}분 전` : minutes < 1440 ? `${Math.floor(minutes / 60)}시간 전` : `${Math.floor(minutes / 1440)}일 전`
 }
-const loadLot = async (buildingId: number) => { const [layout, status] = await Promise.all([getBuildingLayout(buildingId), getBuildingStatus(buildingId)]); return { ...toLot(layout, status), updatedAt: status.updated_at } }
+const loadLot = async (buildingId: number) => { const [layout, status] = await Promise.all([getBuildingLayout(buildingId), getBuildingStatus(buildingId)]); return { ...toLot(layout, status), status } }
 
 function Loading() {
   return <Box display="grid" py={6} sx={{placeItems:'center'}}><CircularProgress size={30}/></Box>
@@ -63,6 +64,8 @@ function AdminView({ buildingId }: { buildingId: number }) {
   const [notice, setNotice] = useState<Notice | null>(null)
   const [rejecting, setRejecting] = useState<AdminPendingRequest | null>(null)
   const [sentSlots, setSentSlots] = useState<number[]>([])
+  // 배치도에서 누른 칸 (차량 번호·출차 예정을 아래 시트로 보여 준다)
+  const [inspectedId, setInspectedId] = useState<number | null>(null)
   const updating = busy || dashboard.loading || lot.loading
 
   async function decide(id: number, decision: { status: 'APPROVED' } | { status: 'REJECTED'; reject_reason: string }) {
@@ -115,7 +118,9 @@ function AdminView({ buildingId }: { buildingId: number }) {
   if (!dashboard.data || !lot.data) return <Loading/>
   const { building, pending_requests: pending, realtime, congestion } = dashboard.data
   // 이번 달(서버 시각)은 '아직 지나지 않은 달' 안내에만 쓰고, 보여 주는 달은 응답의 congestion.month (backend #35)
-  const thisMonth = lot.data.updatedAt.slice(0, 7)
+  const thisMonth = lot.data.status.updated_at.slice(0, 7)
+  const inspected = lot.data.slots.find((slot) => slot.slotId === inspectedId)
+  const inspectedParking = lot.data.status.slots.find((slot) => slot.slot_id === inspectedId)?.parking
   const shownMonth = congestion.month
   return <Stack gap={2.25}>
     <PageTitle eyebrow="관리자" title={building.name} action={<NavButton to="requests" variant="text" startIcon={<NotificationsRoundedIcon/>}>알림</NavButton>}/>
@@ -126,7 +131,7 @@ function AdminView({ buildingId }: { buildingId: number }) {
       <Stack direction="row" gap={1}><Button variant="outlined" color="error" fullWidth disabled={updating} onClick={() => setRejecting(request)}>거절</Button><Button variant="contained" fullWidth disabled={updating} onClick={() => decide(request.id, { status: 'APPROVED' })}>수락</Button></Stack>
     </Stack></Surface>) : <Typography variant="caption" color="text.secondary">대기 중인 공유 요청이 없어요.</Typography>}
     <SectionTitle action={<StatusChip kind="available" label={`주차 가능 ${realtime.available_count}곳`}/>}>● 관리 구역 · 실시간</SectionTitle>
-    <Surface sx={{boxShadow:'none'}}><Stack direction="row" justifyContent="flex-end"><ToggleButtonGroup color="primary" exclusive size="small" value={view} onChange={(_,value)=>value&&setView(value)} aria-label="관리 배치도 시점"><ToggleButton value="iso">입체</ToggleButton><ToggleButton value="top">평면</ToggleButton></ToggleButtonGroup></Stack><ParkingLotMap shape={lot.data.shape} slots={lot.data.slots} view={view} variant="admin"/></Surface>
+    <Surface sx={{boxShadow:'none'}}><Stack direction="row" justifyContent="flex-end"><ToggleButtonGroup color="primary" exclusive size="small" value={view} onChange={(_,value)=>value&&setView(value)} aria-label="관리 배치도 시점"><ToggleButton value="iso">입체</ToggleButton><ToggleButton value="top">평면</ToggleButton></ToggleButtonGroup></Stack><Box sx={{mx:'-18px',my:1}}><ParkingLotMap shape={lot.data.shape} slots={lot.data.slots} view={view} variant="admin" onInspect={(slot) => setInspectedId(slot.slotId)}/></Box><Typography variant="caption" display="block" color="text.secondary">차를 누르면 차량 번호와 출차 예정 시간을 볼 수 있어요.</Typography></Surface>
     {realtime.vehicles.length ? <Surface><Stack divider={<Divider flexItem/>} gap={1.25}>{realtime.vehicles.map((vehicle)=>{const sent=sentSlots.includes(vehicle.slot_id);const parked=lot.data?.slots.some((slot) => slot.slotId === vehicle.slot_id && slot.car);return <Stack key={vehicle.slot_id} direction="row" justifyContent="space-between" alignItems="center" gap={1}><Box><Typography variant="caption" color="text.secondary">{vehicle.occupant_type === 'EXTERNAL' ? '외부 차량 · 공유 이용자 (앱 가입)' : '미확인 차량 (관리자 등록)'}</Typography><Typography variant="subtitle2">{vehicle.plate} · {vehicle.slot_label}</Typography></Box>{vehicle.can_request_move ? <Button size="small" variant="contained" disabled={updating || sent || !parked} onClick={() => requestMove(vehicle.slot_id)}>{sent ? '요청 보냄' : '이동 요청'}</Button> : <Typography variant="caption" color="text.secondary">앱으로 연락 불가</Typography>}</Stack>})}</Stack></Surface> : <Typography variant="caption" color="text.secondary">외부·미확인 차량이 없어요.</Typography>}
     <Stack direction="row" gap={0.75} flexWrap="wrap"><StatusChip kind="recommended" label="입주민 차량"/><StatusChip kind="external" label="외부 차량"/><StatusChip kind="danger" label="미확인 차량"/><StatusChip kind="available" label="빈 칸"/></Stack>
     <Surface>
@@ -136,6 +141,7 @@ function AdminView({ buildingId }: { buildingId: number }) {
     </Surface>
     <SectionTitle>관리 메뉴</SectionTitle>
     {[['공유 요청 관리','대기 요청을 검토하고 승인·거절','requests'],['주차 구역 설정','주차 칸의 사용 여부 변경','slots'],['공유 조건 설정','공유할 칸의 요일·시간·요금 설정','garage-register']].map(([title,desc,to])=><Surface key={title}><Box component="a" href={`#${to}`} sx={{display:'flex',justifyContent:'space-between',alignItems:'center',color:'inherit'}}><div><Typography variant="subtitle2">{title}</Typography><Typography variant="caption" color="text.secondary">{desc}</Typography></div><ArrowForwardRoundedIcon color="action"/></Box></Surface>)}
+    <Drawer anchor="bottom" open={!!inspected} onClose={()=>setInspectedId(null)} slotProps={{paper:{sx:{maxWidth:440,mx:'auto',borderRadius:'20px 20px 0 0'}}}}><Stack gap={1.5} p={3} pb="calc(24px + env(safe-area-inset-bottom))"><Typography variant="h6">{inspected?.label} 주차 정보</Typography>{inspectedParking ? <><InfoRow label="차량 번호" value={inspectedParking.plate}/><InfoRow label="구분" value={OCCUPANT_LABEL[inspectedParking.occupant_type]}/><InfoRow label="출차 예정" value={inspectedParking.expected_exit_at ? dateTimeOf(inspectedParking.expected_exit_at) : '등록된 출차 시간 없음'}/>{inspectedParking.exit_source === 'AI_ESTIMATED' && <Alert severity="info">예상 시각이에요. 실제 출차 시간은 달라질 수 있어요.</Alert>}</> : <Typography color="text.secondary">{inspected?.state === 'unavailable' ? '사용할 수 없는 칸이에요.' : '현재 빈자리예요.'}</Typography>}<Button variant="outlined" onClick={()=>setInspectedId(null)}>닫기</Button></Stack></Drawer>
     <RejectDialog key={rejecting?.id ?? 'none'} open={!!rejecting} busy={updating} onClose={() => setRejecting(null)} onReject={(reason) => rejecting && decide(rejecting.id, { status: 'REJECTED', reject_reason: reason })}/>
   </Stack>
 }
