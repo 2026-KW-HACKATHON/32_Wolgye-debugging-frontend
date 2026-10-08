@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded'
-import { getMe } from '../../api/auth'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import { Alert, Box, Button, CircularProgress, InputAdornment, Stack, TextField, Typography } from '@mui/material'
 import { GarageVisual } from '../../components/Illustrations'
@@ -10,6 +9,7 @@ import { isApiError } from '../../api/client'
 import { useApi } from '../../api/useApi'
 import type { GarageListItem, ShareRequestDetail } from '../../types/sharedParking'
 import { hashParams, toHash } from '../../types/navigation'
+import AlleyMap from './AlleyMap'
 
 function GarageResults({query}:{query:string}) {
   const {data,error,loading,reload} = useApi(()=>listGarages({q:query,filter:'all',limit:3}))
@@ -55,7 +55,12 @@ function MyRequests({query}:{query:string}) {
 export default function SharePage() {
   const [query,setQuery] = useState(hashParams().get('q') ?? '')
   const [search,setSearch] = useState(query)
-  const profile = useApi(()=>getMe(),'share-profile')
   useEffect(()=>{const timer=window.setTimeout(()=>setSearch(query.trim()),300);return()=>window.clearTimeout(timer)},[query])
-  return <Stack gap={2.25}>{profile.data?.building && <Surface sx={{bgcolor:'#F1F6FF',boxShadow:'none'}}><Stack direction="row" gap={1} alignItems="center"><LocationOnRoundedIcon color="primary"/><Box><Typography variant="caption" color="text.secondary">소속 골목</Typography><Typography variant="subtitle2">{profile.data.building.alley.name}</Typography></Box></Stack></Surface>}<TextField label="주소, 빌라명으로 검색" value={query} onChange={(event)=>setQuery(event.target.value)} slotProps={{input:{startAdornment:<InputAdornment position="start"><SearchRoundedIcon/></InputAdornment>}}}/><GarageResults key={search} query={search}/><MyRequests query={search}/></Stack>
+  return <Stack gap={2.25}>
+    <Surface sx={{overflow:'hidden','.MuiCardContent-root':{p:0,'&:last-child':{pb:0}}}}>
+      <Stack direction="row" gap={1} alignItems="center" px={2} py={1.5}><LocationOnRoundedIcon color="primary" fontSize="small"/><Typography variant="subtitle2">광운로19가길</Typography></Stack>
+      <AlleyMap/>
+    </Surface>
+    <TextField label="주소, 빌라명으로 검색" value={query} onChange={(event)=>setQuery(event.target.value)} slotProps={{input:{startAdornment:<InputAdornment position="start"><SearchRoundedIcon/></InputAdornment>}}}/><GarageResults key={search} query={search}/><MyRequests query={search}/>
+  </Stack>
 }

@@ -5,4 +5,5 @@ interface ImportMetaEnv {
   readonly VITE_USE_MOCK?: string
   /** 예: http://localhost:8000/api/v1 */
   readonly VITE_API_BASE_URL?: string
+  readonly VITE_NAVER_MAP_CLIENT_ID?: string
 }
