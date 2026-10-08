@@ -4,7 +4,7 @@ import EventRoundedIcon from '@mui/icons-material/EventRounded'
 import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Stack, Switch, TextField, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
 import { NavButton, PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
 import ParkingLotMap, { type LotView } from '../../components/ParkingLotMap'
-import { slotById, toLotSlots } from '../../components/parkingLotGeometry'
+import { slotById, toLot } from '../../components/parkingLotGeometry'
 import { isApiError } from '../../api/client'
 import { createParking, getBuildingLayout, getBuildingStatus, getHome, getRecurringSchedule, getSlotRecommendations } from '../../api/parking'
 import { useApi } from '../../api/useApi'
@@ -40,7 +40,7 @@ const loadBase = async (id: number) => {
   const schedule = vehicle ? await getRecurringSchedule(vehicle.id).catch((e: unknown)=>{ if (isApiError(e) && e.status === 404) return null; throw e }) : null
   return { home, vehicle, vehicles: list.items, schedule }
 }
-const loadLot = async (buildingId: number) => { const [layout, status] = await Promise.all([getBuildingLayout(buildingId), getBuildingStatus(buildingId)]); return toLotSlots(layout, status) }
+const loadLot = async (buildingId: number) => { const [layout, status] = await Promise.all([getBuildingLayout(buildingId), getBuildingStatus(buildingId)]); return toLot(layout, status) }
 
 function Loading() {
   return <Box display="grid" py={6} sx={{placeItems:'center'}}><CircularProgress size={30}/></Box>
@@ -92,7 +92,7 @@ function RegisterView({ home, vehicle, vehicles, schedule, reloadBase, initialSl
   const recs = rec.data?.slots ?? []
   const recommended = recs.find((item) => item.tag === 'RECOMMENDED')
   // 추천 결과에서 사용 불가인 칸(예약 등)은 현황이 빈 칸이어도 사용 불가로 그린다
-  const lotSlots: LotSlot[] = (lot.data ?? []).map((slot) => slot.state === 'empty' && recs.some((item) => item.slot_id === slot.slotId && item.tag === 'UNAVAILABLE') ? { ...slot, state: 'unavailable' } : slot)
+  const lotSlots: LotSlot[] = (lot.data?.slots ?? []).map((slot) => slot.state === 'empty' && recs.some((item) => item.slot_id === slot.slotId && item.tag === 'UNAVAILABLE') ? { ...slot, state: 'unavailable' } : slot)
   const recommendedId = recommended?.label
   const initialSlot = lotSlots.find((slot) => slot.slotId === initialSlotId)
   const chosen = picked ?? initialSlot?.id
@@ -151,12 +151,12 @@ function RegisterView({ home, vehicle, vehicles, schedule, reloadBase, initialSl
     <Box sx={{position:'relative',borderRadius:4,bgcolor:'#F8FAFC',border:'1px solid',borderColor:'divider',p:1}}>
       {lot.error ? <LoadError message={lot.error.message} onRetry={lot.reload}/> : lot.data ? <>
         <ToggleButtonGroup exclusive size="small" value={view} onChange={(_,value)=>value&&setView(value)} aria-label="배치도 시점" color="primary" sx={{display:'flex',justifyContent:'flex-end',bgcolor:'#fff'}}><ToggleButton value="iso" sx={{px:1.25,py:0.25}}>입체</ToggleButton><ToggleButton value="top" sx={{px:1.25,py:0.25}}>평면</ToggleButton></ToggleButtonGroup>
-        <ParkingLotMap slots={lotSlots} view={view} selected={selected} recommendedId={recommendedId} onSelect={setPicked} onUnavailable={showUnavailable}/>
+        <ParkingLotMap shape={lot.data.shape} slots={lotSlots} view={view} selected={selected} recommendedId={recommendedId} onSelect={setPicked} onUnavailable={showUnavailable}/>
       </> : <Loading/>}
     </Box>
     <Stack direction="row" gap={0.75} flexWrap="wrap"><StatusChip kind="recommended" label="★ 추천"/><StatusChip kind="available" label="빈 칸"/><StatusChip kind="disabled" label="사용 불가"/></Stack>
     {rec.error && <LoadError message={rec.error.message} onRetry={rec.reload}/>}
-    <Surface sx={{bgcolor:'#F7F9FC'}}><Stack direction="row" gap={1.5} alignItems="center">{selectedSlot && <Box sx={{width:120,flexShrink:0,borderRadius:3,overflow:'hidden',border:'1px solid',borderColor:'divider',bgcolor:'#fff'}}><ParkingLotMap slots={lotSlots} view="top" selected={selected} recommendedId={recommendedId} focusId={selected}/></Box>}<Box minWidth={0}><Typography variant="subtitle2">선택한 칸 · {selectedSlot?.label ?? '없음'}{isRecommended && <Typography component="span" variant="subtitle2" color="#12B76A"> ★추천</Typography>}</Typography><Typography variant="caption" color="text.secondary">{hint}{selectedSlot ? ' · 다른 칸을 탭하면 바뀝니다' : ''}</Typography></Box></Stack></Surface>
+    <Surface sx={{bgcolor:'#F7F9FC'}}><Stack direction="row" gap={1.5} alignItems="center">{selectedSlot && <Box sx={{width:120,flexShrink:0,borderRadius:3,overflow:'hidden',border:'1px solid',borderColor:'divider',bgcolor:'#fff'}}>{lot.data && <ParkingLotMap shape={lot.data.shape} slots={lotSlots} view="top" selected={selected} recommendedId={recommendedId} focusId={selected}/>}</Box>}<Box minWidth={0}><Typography variant="subtitle2">선택한 칸 · {selectedSlot?.label ?? '없음'}{isRecommended && <Typography component="span" variant="subtitle2" color="#12B76A"> ★추천</Typography>}</Typography><Typography variant="caption" color="text.secondary">{hint}{selectedSlot ? ' · 다른 칸을 탭하면 바뀝니다' : ''}</Typography></Box></Stack></Surface>
     <BottomSheet><Stack gap={2.25}>
       <SectionTitle>내 차량</SectionTitle>
       <Stack direction="row" justifyContent="space-between" alignItems="center"><Stack direction="row" gap={1.25} alignItems="center"><Box sx={{width:46,height:46,borderRadius:3,display:'grid',placeItems:'center',bgcolor:'#E8F0FF',color:'primary.main'}}><DirectionsCarRoundedIcon/></Box><Box><Typography variant="subtitle2">{vehicle.plate}</Typography>{(vehicle.alias || vehicle.color) && <Typography variant="caption" color="text.secondary">{[vehicle.alias, vehicle.color].filter(Boolean).join(' · ')}</Typography>}</Box></Stack><Button href={toHash('vehicles',{from:'parking-register',vehicle_id:vehicle.id})} variant="text">차량 관리</Button></Stack>

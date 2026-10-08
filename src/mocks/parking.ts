@@ -11,11 +11,12 @@ export const MY_VEHICLE_ID = 7
 
 export const me: { name: string; unit: string; role: BuildingRole; label: string } = { name: '김지수', unit: '101동 202호', role: 'RESIDENT', label: '101동 입주민' }
 
-// rect = 배치도 px / 50 (src/components/parkingLotGeometry.ts PX_PER_METER). front_slot_id = 출구(통로) 쪽 앞 칸
+// rect = 사이트 파일 src/sites/hanbit.json 의 px / 50 (src/components/parkingLotGeometry.ts PX_PER_METER). 화면은 사이트 파일 좌표를 먼저 쓴다. front_slot_id = 출구(통로) 쪽 앞 칸
 // TODO(logic): 주차 구역(zone) 이름·묶음은 화면에 쓰지 않아 배치도 줄 단위 임시 값이다 (명세 example 의 구역 구성과 다름)
 export const layout: BuildingLayout = {
   building_id: MY_BUILDING_ID,
   name: '월계 한빛빌라',
+  site_key: 'hanbit',
   alley: { id: 1, name: '광운로19가길' },
   zones: [
     { id: 10, name: '필로티 안쪽', zone_type: 'PILOTI_IN', sort_order: 0, slots: [

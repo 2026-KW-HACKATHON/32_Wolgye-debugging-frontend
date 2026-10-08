@@ -1,12 +1,13 @@
 import type { KeyboardEvent, ReactNode } from 'react'
 import { Box } from '@mui/material'
 import { tones } from '../theme'
-import type { LotRect as Rect, LotSlot, Occupant, SlotId } from '../types/parking'
-import { AISLE, BUILDING, BUILDING_DOOR, ENTRANCE, SITE, WALLS } from './parkingLotGeometry'
+import type { LotRect as Rect, LotShape, LotSlot, Occupant, SlotId } from '../types/parking'
 
 export type LotView = 'top' | 'iso'
 
 type Props = {
+  /** 빌라 모양 (사이트 파일 또는 땅만 있는 기본 모양, parkingLotGeometry 의 toLot) */
+  shape: LotShape
   slots: LotSlot[]
   view?: LotView
   /** 'admin'이면 차 색을 입주민(파랑)·외부(주황)·미확인(빨강)으로 나누고 번호판을 보여준다 */
@@ -42,16 +43,17 @@ const occupantColor: Record<Occupant, { car: string; tagBg: string; tagText: str
 // ── 2.5D 투영: 평면 (x, y) + 높이 z → 화면 좌표. 아래쪽(입구)이 시점 쪽이다.
 const ISO_X = 0.78
 const ISO_Y = 0.42
+// 높이·글자 크기는 폭 800px 사이트(한빛빌라) 기준이다. 사이트 폭에 맞춰 줄이거나 늘린다 (scale)
 const BUILDING_HEIGHT = 80
 const isoPoint = (x: number, y: number, z = 0): [number, number] => [(x - y) * ISO_X, (x + y) * ISO_Y - z]
-const isoBounds = (() => {
-  const corners = [isoPoint(0, 0), isoPoint(BUILDING.x, BUILDING.y, BUILDING_HEIGHT), isoPoint(SITE.w, 0), isoPoint(0, SITE.h), isoPoint(SITE.w, SITE.h)]
+const isoBounds = ({ site, building }: LotShape, scale: number) => {
+  const corners = [isoPoint(0, 0), isoPoint(site.w, 0), isoPoint(0, site.h), isoPoint(site.w, site.h), ...(building ? [isoPoint(building.x, building.y, BUILDING_HEIGHT * scale)] : [])]
   const xs = corners.map(([x]) => x)
   const ys = corners.map(([, y]) => y)
-  return { minX: Math.min(...xs) - 12, minY: Math.min(...ys) - 40, maxX: Math.max(...xs) + 12, maxY: Math.max(...ys) + 40 }
-})()
+  return { minX: Math.min(...xs) - 12 * scale, minY: Math.min(...ys) - 40 * scale, maxX: Math.max(...xs) + 12 * scale, maxY: Math.max(...ys) + 40 * scale }
+}
 
-// 화면 폭(약 360px)에서 글자가 읽히도록 정한 SVG 단위 글자 크기
+// 화면 폭(약 360px)에서 글자가 읽히도록 정한 SVG 단위 글자 크기 (폭 800px 사이트 기준)
 const FONT = { iso: { tag: 34 }, top: { tag: 28 } }
 
 const toPath = (points: [number, number][]) => points.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ') + ' Z'
@@ -66,21 +68,21 @@ function IsoBox({ rect, z0 = 0, z1, top, side, front, stroke }: { rect: Rect; z0
 }
 
 // 칸 안에 놓인 차 (차체 + 캐빈). 칸 중앙에 둔다.
-function IsoCar({ slot, color, ghost }: { slot: Rect; color: string; ghost?: boolean }) {
+function IsoCar({ slot, color, ghost, scale }: { slot: Rect; color: string; ghost?: boolean; scale: number }) {
   const portrait = slot.h >= slot.w
   const body: Rect = portrait ? { x: slot.x + slot.w * 0.24, y: slot.y + slot.h * 0.12, w: slot.w * 0.52, h: slot.h * 0.76 } : { x: slot.x + slot.w * 0.12, y: slot.y + slot.h * 0.2, w: slot.w * 0.76, h: slot.h * 0.6 }
   const cabin: Rect = portrait ? { x: body.x + body.w * 0.08, y: body.y + body.h * 0.3, w: body.w * 0.84, h: body.h * 0.4 } : { x: body.x + body.w * 0.3, y: body.y + body.h * 0.08, w: body.w * 0.4, h: body.h * 0.84 }
-  return <g opacity={ghost ? 0.55 : 1}><IsoBox rect={body} z1={20} top={color} side={shade(color, -18)} front={shade(color, -30)}/><IsoBox rect={cabin} z0={20} z1={36} top={shade(color, 10)} side={colors.carWindow} front={colors.carWindow}/></g>
+  return <g opacity={ghost ? 0.55 : 1}><IsoBox rect={body} z1={20 * scale} top={color} side={shade(color, -18)} front={shade(color, -30)}/><IsoBox rect={cabin} z0={20 * scale} z1={36 * scale} top={shade(color, 10)} side={colors.carWindow} front={colors.carWindow}/></g>
 }
 
-function TopCar({ slot, color, ghost }: { slot: Rect; color: string; ghost?: boolean }) {
+function TopCar({ slot, color, ghost, scale }: { slot: Rect; color: string; ghost?: boolean; scale: number }) {
   const portrait = slot.h >= slot.w
   const w = portrait ? slot.w * 0.52 : slot.w * 0.76
   const h = portrait ? slot.h * 0.76 : slot.h * 0.6
   const x = slot.x + (slot.w - w) / 2
   const y = slot.y + (slot.h - h) / 2
   const glass = portrait ? { x: x + w * 0.12, y: y + h * 0.28, w: w * 0.76, h: h * 0.42 } : { x: x + w * 0.28, y: y + h * 0.12, w: w * 0.42, h: h * 0.76 }
-  return <g opacity={ghost ? 0.55 : 1}><rect x={x} y={y} width={w} height={h} rx={14} fill={color}/><rect {...{ x: glass.x, y: glass.y, width: glass.w, height: glass.h }} rx={8} fill={colors.carWindow} opacity={0.85}/></g>
+  return <g opacity={ghost ? 0.55 : 1}><rect x={x} y={y} width={w} height={h} rx={14 * scale} fill={color}/><rect {...{ x: glass.x, y: glass.y, width: glass.w, height: glass.h }} rx={8 * scale} fill={colors.carWindow} opacity={0.85}/></g>
 }
 
 // 밝기 조절 (#RRGGBB)
@@ -102,10 +104,12 @@ function Tag({ x, y, label, color, bg, size, stroke }: { x: number; y: number; l
 
 const occupied = (slot: LotSlot) => slot.state === 'occupied' || slot.state === 'soon_exit'
 
-export default function ParkingLotMap({ slots, view = 'iso', variant = 'resident', selected, recommendedId, focusId, onSelect, onUnavailable, onInspect }: Props) {
+export default function ParkingLotMap({ shape, slots, view = 'iso', variant = 'resident', selected, recommendedId, focusId, onSelect, onUnavailable, onInspect }: Props) {
   const iso = view === 'iso'
   const admin = variant === 'admin'
-  const font = FONT[view]
+  const { site, building, buildingDoor, walls = [], boundary, aisle, entrance } = shape
+  const scale = site.w / 800
+  const font = { tag: FONT[view].tag * scale }
   const interactive = Boolean(onSelect || onInspect)
   // 내 차를 막고 있는 칸 (빨간 테두리로 표시)
   const blockers = new Set(admin ? [] : slots.filter((slot) => slot.car?.mine).flatMap((slot) => slot.blockedBy ?? []))
@@ -129,24 +133,26 @@ export default function ParkingLotMap({ slots, view = 'iso', variant = 'resident
     return { fill: slot.id === recommendedId ? colors.recommendedFill : colors.emptyFill, stroke: isSelected ? tones.blue : colors.emptyLine, dash: isSelected ? undefined : '8 6', width: isSelected ? 4 : 2.5 }
   }
 
+  const outline = (rect: Rect) => iso ? { d: isoRect(rect) } : { d: `M${rect.x} ${rect.y} h${rect.w} v${rect.h} h${-rect.w} Z` }
   const slotLayer = slots.map((slot) => {
-    const rect = slot.rect
     const style = slotStyle(slot)
-    const strokeWidth = iso ? style.width : style.width + 1
-    const shape = iso ? <path className="slot-outline" d={isoRect(rect)} fill={style.fill} stroke={style.stroke} strokeWidth={strokeWidth} strokeDasharray={style.dash}/> : <rect className="slot-outline" x={rect.x} y={rect.y} width={rect.w} height={rect.h} rx={6} fill={style.fill} stroke={style.stroke} strokeWidth={strokeWidth} strokeDasharray={style.dash}/>
-    if (!interactive) return <g key={slot.id} opacity={dim(slot)}>{shape}</g>
-    return <g key={slot.id} role="button" tabIndex={0} aria-label={`${slot.label} · ${describe(slot)}`} aria-pressed={onInspect ? undefined : slot.id === selected} onClick={() => tap(slot)} onKeyDown={(event) => onKey(event, slot)} style={{ cursor: 'pointer' }}>{shape}</g>
+    const strokeWidth = (iso ? style.width : style.width + 1) * scale
+    const dash = style.dash?.split(' ').map((n) => Number(n) * scale).join(' ')
+    return <g key={slot.id} opacity={dim(slot)} pointerEvents="none">{iso ? <path {...outline(slot.rect)} fill={style.fill} stroke={style.stroke} strokeWidth={strokeWidth} strokeDasharray={dash}/> : <rect x={slot.rect.x} y={slot.rect.y} width={slot.rect.w} height={slot.rect.h} rx={6 * scale} fill={style.fill} stroke={style.stroke} strokeWidth={strokeWidth} strokeDasharray={dash}/>}</g>
   })
 
-  // 차량과 라벨은 탭 대상(칸) 위에 그리되 포인터 이벤트를 막아 칸 탭을 방해하지 않게 한다.
   // 입체 시점에서는 먼 칸(x+y가 작은 칸)부터 그려 겹침 순서를 맞춘다.
   const ordered = [...slots].sort((a, b) => (a.rect.x + a.rect.y) - (b.rect.x + b.rect.y))
+
+  // 탭 영역은 건물·벽·차·칩보다 위, 맨 마지막에 투명하게 깐다 (입체에서 다른 도형에 가려도 눌린다, FE #47).
+  // 칸 바닥 모양 그대로라 평면·입체 모두 같은 칸이 같은 자리에서 눌린다
+  const hitLayer = interactive ? ordered.map((slot) => <path key={slot.id} className="slot-hit" {...outline(slot.rect)} fill="transparent" role="button" tabIndex={0} aria-label={`${slot.label} · ${describe(slot)}`} aria-pressed={onInspect ? undefined : slot.id === selected} onClick={() => tap(slot)} onKeyDown={(event) => onKey(event, slot)} style={{ cursor: 'pointer' }}/>) : null
   const carLayer = ordered.map((slot) => {
     const rect = slot.rect
     const ghost = slot.state === 'empty' && slot.id === selected
     if (!occupied(slot) && !ghost) return null
     const color = ghost ? colors.mineCar : carColor(slot)
-    return <g key={slot.id} pointerEvents="none" opacity={dim(slot)}>{iso ? <IsoCar slot={rect} color={color} ghost={ghost}/> : <TopCar slot={rect} color={color} ghost={ghost}/>}</g>
+    return <g key={slot.id} pointerEvents="none" opacity={dim(slot)}>{iso ? <IsoCar slot={rect} color={color} ghost={ghost} scale={scale}/> : <TopCar slot={rect} color={color} ghost={ghost} scale={scale}/>}</g>
   })
 
   // 칸마다 칸 이름 칩 하나. 상태는 칩 색으로 나누고, 뜻은 화면의 범례와 아래 카드가 설명한다 (글자를 넣으면 이웃 칸 칩과 겹친다)
@@ -166,42 +172,56 @@ export default function ParkingLotMap({ slots, view = 'iso', variant = 'resident
     const [cx, cy] = center(slot.rect)
     const hasCar = occupied(slot) || slot.id === selected
     // 입체: 차가 있으면 차 지붕 위, 없으면 칸 가운데
-    const y = iso ? cy - (hasCar ? 58 : 0) : cy + font.tag * 0.3
+    const y = iso ? cy - (hasCar ? 58 * scale : 0) : cy + font.tag * 0.3
     const { text, color, bg, stroke } = chip(slot)
     return <g key={slot.id} opacity={dim(slot)}><Tag x={cx} y={y} label={text} color={color} bg={bg} size={font.tag} stroke={stroke}/></g>
   })
 
   if (iso) {
-    const { minX, minY, maxX, maxY } = isoBounds
-    const [entranceX, entranceY] = isoPoint(ENTRANCE.x + ENTRANCE.w / 2, ENTRANCE.y + ENTRANCE.h)
+    const { minX, minY, maxX, maxY } = isoBounds(shape, scale)
+    const buildingHeight = BUILDING_HEIGHT * scale
     return <MapFrame viewBox={`${minX} ${minY} ${maxX - minX} ${maxY - minY}`} label="주차 배치도 (입체)">
-      <path d={isoRect({ x: 0, y: 0, w: SITE.w, h: SITE.h })} fill={colors.ground} stroke={colors.groundEdge} strokeWidth={2}/>
-      <path d={toPath([isoPoint(AISLE.x, AISLE.bottom), isoPoint(AISLE.x, AISLE.top)])} stroke={colors.aisle} strokeWidth={3} strokeDasharray="12 10" fill="none"/>
+      <path d={isoRect({ x: 0, y: 0, w: site.w, h: site.h })} fill={colors.ground} stroke={colors.groundEdge} strokeWidth={2 * scale}/>
+      {boundary && <path d={isoRect(boundary)} fill="none" stroke={colors.wall} strokeWidth={4 * scale}/>}
+      {aisle && <path d={toPath([isoPoint(aisle.x, aisle.bottom), isoPoint(aisle.x, aisle.top)])} stroke={colors.aisle} strokeWidth={3 * scale} strokeDasharray={`${12 * scale} ${10 * scale}`} fill="none"/>}
       {slotLayer}
-      <IsoBox rect={BUILDING} z1={BUILDING_HEIGHT} top={colors.buildingRoof} side={colors.buildingSide} front="#D0D5DD" stroke={colors.buildingLine}/>
-      <path d={toPath([isoPoint(BUILDING_DOOR.x, BUILDING.y + BUILDING.h, 0), isoPoint(BUILDING_DOOR.x + BUILDING_DOOR.w, BUILDING.y + BUILDING.h, 0), isoPoint(BUILDING_DOOR.x + BUILDING_DOOR.w, BUILDING.y + BUILDING.h, 46), isoPoint(BUILDING_DOOR.x, BUILDING.y + BUILDING.h, 46)])} fill="#475467"/>
-      {WALLS.map((wall, index) => <IsoBox key={index} rect={wall} z1={28} top={colors.wall} side={shade(colors.wall, -30)} front={shade(colors.wall, -45)}/>)}
+      {building && <IsoBox rect={building} z1={buildingHeight} top={colors.buildingRoof} side={colors.buildingSide} front="#D0D5DD" stroke={colors.buildingLine}/>}
+      {building && buildingDoor && <path d={toPath([isoPoint(buildingDoor.x, building.y + building.h, 0), isoPoint(buildingDoor.x + buildingDoor.w, building.y + building.h, 0), isoPoint(buildingDoor.x + buildingDoor.w, building.y + building.h, 46 * scale), isoPoint(buildingDoor.x, building.y + building.h, 46 * scale)])} fill="#475467"/>}
+      {walls.map((wall, index) => <IsoBox key={index} rect={wall} z1={28 * scale} top={colors.wall} side={shade(colors.wall, -30)} front={shade(colors.wall, -45)}/>)}
       {carLayer}
       {labelLayer}
-       <Tag x={entranceX} y={entranceY + 30} label="골목 입구 ↑" color="#475467" bg="#FFFFFF" size={font.tag}/>
+      {entrance && (() => { const [x, y] = isoPoint(entrance.x + entrance.w / 2, entrance.y + entrance.h); return <Tag x={x} y={y + 30 * scale} label="골목 입구 ↑" color="#475467" bg="#FFFFFF" size={font.tag}/> })()}
+      {hitLayer}
     </MapFrame>
   }
 
-  return <MapFrame viewBox={`-10 -10 ${SITE.w + 20} ${SITE.h + 56}`} label="주차 배치도 (평면)">
-    <rect x={0} y={0} width={SITE.w} height={SITE.h} rx={8} fill={colors.ground} stroke={colors.groundEdge} strokeWidth={2}/>
-    <rect x={BUILDING.x} y={BUILDING.y} width={BUILDING.w} height={BUILDING.h} fill={colors.building} stroke={colors.buildingLine} strokeWidth={6}/>
-    <text x={BUILDING.x + BUILDING.w / 2} y={BUILDING.y + BUILDING.h / 2} textAnchor="middle" fontSize={34} fontWeight={800} fill={colors.buildingLine}>건물</text>
-    <rect x={BUILDING_DOOR.x} y={BUILDING_DOOR.y - 4} width={BUILDING_DOOR.w} height={BUILDING_DOOR.h + 8} fill={colors.building}/>
-    <path d={`M${BUILDING_DOOR.x + 6} ${BUILDING_DOOR.y + 4} v18 h70 v-18 M${BUILDING_DOOR.x + 41} ${BUILDING_DOOR.y + 4} v18`} stroke={colors.buildingLine} strokeWidth={3} fill="none"/>
-    <text x={BUILDING_DOOR.x + BUILDING_DOOR.w / 2} y={BUILDING_DOOR.y - 14} textAnchor="middle" fontSize={font.tag} fill="#475467">건물 입구</text>
-    {WALLS.map((wall, index) => <rect key={index} x={wall.x} y={wall.y} width={wall.w} height={wall.h} rx={4} fill={colors.wall}/>)}
-    <path d={`M${AISLE.x} ${AISLE.bottom} V${AISLE.top}`} stroke={colors.aisle} strokeWidth={4} strokeDasharray="14 12"/>
-    <path d={`M${AISLE.x - 12} ${AISLE.top + 14} L${AISLE.x} ${AISLE.top} L${AISLE.x + 12} ${AISLE.top + 14}`} stroke={colors.aisle} strokeWidth={4} fill="none" strokeLinecap="round"/>
-    <rect x={ENTRANCE.x} y={ENTRANCE.y} width={ENTRANCE.w} height={ENTRANCE.h} fill="#FFFFFF"/>
-    <text x={AISLE.x} y={SITE.h + 34} textAnchor="middle" fontSize={font.tag} fontWeight={800} fill="#475467">골목 입구</text>
+  // 골목 입구 글자 자리 (입구가 있을 때만)
+  const bottom = entrance ? 56 * scale : 10 * scale
+  return <MapFrame viewBox={`${-10 * scale} ${-10 * scale} ${site.w + 20 * scale} ${site.h + 10 * scale + bottom}`} label="주차 배치도 (평면)">
+    <rect x={0} y={0} width={site.w} height={site.h} rx={8 * scale} fill={colors.ground} stroke={colors.groundEdge} strokeWidth={2 * scale}/>
+    {boundary && <rect x={boundary.x} y={boundary.y} width={boundary.w} height={boundary.h} rx={6 * scale} fill="none" stroke={colors.wall} strokeWidth={4 * scale}/>}
+    {building && <>
+      <rect x={building.x} y={building.y} width={building.w} height={building.h} fill={colors.building} stroke={colors.buildingLine} strokeWidth={6 * scale}/>
+      <text x={building.x + building.w / 2} y={building.y + building.h / 2} textAnchor="middle" fontSize={34 * scale} fontWeight={800} fill={colors.buildingLine}>건물</text>
+    </>}
+    {buildingDoor && <>
+      <rect x={buildingDoor.x} y={buildingDoor.y - 4 * scale} width={buildingDoor.w} height={buildingDoor.h + 8 * scale} fill={colors.building}/>
+      <path d={`M${buildingDoor.x + 6} ${buildingDoor.y + 4} v18 h70 v-18 M${buildingDoor.x + 41} ${buildingDoor.y + 4} v18`} stroke={colors.buildingLine} strokeWidth={3} fill="none"/>
+      <text x={buildingDoor.x + buildingDoor.w / 2} y={buildingDoor.y - 14 * scale} textAnchor="middle" fontSize={font.tag} fill="#475467">건물 입구</text>
+    </>}
+    {walls.map((wall, index) => <rect key={index} x={wall.x} y={wall.y} width={wall.w} height={wall.h} rx={4 * scale} fill={colors.wall}/>)}
+    {aisle && <>
+      <path d={`M${aisle.x} ${aisle.bottom} V${aisle.top}`} stroke={colors.aisle} strokeWidth={4 * scale} strokeDasharray={`${14 * scale} ${12 * scale}`}/>
+      <path d={`M${aisle.x - 12 * scale} ${aisle.top + 14 * scale} L${aisle.x} ${aisle.top} L${aisle.x + 12 * scale} ${aisle.top + 14 * scale}`} stroke={colors.aisle} strokeWidth={4 * scale} fill="none" strokeLinecap="round"/>
+    </>}
+    {entrance && <>
+      <rect x={entrance.x} y={entrance.y} width={entrance.w} height={entrance.h} fill="#FFFFFF"/>
+      <text x={entrance.x + entrance.w / 2} y={site.h + 34 * scale} textAnchor="middle" fontSize={font.tag} fontWeight={800} fill="#475467">골목 입구</text>
+    </>}
     {slotLayer}
     {carLayer}
     {labelLayer}
+    {hitLayer}
   </MapFrame>
 }
 
@@ -213,5 +233,5 @@ export function LotLegend() {
 }
 
 function MapFrame({ viewBox, label, children }: { viewBox: string; label: string; children: ReactNode }) {
-  return <Box component="svg" viewBox={viewBox} role="group" aria-label={label} sx={{ display: 'block', width: '100%', height: 'auto', fontFamily: 'inherit', '& [role=button]:focus-visible .slot-outline': { stroke: tones.blueDark, strokeWidth: 6 } }}>{children}</Box>
+  return <Box component="svg" viewBox={viewBox} role="group" aria-label={label} sx={{ display: 'block', width: '100%', height: 'auto', fontFamily: 'inherit', '& .slot-hit:focus-visible': { outline: 'none', stroke: tones.blueDark, strokeWidth: 6 } }}>{children}</Box>
 }
