@@ -1,3 +1,4 @@
+import type { LotView } from '../../components/ParkingLotMap'
 import PhotoCaptureButton from '../reports/PhotoCaptureButton'
 import { useState } from 'react'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
@@ -5,9 +6,9 @@ import DirectionsCarRoundedIcon from '@mui/icons-material/DirectionsCarRounded'
 import ErrorRoundedIcon from '@mui/icons-material/ErrorRounded'
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
-import { Alert, Box, Button, Chip, CircularProgress, Divider, Drawer, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
-import { InfoRow, NavButton, PageTitle, SectionTitle, Surface } from '../../components/Ui'
-import ParkingLotMap, { LotLegend, type LotView } from '../../components/ParkingLotMap'
+import { Alert, Box, Button, Chip, CircularProgress, Divider, Drawer, Stack, Typography } from '@mui/material'
+import { InfoRow, NavButton, SectionTitle, Surface } from '../../components/Ui'
+import ParkingLotPanel from '../../components/ParkingLotPanel'
 import { toLot } from '../../components/parkingLotGeometry'
 import { isApiError } from '../../api/client'
 import { createMoveRequest, getBuildingLayout, getBuildingStatus, getHome, readNotification } from '../../api/parking'
@@ -77,15 +78,21 @@ function HomeView({ home, reload }: { home: Home; reload: () => void }) {
   }
   function inspect(slot: LotSlot) { setInspectedId(slot.slotId) }
   return <Stack gap={2.25}>
-    <PageTitle eyebrow={home.building.name} title={home.building.role === 'ADMIN' ? '우리 빌라 관리' : '우리 빌라 주차'} action={<Stack alignItems="flex-end" gap={1}><PhotoCaptureButton/><Chip label={home.building.role === 'ADMIN' ? '관리자' : '입주민'} size="small" variant="outlined" color="primary"/></Stack>}/>
-    <Typography variant="caption" color="text.secondary">미등록 차량을 제보하고 500토큰 받기</Typography>
+    <Stack direction="row" alignItems="center" gap={1.5} flexWrap="wrap">
+      <Stack gap={0.75} sx={{flex:'1 1 150px',minWidth:0}}>
+        <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap"><Typography variant="body2" color="primary.main" fontWeight={750}>{home.building.name}</Typography><Chip label={home.building.role === 'ADMIN' ? '관리자' : '입주민'} size="small" sx={{height:22,bgcolor:'#EEF1F5',color:'text.secondary',fontSize:11}}/></Stack>
+        <Typography variant="h5">{home.building.role === 'ADMIN' ? '우리 빌라 관리' : '우리 빌라 주차'}</Typography>
+      </Stack>
+      <Surface sx={{flex:'1 1 180px',minWidth:0,bgcolor:'#F1F6FF',boxShadow:'none',borderColor:'#E0E9FA','& .MuiCardContent-root':{p:1.5,'&:last-child':{pb:1.5}}}}>
+        <Stack gap={1}>
+          <Box><Typography variant="body2" fontWeight={700} sx={{fontSize:12,lineHeight:1.5}}>미등록 차량이 있나요?</Typography><Typography variant="caption" color="text.secondary" sx={{fontSize:10.5,lineHeight:1.5,display:'block',mt:0.25}}>사진으로 제보하면 500토큰</Typography></Box>
+          <Box sx={{alignSelf:'flex-end','& .MuiButton-root':{fontSize:11.5,px:1.25,py:0.5},'& .MuiButton-startIcon':{mr:0.5},'& .MuiButton-startIcon > *:nth-of-type(1)':{fontSize:16}}}><PhotoCaptureButton/></Box>
+        </Stack>
+      </Surface>
+    </Stack>
     {home.admin && <Surface sx={{bgcolor:'#E8F0FF',borderColor:'#C6D9FF'}}><Stack gap={1.25}><Typography variant="subtitle2">확인할 공유 요청 {home.admin.pending_share_requests}건</Typography><NavButton to="admin" fullWidth>관리자 대시보드 열기</NavButton></Stack></Surface>}
     {blockAlert && <Surface sx={{bgcolor:'#FFF7F2',borderColor:'#FFD9BE'}}><Stack gap={1.25}><Stack direction="row" gap={1} alignItems="center"><ErrorRoundedIcon color="error"/><Typography variant="subtitle2">내 차가 막혀 있어요</Typography></Stack><Typography variant="body2">{blockAlert.message}</Typography>{moveNotice && <Alert severity={moveNotice.severity}>{moveNotice.message}</Alert>}<Button variant="contained" disabled={sending || sent || !mine} onClick={sendMoveRequest}>{sending ? '보내는 중…' : sent ? '이동 요청을 보냈어요' : '이동 요청 보내기'}</Button><Typography variant="caption" color="text.secondary">{mine?.expected_exit_at ? `${dateTimeOf(mine.expected_exit_at)}까지 이동을 요청해요.` : '지금 출차가 필요하다고 요청해요.'} 전화번호는 공유되지 않아요.</Typography></Stack></Surface>}
-    <Surface sx={{boxShadow:'none'}}>
-      <Stack direction="row" alignItems="center" justifyContent="space-between" gap={1}><Typography variant="subtitle2">주차 현황</Typography><ToggleButtonGroup color="primary" exclusive size="small" value={view} onChange={(_,value)=>value&&setView(value)} aria-label="배치도 시점"><ToggleButton value="iso">입체</ToggleButton><ToggleButton value="top">평면</ToggleButton></ToggleButtonGroup></Stack>
-      {lot.error ? <LoadError message={lot.error.message} onRetry={lot.reload}/> : lot.data ? <><Box sx={{mx:'-18px',my:1}}><ParkingLotMap shape={lot.data.shape} slots={lot.data.slots} view={view} onInspect={inspect}/></Box><LotLegend/><Typography variant="caption" display="block" color="text.secondary" mt={1.5}>칸을 누르면 차량과 출차 예정 시간을 볼 수 있어요.</Typography></> : <Loading/>}
-      <Button size="small" startIcon={<RefreshRoundedIcon/>} onClick={refresh} sx={{mt:1}}>현황 새로고침</Button>
-    </Surface>
+    {lot.error ? <LoadError message={lot.error.message} onRetry={lot.reload}/> : lot.data ? <ParkingLotPanel title="주차 현황" shape={lot.data.shape} slots={lot.data.slots} view={view} onViewChange={setView} onInspect={inspect} description="칸을 누르면 차량과 출차 예정 시간을 볼 수 있어요." footer={<Button size="small" startIcon={<RefreshRoundedIcon/>} onClick={refresh}>현황 새로고침</Button>}/> : <Loading/>}
     {exitNotice && <Alert severity={exitNotice.severity} onClose={()=>setExitNotice(null)}>{exitNotice.message}</Alert>}
     {mine ? <Surface sx={{background:'linear-gradient(135deg,#246BFD,#4988FF)',color:'#fff',border:'none'}}><Stack gap={1.5}><Stack direction="row" justifyContent="space-between" alignItems="center"><Box><Typography variant="caption">내 차량 · {mine.vehicle.plate}</Typography><Typography variant="h5" mt={.5}>{mine.slot_label}에 주차 중</Typography><Typography variant="body2" mt={.5}>{mine.expected_exit_at ? `${dateTimeOf(mine.expected_exit_at)} 출차 예정` : '출차 시간 없이 상시 주차 중'}</Typography></Box><DirectionsCarRoundedIcon sx={{fontSize:44}}/></Stack>{overdue && <Alert severity="warning" sx={{py:0}}>출차 예정 시각이 지났어요. 이미 차를 뺐다면 '지금 출차!'를 눌러 주세요. 더 주차한다면 출차 시간을 변경해 주세요.</Alert>}<ExitParkingButton onBlue parkingId={mine.parking_id} slotLabel={mine.slot_label} onResult={(notice,changed)=>{setExitNotice(notice);if (changed) refresh()}}/><Button href={toHash('departure',{id:mine.vehicle.id})} variant="outlined" sx={{color:'#fff',borderColor:'rgba(255,255,255,.6)','&:hover':{borderColor:'#fff'}}}>출차 시간 변경</Button><Button href={toHash('vehicle-detail',{id:mine.vehicle.id})} sx={{color:'#fff'}}>내 차량 상세 보기</Button></Stack></Surface> : <Surface><Stack gap={1.25}><Typography variant="subtitle2">지금 주차 중인 내 차가 없어요</Typography><Typography variant="body2" color="text.secondary">빈 칸을 선택하고 출차 시간을 알려 주세요.</Typography><NavButton to={vehicles.data?.items.length === 0 ? 'vehicles' : 'parking-register'} fullWidth>{vehicles.data?.items.length === 0 ? '내 차량 등록' : '주차하기'}</NavButton></Stack></Surface>}
     <SectionTitle action={<Button href="#vehicles" size="small">관리</Button>}>내 차량</SectionTitle>

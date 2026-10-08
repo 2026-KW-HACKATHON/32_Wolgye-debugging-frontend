@@ -1,9 +1,10 @@
+import type { LotView } from '../../components/ParkingLotMap'
 import { useEffect, useState } from 'react'
 import DirectionsCarRoundedIcon from '@mui/icons-material/DirectionsCarRounded'
 import EventRoundedIcon from '@mui/icons-material/EventRounded'
 import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Stack, Switch, TextField, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
 import { NavButton, PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
-import ParkingLotMap, { type LotView } from '../../components/ParkingLotMap'
+import ParkingLotPanel from '../../components/ParkingLotPanel'
 import { slotById, toLot } from '../../components/parkingLotGeometry'
 import { isApiError } from '../../api/client'
 import { createParking, getBuildingLayout, getBuildingStatus, getHome, getRecurringSchedule, getSlotRecommendations } from '../../api/parking'
@@ -155,15 +156,17 @@ function RegisterView({ home, vehicle, vehicles, schedule, reloadBase, initialSl
     {alreadyParked && <Alert severity="info" action={<NavButton to="home" variant="text" color="inherit">홈으로</NavButton>}>{parkedLabel ? `이미 ${parkedLabel}에 주차 중이에요` : '이미 주차 중이에요'}</Alert>}
     <TextField select label="주차할 차량" value={vehicle.id} disabled={sending} onChange={(event)=>{window.location.hash=toHash('parking-register',{id:Number(event.target.value),...(selectedSlot ? {slot_id:selectedSlot.slotId} : {})})}} helperText="대표 차량을 바꾸지 않고 이번에 주차할 차를 선택해요.">{vehicles.map((item)=><MenuItem key={item.id} value={item.id}>{item.plate}{item.is_default ? ' · 대표' : ''}{item.status === 'PARKED' ? ' · 주차 중' : ''}</MenuItem>)}</TextField>
     {hashParams().get('saved') === 'repeat' && <Alert severity="success">반복 일정을 저장했어요. 작성하던 주차 등록을 계속해 주세요.</Alert>}
-    <Box sx={{position:'relative',borderRadius:4,bgcolor:'#F8FAFC',border:'1px solid',borderColor:'divider',p:1}}>
-      {lot.error ? <LoadError message={lot.error.message} onRetry={lot.reload}/> : lot.data ? <>
-        <ToggleButtonGroup exclusive size="small" value={view} onChange={(_,value)=>value&&setView(value)} aria-label="배치도 시점" color="primary" sx={{display:'flex',justifyContent:'flex-end',bgcolor:'#fff'}}><ToggleButton value="iso" sx={{px:1.25,py:0.25}}>입체</ToggleButton><ToggleButton value="top" sx={{px:1.25,py:0.25}}>평면</ToggleButton></ToggleButtonGroup>
-        <ParkingLotMap shape={lot.data.shape} slots={lotSlots} view={view} selected={selected} recommendedId={recommendedId} onSelect={setPicked} onUnavailable={showUnavailable}/>
-      </> : <Loading/>}
-    </Box>
-    <Stack direction="row" gap={0.75} flexWrap="wrap"><StatusChip kind="recommended" label="★ 추천"/><StatusChip kind="available" label="빈 칸"/><StatusChip kind="disabled" label="사용 불가"/></Stack>
+    {lot.error ? <LoadError message={lot.error.message} onRetry={lot.reload}/> : lot.data ? <ParkingLotPanel shape={lot.data.shape} slots={lotSlots} view={view} onViewChange={setView} selected={selected} recommendedId={recommendedId} onSelect={setPicked} onUnavailable={showUnavailable} legendMode="selection"/> : <Loading/>}
     {rec.error && <LoadError message={rec.error.message} onRetry={rec.reload}/>}
-    <Surface sx={{bgcolor:'#F7F9FC'}}><Stack direction="row" gap={1.5} alignItems="center">{selectedSlot && <Box sx={{width:120,flexShrink:0,borderRadius:3,overflow:'hidden',border:'1px solid',borderColor:'divider',bgcolor:'#fff'}}>{lot.data && <ParkingLotMap shape={lot.data.shape} slots={lotSlots} view="top" selected={selected} recommendedId={recommendedId} focusId={selected}/>}</Box>}<Box minWidth={0}><Typography variant="subtitle2">선택한 칸 · {selectedSlot?.label ?? '없음'}{isRecommended && <Typography component="span" variant="subtitle2" color="#12B76A"> ★추천</Typography>}</Typography><Typography variant="caption" color="text.secondary">{hint}{selectedSlot ? ' · 다른 칸을 탭하면 바뀝니다' : ''}</Typography></Box></Stack></Surface>
+    <Surface sx={{bgcolor:'#FFFFFF',boxShadow:'none',borderColor:isRecommended ? '#BCE8DB' : 'divider'}}>
+      <Stack gap={1.25}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" gap={1}>
+          <Box><Typography variant="caption" color="text.secondary">선택한 주차 칸</Typography><Typography variant="h5" color="primary.main" mt={0.25}>{selectedSlot?.label ?? '칸을 선택해 주세요'}</Typography></Box>
+          {isRecommended && <StatusChip kind="recommended" label="★ 추천"/>}
+        </Stack>
+        <Typography variant="body2" color={willBlock.length ? 'warning.dark' : 'text.secondary'}>{hint}</Typography>
+      </Stack>
+    </Surface>
     <BottomSheet><Stack gap={2.25}>
       <SectionTitle>내 차량</SectionTitle>
       <Stack direction="row" justifyContent="space-between" alignItems="center"><Stack direction="row" gap={1.25} alignItems="center"><Box sx={{width:46,height:46,borderRadius:3,display:'grid',placeItems:'center',bgcolor:'#E8F0FF',color:'primary.main'}}><DirectionsCarRoundedIcon/></Box><Box><Typography variant="subtitle2">{vehicle.plate}</Typography>{(vehicle.alias || vehicle.color) && <Typography variant="caption" color="text.secondary">{[vehicle.alias, vehicle.color].filter(Boolean).join(' · ')}</Typography>}</Box></Stack><Button href={toHash('vehicles',{from:'parking-register',vehicle_id:vehicle.id})} variant="text">차량 관리</Button></Stack>

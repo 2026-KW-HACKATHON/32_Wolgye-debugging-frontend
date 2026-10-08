@@ -1,3 +1,4 @@
+import { parkingStatusColors } from './parkingStatusColors'
 import type { ReactNode } from 'react'
 import { Box, Button, Card, CardContent, Chip, Stack, Typography } from '@mui/material'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
@@ -36,12 +37,12 @@ export function NavButton({ to, children, variant = 'contained', color = 'primar
 type StatusKind = 'available' | 'recommended' | 'soon' | 'external' | 'danger' | 'disabled' | 'pending' | 'accepted' | 'rejected'
 
 const statusStyles: Record<StatusKind, { bg: string; color: string; label: string }> = {
-  available: { bg: tones.mintSoft, color: '#187E67', label: '빈자리' },
-  recommended: { bg: '#E8F0FF', color: tones.blueDark, label: '추천' },
+  available: { bg: parkingStatusColors.available.bg, color: parkingStatusColors.available.text, label: '빈자리' },
+  recommended: { bg: parkingStatusColors.recommended.bg, color: parkingStatusColors.recommended.text, label: '추천' },
   soon: { bg: '#FFF6D8', color: '#986D05', label: '곧 출차' },
   external: { bg: tones.orangeSoft, color: '#B95515', label: '외부 차량' },
   danger: { bg: tones.redSoft, color: '#B82D3B', label: '주의' },
-  disabled: { bg: '#EEF1F5', color: '#667085', label: '이용 불가' },
+  disabled: { bg: parkingStatusColors.disabled.bg, color: parkingStatusColors.disabled.text, label: '이용 불가' },
   pending: { bg: '#FFF6D8', color: '#986D05', label: '대기 중' },
   accepted: { bg: tones.mintSoft, color: '#187E67', label: '수락됨' },
   rejected: { bg: tones.redSoft, color: '#B82D3B', label: '거절됨' },

@@ -1,3 +1,5 @@
+import GuestShareResult from './GuestShareResult'
+import { IS_GUEST } from '../../api/guestMode'
 import { useEffect } from 'react'
 import { Alert, Button, CircularProgress, Stack, Typography } from '@mui/material'
 import { InfoRow, ResultHero, StatusChip, Surface } from '../../components/Ui'
@@ -40,6 +42,7 @@ export default function RequestStatusView() {
     {rejected && <Surface><Typography variant="subtitle2">거절 사유</Typography><Typography variant="body2" color="text.secondary" mt={1}>{request.reject_reason ?? '등록된 거절 사유가 없습니다.'}</Typography></Surface>}
     {!approved && !rejected && <Typography variant="body2" color="text.secondary" textAlign="center">화면을 보고 있는 동안 15초마다 상태를 확인해요.</Typography>}
     {!approved && !rejected && <Button onClick={reload} variant="outlined" fullWidth>요청 상태 새로고침</Button>}
+    {IS_GUEST && request.status === 'PENDING' && <GuestShareResult id={id} reload={reload}/>}
     {approved && <><Button href={toHash('garage-detail',{id:request.garage.id,slot_id:request.slot_id,...search})} variant="outlined" fullWidth>차고지 위치 확인</Button><Button href="#home" variant="contained" fullWidth>홈으로</Button></>}
     <Button href={shareHref} variant={approved ? 'text' : 'contained'} fullWidth>{rejected ? '다시 탐색' : '공유 주차로 돌아가기'}</Button>
   </Stack>

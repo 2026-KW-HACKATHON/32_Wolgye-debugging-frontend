@@ -1,3 +1,4 @@
+import { IS_GUEST, exitGuestDemo } from '../../api/guestMode'
 import { isApiError } from '../../api/client'
 import { useEffect, useState } from 'react'
 import { clearSession, getMe, updateMe } from '../../api/auth'
@@ -80,7 +81,7 @@ export default function ProfilePage() {
     <Surface><Stack direction="row" justifyContent="space-between" alignItems="center"><Typography variant="body2" color="text.secondary">보유 토큰</Typography><Typography variant="h6">{(user?.token_balance ?? 0).toLocaleString()}토큰</Typography></Stack></Surface>
     <SectionTitle>설정</SectionTitle>
     {menuItems.map(({ icon: Icon, title, description, href })=><Surface key={title}><Stack component="a" href={href} direction="row" alignItems="center" gap={1.25} color="inherit"><Icon/><Stack flex={1}><Typography variant="subtitle2">{title}</Typography><Typography variant="caption" color="text.secondary">{description}</Typography></Stack><ArrowForwardRoundedIcon color="action"/></Stack></Surface>)}
-    {user && <Button variant="outlined" color="inherit" startIcon={<LogoutRoundedIcon/>} disabled={pending} onClick={()=>{clearDrafts();clearSession();window.location.hash='#login'}}>로그아웃</Button>}
+    {user && <Button variant="outlined" color="inherit" startIcon={<LogoutRoundedIcon/>} disabled={pending} onClick={()=>{if (IS_GUEST) {exitGuestDemo();return} clearDrafts();clearSession();window.location.hash='#login'}}>{IS_GUEST ? '체험 종료' : '로그아웃'}</Button>}
     <Drawer anchor="bottom" open={editing} onClose={()=>{if (!pending) setEditing(false)}} slotProps={{paper:{role:'dialog','aria-modal':true,'aria-labelledby':'profile-edit-title',sx:{maxWidth:440,mx:'auto',borderRadius:'20px 20px 0 0',maxHeight:'90dvh'}}}}>
       <Stack component="form" gap={2.25} p={3} pb="calc(24px + env(safe-area-inset-bottom))" onSubmit={(event)=>{event.preventDefault();void save()}}>
         <Typography id="profile-edit-title" variant="h6">계정 정보 수정</Typography>

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded'
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
-import { Alert, Box, Button, Chip, CircularProgress, Divider, Drawer, MenuItem, Stack, TextField, Typography } from '@mui/material'
+import { Alert, Box, Button, CircularProgress, Divider, Drawer, MenuItem, Stack, TextField, Typography } from '@mui/material'
 import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded'
 import { dateTimeOf } from '../parking/kstTime'
 import { InfoRow, PageTitle, SectionTitle, StatusChip, Surface } from '../../components/Ui'
@@ -11,7 +11,7 @@ import { getMe } from '../../api/auth'
 import { listMyVehicles } from '../../api/vehicles'
 import { isApiError } from '../../api/client'
 import { useApi } from '../../api/useApi'
-import ParkingLotMap from '../../components/ParkingLotMap'
+import ParkingLotPanel from '../../components/ParkingLotPanel'
 import { getBuildingLayout, getBuildingStatus } from '../../api/parking'
 import type { GarageDetail } from '../../types/sharedParking'
 import type { Lot } from '../../types/parking'
@@ -40,7 +40,6 @@ export default function GarageDetailPage() {
       ownLot = toLot(layout,status)
     }
     return {garage,vehicles:vehicles.items,me,ownLot}},String(garageId))
-  const [filter,setFilter] = useState('all')
   // 배치도와 목록에서 함께 표시하는 칸. 처음에는 탐색에서 고른 칸(slot_id)
   const [picked,setPicked] = useState(highlightedSlotId)
   const [selected,setSelected] = useState<GarageSlot | null>(null)
@@ -97,23 +96,21 @@ export default function GarageDetailPage() {
     <Surface sx={{bgcolor:'#F1F6FF',boxShadow:'none'}}><Typography variant="subtitle2">{garage.alley.name}</Typography></Surface>
     <Alert severity="info">현재 공유 중인 칸이 없어요. 남은 공유 칸은 0칸이에요.</Alert>
     <SectionTitle>주차면 현황</SectionTitle>
-    <Surface sx={{bgcolor:'#F8FAFC',boxShadow:'none',p:1}}><ParkingLotMap shape={data.ownLot.shape} slots={data.ownLot.slots}/><Typography variant="caption" display="block" color="text.secondary" textAlign="center">내 빌라 전체 주차 현황이에요.</Typography></Surface>
+    <ParkingLotPanel shape={data.ownLot.shape} slots={data.ownLot.slots} description="내 빌라 전체 주차 현황이에요."/>
   </Stack>
   const lot = toGarageLot(garage)
   const pickedLabel = garage.slots.find((spot)=>spot.slot_id === picked)?.label
-  // 배치도에서 칸을 누르면 목록의 그 칸으로 내려간다 (필터에 걸려 숨어 있으면 전체로 바꾼다)
+  // 배치도에서 칸을 누르면 목록의 그 칸으로 내려간다
   const pickFromMap = (slot:LotSlot) => {
     setPicked(slot.slotId)
-    if (filter !== 'all' && garage.slots.find((spot)=>spot.slot_id === slot.slotId)?.state !== filter) setFilter('all')
     requestAnimationFrame(()=>document.getElementById(`garage-slot-${slot.slotId}`)?.scrollIntoView({behavior:'smooth',block:'center'}))
   }
-  const visible = garage.slots.filter((spot)=>filter === 'all' || spot.state === filter)
   return <Stack gap={2.25}>
     <PageTitle eyebrow="공유 주차장" title={garage.name}/><Surface sx={{bgcolor:'#F1F6FF',boxShadow:'none'}}><Stack gap={1.25}><Typography variant="subtitle2">{garage.alley.name}</Typography><Typography variant="body2">{garage.address}</Typography><Button startIcon={<LocationOnRoundedIcon/>} component="a" target="_blank" rel="noopener noreferrer" href={`https://map.naver.com/p/search/${encodeURIComponent(garage.address)}`} variant="outlined">지도에서 위치 보기</Button></Stack></Surface>
-    <Surface><InfoRow label="운영 시간" value={garage.summary.start_hour === null || garage.summary.end_hour === null ? '공유 중인 칸 없음' : `${hourLabel(garage.summary.start_hour)} – ${hourLabel(garage.summary.end_hour)}`} icon={<AccessTimeRoundedIcon color="primary" fontSize="small"/>}/><Divider/><InfoRow label="요금" value={garage.summary.min_hourly_price === null ? '-' : garage.summary.min_hourly_price === 0 ? '무료부터' : `시간당 ${garage.summary.min_hourly_price}토큰부터`} icon={<PaymentsRoundedIcon color="primary" fontSize="small"/>}/><Divider/><InfoRow label="최대 이용" value={garage.summary.max_hours === null ? '제한 없음' : `${garage.summary.max_hours}시간`}/></Surface>
-    <SectionTitle>주차면 현황</SectionTitle>{lot && <Surface sx={{boxShadow:'none'}}><Box sx={{mx:'-18px',my:1}}><ParkingLotMap shape={lot.shape} slots={lot.slots} focusId={pickedLabel} onInspect={pickFromMap}/></Box><Typography variant="caption" display="block" color="text.secondary" textAlign="center">공유 중인 칸만 보여요. 칸을 누르면 아래 목록에서 찾아 줘요.</Typography></Surface>}<Stack direction="row" gap={0.75} flexWrap="wrap" useFlexGap>{[['all','전체'],['AVAILABLE','이용 가능'],['SOON_EXIT','곧 출차'],['IN_USE','이용 중']].map(([value,label])=><Chip key={value} label={label} color={filter === value ? 'primary' : 'default'} onClick={()=>setFilter(value)}/>)}</Stack>
-    {visible.length === 0 && <Typography color="text.secondary" variant="body2">해당 상태의 주차면이 없어요.</Typography>}
-    {visible.map((spot)=><Box key={spot.slot_id} id={`garage-slot-${spot.slot_id}`} onClick={()=>setPicked(spot.slot_id)}><Surface sx={spot.slot_id === picked ? {borderColor:'primary.main'} : undefined}><Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}><div><Typography variant="subtitle2">{spot.label}{spot.slot_id === picked && ' · 선택한 칸'}</Typography><Typography variant="caption" color="text.secondary">{spot.offer.hourly_price === 0 ? '무료' : `시간당 ${spot.offer.hourly_price}토큰`}{spot.estimated_free_at && ` · ${dateTimeOf(spot.estimated_free_at)} 출차 추정`}{spot.in_use_until && ` · ${dateTimeOf(spot.in_use_until)}까지 이용 중`}</Typography></div><Stack alignItems="flex-end" gap={0.75}><StatusChip kind={spot.state === 'AVAILABLE' ? 'available' : spot.state === 'SOON_EXIT' ? 'soon' : 'disabled'} label={spot.state === 'IN_USE' ? '이용 중' : undefined}/>{spot.state !== 'IN_USE' && <Button size="small" variant="contained" onClick={()=>openRequest(spot)}>요청하기</Button>}</Stack></Stack></Surface></Box>)}
+    <Surface><InfoRow label="운영 시간" value={garage.summary.start_hour === null || garage.summary.end_hour === null ? '공유 중인 칸 없음' : `${hourLabel(garage.summary.start_hour)} – ${hourLabel(garage.summary.end_hour)}`} icon={<AccessTimeRoundedIcon color="primary" fontSize="small"/>}/><Divider/><InfoRow label="요금" value={garage.summary.min_hourly_price === null ? '-' : garage.summary.min_hourly_price === 0 ? '무료부터' : `시간당 ${garage.summary.min_hourly_price.toLocaleString()}토큰부터`} icon={<PaymentsRoundedIcon color="primary" fontSize="small"/>}/><Divider/><InfoRow label="최대 이용" value={garage.summary.max_hours === null ? '제한 없음' : `${garage.summary.max_hours}시간`}/></Surface>
+    <SectionTitle>주차면 현황</SectionTitle>{lot && <ParkingLotPanel shape={lot.shape} slots={lot.slots} focusId={pickedLabel} onInspect={pickFromMap} description="공유 중인 칸만 보여요. 칸을 누르면 아래 목록에서 찾아 줘요."/>}
+    {garage.slots.length === 0 && <Typography color="text.secondary" variant="body2">공유 중인 주차면이 없어요.</Typography>}
+    {garage.slots.map((spot)=><Box key={spot.slot_id} id={`garage-slot-${spot.slot_id}`} onClick={()=>setPicked(spot.slot_id)}><Surface sx={spot.slot_id === picked ? {borderColor:'primary.main'} : undefined}><Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}><div><Typography variant="subtitle2">{spot.label}{spot.slot_id === picked && ' · 선택한 칸'}</Typography><Typography variant="caption" color="text.secondary">{spot.offer.hourly_price === 0 ? '무료' : `시간당 ${spot.offer.hourly_price.toLocaleString()}토큰`}{spot.estimated_free_at && ` · ${dateTimeOf(spot.estimated_free_at)} 출차 추정`}{spot.in_use_until && ` · ${dateTimeOf(spot.in_use_until)}까지 이용 중`}</Typography></div><Stack alignItems="flex-end" gap={0.75}><StatusChip kind={spot.state === 'AVAILABLE' ? 'available' : spot.state === 'SOON_EXIT' ? 'soon' : 'disabled'} label={spot.state === 'IN_USE' ? '이용 중' : undefined}/>{spot.state !== 'IN_USE' && <Button size="small" variant="contained" onClick={()=>openRequest(spot)}>요청하기</Button>}</Stack></Stack></Surface></Box>)}
     <Alert severity="info" sx={{borderRadius:3}}>지정 주차면만 이용할 수 있으며, 종료 시간을 지켜 주세요.</Alert>
     <Drawer anchor="bottom" open={selected !== null} onClose={()=>{if (!busy) setSelected(null)}} slotProps={{paper:{sx:{maxWidth:440,mx:'auto',borderTopLeftRadius:20,borderTopRightRadius:20,maxHeight:'90dvh'}}}}><Stack gap={2} p={3} pb="calc(24px + env(safe-area-inset-bottom))" component="form" onSubmit={(event)=>{event.preventDefault();void sendRequest()}}>
       <Typography variant="h6">공유 요청 · {selected?.label}</Typography>

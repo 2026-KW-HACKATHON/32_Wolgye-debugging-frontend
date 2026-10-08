@@ -9,6 +9,7 @@
     "lint": "oxlint",
     "test:reports": "node --test tests/vehicle-reports.test.cjs",
     "test:parking": "node --test tests/parking-schedule.test.cjs",
+    "test:guest": "node --test tests/guest-demo.test.cjs",
     "test:share-time": "node --test tests/share-request-time.test.cjs",
     "preview": "vite preview"
   },
