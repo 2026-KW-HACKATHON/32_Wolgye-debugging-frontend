@@ -1,0 +1,35 @@
+const {test} = require('node:test')
+const assert = require('node:assert/strict')
+const {runtime} = require('./helpers/runtime.cjs')
+const {initialRequestTime,isElapsedStartHour,requestTimeError,isOngoingRequest} = runtime().load('src/pages/shared-parking/shareRequestTime.ts')
+const offer = {start_hour:7,end_hour:23,max_hours:4,weekdays:['MON','TUE','WED','THU','FRI','SAT','SUN']}
+const at = (clock) => new Date(`2026-10-09T${clock}:00+09:00`)
+test('21:30 permits the ongoing hour and disables previous hours',()=>{
+  const selected=initialRequestTime(offer,at('21:30'))
+  assert.equal(JSON.stringify(selected),JSON.stringify({date:'2026-10-09',start:21,end:22}))
+  assert.equal(requestTimeError(offer,selected.date,21,22,at('21:30')),'')
+  assert.equal(isElapsedStartHour(selected.date,20,at('21:30')),true)
+  assert.equal(isElapsedStartHour(selected.date,21,at('21:30')),false)
+  assert.equal(isOngoingRequest(selected.date,21,22,at('21:30')),true)
+})
+test('opening, closing and midnight boundaries respect KST',()=>{
+  assert.equal(initialRequestTime(offer,at('06:30')).start,7)
+  assert.equal(initialRequestTime(offer,at('22:59')).end,23)
+  assert.equal(initialRequestTime(offer,at('23:00')).date,'2026-10-10')
+  assert.equal(initialRequestTime({...offer,end_hour:24},at('23:30')).end,24)
+  assert.equal(initialRequestTime(offer,new Date('2026-10-09T15:00:00Z')).date,'2026-10-10')
+})
+test('closed weekdays advance to the next shared day',()=>{
+  assert.equal(initialRequestTime({...offer,weekdays:['MON']},at('21:30')).date,'2026-10-12')
+  assert.equal(initialRequestTime({...offer,weekdays:[]},at('21:30')),null)
+})
+test('future days allow opening time and limits still apply',()=>{
+  assert.equal(isElapsedStartHour('2026-10-10',7,at('21:30')),false)
+  assert.equal(requestTimeError({...offer,max_hours:1},'2026-10-09',21,23,at('21:30')).length>0,true)
+  assert.equal(requestTimeError(offer,'2026-10-09',22,24,at('21:30')).length>0,true)
+  assert.equal(initialRequestTime({...offer,max_hours:1},at('21:30')).end,22)
+})
+test('an open form becomes invalid when its selected hour expires',()=>{
+  assert.equal(requestTimeError(offer,'2026-10-09',21,22,at('22:00')).length>0,true)
+  assert.equal(requestTimeError(offer,'2026-10-09',21,22,new Date('2026-10-10T00:00:00+09:00')).length>0,true)
+})
