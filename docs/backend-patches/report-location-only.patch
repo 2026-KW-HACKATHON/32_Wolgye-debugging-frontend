@@ -1,0 +1,258 @@
+diff --git a/app/schemas/vehicle_report.py b/app/schemas/vehicle_report.py
+index 58d4136..300c363 100644
+--- a/app/schemas/vehicle_report.py
++++ b/app/schemas/vehicle_report.py
+@@ -15,8 +15,8 @@ VehicleReportStatusName = Literal["SUBMITTED", "DISMISSED"]
+ 
+ class VehicleReportCreated(BaseModel):
+     report_id: int
+-    vehicle_id: int
+-    parking_id: int
++    vehicle_id: int | None
++    parking_id: int | None
+     slot_label: str
+     occupant_type: OccupantType  # 항상 UNKNOWN
+     reward_tokens: int
+diff --git a/app/services/vehicle_reports.py b/app/services/vehicle_reports.py
+index 3303b84..2348de7 100644
+--- a/app/services/vehicle_reports.py
++++ b/app/services/vehicle_reports.py
+@@ -1,6 +1,6 @@
+ """미등록 차량 사진 제보 (#52).
+ 
+-제보 한 번 = 미확인 차량 배치 + 제보 저장 + 관리인 알림(VEHICLE_REPORT) + 제보자 보상 토큰. 한 트랜잭션이고,
++제보 한 번 = 위치를 포함한 제보 저장 + 관리인 알림(VEHICLE_REPORT) + 제보자 보상 토큰. 한 트랜잭션이고,
+ 사진 파일은 commit 직전에 저장해 실패하면 지운다. 사진 처리는 app/services/report_photos.py.
+ 
+ 정책 (#52 질문 → 임시 결정, 설정으로 바꿀 수 있다)
+@@ -19,13 +19,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
+ from app.core.config import get_settings
+ from app.core.error_codes import ErrorCode
+ from app.core.plates import format_plate, is_valid_plate, normalize_plate
++from app.models.building import Building
++from app.models.garage import Garage
+ from app.models.notification import NotificationType
++from app.models.parking_assignment import ParkingAssignment
++from app.models.parking_slot import ParkingSlot
+ from app.models.resident import Resident, ResidentRole
+-from app.models.vehicle_report import VehicleReport
++from app.models.vehicle import Vehicle
++from app.models.vehicle_report import VehicleReport, VehicleReportStatus
+ from app.schemas.admin import OccupantType
+ from app.schemas.common import KST
+ from app.schemas.vehicle_report import VehicleReportCreated, VehicleReportDetail, VehicleReportReporter
+-from app.services import admin, notifications, report_photos, tokens
++from app.services import notifications, report_photos, tokens
+ from app.services.exceptions import ConflictError, InvalidInputError, NotFoundError
+ from app.services.pagination import DEFAULT_LIMIT, CursorPage, paginate
+ from app.services.slot_labels import slot_label, slot_labels
+@@ -52,6 +57,45 @@ async def _ensure_under_daily_limit(db: AsyncSession, user: Resident, now: datet
+         raise ConflictError("오늘은 더 제보할 수 없어요.", code=ErrorCode.REPORT_LIMIT_EXCEEDED, detail={"limit": limit})
+ 
+ 
++async def _validate_location(db: AsyncSession, building_id: int, slot_id: int, plate: str) -> None:
++    """제보 위치만 확인한다. 주차 배치나 차량을 생성하지 않는다."""
++    # 같은 빌라의 동시 제보를 직렬화해 서로 다른 사용자/칸의 중복 보상도 막는다.
++    await db.execute(select(Building.id).where(Building.id == building_id).with_for_update())
++    slot = await db.scalar(
++        select(ParkingSlot)
++        .join(Garage, Garage.id == ParkingSlot.garage_id)
++        .where(ParkingSlot.id == slot_id, Garage.building_id == building_id)
++        .with_for_update(of=ParkingSlot)
++    )
++    if slot is None:
++        raise NotFoundError("칸을 찾을 수 없습니다.")
++    if not slot.is_active:
++        raise ConflictError("사용할 수 없는 칸입니다.", code=ErrorCode.SLOT_UNAVAILABLE)
++    occupied = await db.scalar(
++        select(ParkingAssignment.id).where(ParkingAssignment.slot_id == slot.id, ParkingAssignment.is_active)
++    )
++    if occupied is not None:
++        raise ConflictError("이미 다른 차량이 주차 중인 칸입니다.", code=ErrorCode.SLOT_OCCUPIED)
++    vehicle = await db.scalar(select(Vehicle).where(Vehicle.plate_no == plate))
++    if vehicle is not None:
++        if vehicle.owner_id is not None:
++            raise ConflictError("이미 등록된 차량 번호입니다.", code=ErrorCode.PLATE_EXISTS)
++        parked = await db.scalar(
++            select(ParkingAssignment.id).where(ParkingAssignment.vehicle_id == vehicle.id, ParkingAssignment.is_active)
++        )
++        if parked is not None:
++            raise ConflictError("이미 다른 칸에 주차 중인 차량입니다.", code=ErrorCode.VEHICLE_ALREADY_PARKED)
++    duplicate = await db.scalar(
++        select(VehicleReport.id).where(
++            VehicleReport.building_id == building_id,
++            VehicleReport.plate_no == plate,
++            VehicleReport.status == VehicleReportStatus.SUBMITTED,
++        ).limit(1)
++    )
++    if duplicate is not None:
++        raise InvalidInputError("이미 접수된 차량 제보예요.", detail={"field": "plate"})
++
++
+ async def create(
+     db: AsyncSession,
+     user: Resident,
+@@ -65,7 +109,7 @@ async def create(
+ 
+     - 사진이 JPEG·PNG 가 아니거나 비었거나 너무 크면, 번호판 형식이 틀리면 400 INVALID_INPUT (detail.field)
+     - 하루 한도 초과 409 REPORT_LIMIT_EXCEEDED
+-    - 칸·번호판 규칙은 admin.place_unknown_vehicle (404 / SLOT_UNAVAILABLE / SLOT_OCCUPIED / PLATE_EXISTS / VEHICLE_ALREADY_PARKED)
++    - 칸·번호판 규칙은 _validate_location (404 / SLOT_UNAVAILABLE / SLOT_OCCUPIED / PLATE_EXISTS / VEHICLE_ALREADY_PARKED)
+     """
+     now = now or datetime.now(KST)
+     settings = get_settings()
+@@ -75,7 +119,7 @@ async def create(
+     jpeg = await asyncio.to_thread(report_photos.process, photo)
+ 
+     await _ensure_under_daily_limit(db, user, now)
+-    assignment = await admin.place_unknown_vehicle(db, building_id, slot_id, plate_no)
++    await _validate_location(db, building_id, slot_id, plate_no)
+     label = await slot_label(db, slot_id)
+ 
+     key = report_photos.save(jpeg)
+@@ -84,8 +128,8 @@ async def create(
+             building_id=building_id,
+             reporter_id=user.id,
+             slot_id=slot_id,
+-            vehicle_id=assignment.vehicle_id,
+-            parking_assignment_id=assignment.id,
++            vehicle_id=None,
++            parking_assignment_id=None,
+             plate_no=plate_no,
+             photo_key=key,
+             reward_amount=settings.report_token_reward,
+@@ -117,8 +161,8 @@ async def create(
+ 
+     return VehicleReportCreated(
+         report_id=report.id,
+-        vehicle_id=assignment.vehicle_id,
+-        parking_id=assignment.id,
++        vehicle_id=None,
++        parking_id=None,
+         slot_label=label,
+         occupant_type=OccupantType.UNKNOWN,
+         reward_tokens=settings.report_token_reward,
+diff --git a/docs/openapi-mock.yaml b/docs/openapi-mock.yaml
+index 4fffa9d..e504a53 100644
+--- a/docs/openapi-mock.yaml
++++ b/docs/openapi-mock.yaml
+@@ -1334,12 +1334,13 @@ paths:
+       summary: 👤 미등록 차량 사진 제보
+       description: |
+         앱에 없는 차를 사진으로 제보합니다. **한 트랜잭션**으로 아래가 함께 일어납니다.
+-        - 그 칸에 미확인 차량(`occupant_type=UNKNOWN`) 배치 → 배치도·현황·막힘 판정에 바로 반영
++        - 선택한 칸을 제보 위치로 저장. 차량·주차 배치를 생성하지 않아 홈 현황과 막힘 판정은 유지
+         - 빌라의 모든 관리인(제보자 본인 제외)에게 `VEHICLE_REPORT` 알림 (`link: { screen: VEHICLE_REPORT, id: 제보 id }`)
+         - 제보자에게 **500 토큰** 시스템 지급
+         사진: JPEG·PNG, 10MB 이하. 서버가 EXIF(위치정보 등)를 지우고 긴 변 1600px JPEG 로 다시 저장합니다.
+         검증 순서: 403 `NOT_BUILDING_MEMBER` → 400 `INVALID_INPUT`(`detail.field` = `photo` | `plate`) → 409 `REPORT_LIMIT_EXCEEDED`(1인 하루(KST) 3회) →
+         404(이 빌라에 없는 칸) → 409 `SLOT_UNAVAILABLE`(비활성 칸) · `SLOT_OCCUPIED`(차 있음) · `PLATE_EXISTS`(앱에 등록된 차 → 이동 요청 안내) · `VEHICLE_ALREADY_PARKED`(같은 번호판 미확인 차량이 다른 칸에 있음)
++        같은 빌라에 접수 중인 동일 번호판의 중복 제보는 400 `INVALID_INPUT`으로 거절합니다.
+       operationId: createVehicleReport
+       x-priority: 향후
+       parameters:
+@@ -1361,7 +1362,7 @@ paths:
+           content:
+             application/json:
+               schema: { $ref: "#/components/schemas/VehicleReportCreated" }
+-              example: { report_id: 12, vehicle_id: 31, parking_id: 559, slot_label: P6, occupant_type: UNKNOWN, reward_tokens: 500, token_balance: 500500 }
++              example: { report_id: 12, vehicle_id: null, parking_id: null, slot_label: P6, occupant_type: UNKNOWN, reward_tokens: 500, token_balance: 500500 }
+         "400": { $ref: "#/components/responses/InvalidInput" }
+         "401": { $ref: "#/components/responses/Unauthorized" }
+         "403": { $ref: "#/components/responses/NotBuildingMember" }
+@@ -2329,8 +2330,8 @@ components:
+       type: object
+       properties:
+         report_id: { type: integer }
+-        vehicle_id: { type: integer }
+-        parking_id: { type: integer }
++        vehicle_id: { type: [integer, "null"], description: "제보만 저장하므로 null" }
++        parking_id: { type: [integer, "null"], description: "주차 배치를 생성하지 않으므로 null" }
+         slot_label: { type: string }
+         occupant_type: { $ref: "#/components/schemas/OccupantType" }
+         reward_tokens: { type: integer, description: 지급한 보상 토큰 (500) }
+diff --git a/tests/api/test_vehicle_reports.py b/tests/api/test_vehicle_reports.py
+index 2c7a1df..aee3680 100644
+--- a/tests/api/test_vehicle_reports.py
++++ b/tests/api/test_vehicle_reports.py
+@@ -45,6 +45,11 @@ async def _post(client, villa, user=None, **kwargs):
+ 
+ 
+ async def test_report_then_manager_sees_notification_detail_and_photo(client, db, villa):
++    headers = auth_headers(villa["me"])
++    status_url = f"/api/v1/buildings/{villa['building'].id}/status"
++    before_status = await client.get(status_url, headers=headers)
++    before_home = await client.get("/api/v1/me/home", headers=headers)
++    assert before_status.status_code == before_home.status_code == 200
+     res = await _post(client, villa)
+     assert res.status_code == 201, res.text
+     body = res.json()
+@@ -57,6 +62,12 @@ async def test_report_then_manager_sees_notification_detail_and_photo(client, db
+         500,
+         500,
+     )
++    assert body["vehicle_id"] is None and body["parking_id"] is None
++    after_status = await client.get(status_url, headers=headers)
++    after_home = await client.get("/api/v1/me/home", headers=headers)
++    assert after_status.status_code == after_home.status_code == 200
++    assert after_status.json()["slots"] == before_status.json()["slots"]
++    assert after_home.json()["summary"] == before_home.json()["summary"]
+     report_id = body["report_id"]
+ 
+     manager = auth_headers(villa["manager"])
+diff --git a/tests/services/test_vehicle_reports.py b/tests/services/test_vehicle_reports.py
+index 62b87a3..75f360d 100644
+--- a/tests/services/test_vehicle_reports.py
++++ b/tests/services/test_vehicle_reports.py
+@@ -1,4 +1,4 @@
+-"""#52 미등록 차량 사진 제보: 제보 한 번 = 미확인 차량 배치 + 제보 + 관리인 알림 + 보상 토큰."""
++"""#52 미등록 차량 사진 제보: 제보 한 번 = 위치 제보 + 관리인 알림 + 보상 토큰."""
+ 
+ from datetime import datetime
+ 
+@@ -58,18 +58,20 @@ async def _count(db, model, *where) -> int:
+     return await db.scalar(select(func.count()).select_from(model).where(*where))
+ 
+ 
+-async def test_report_registers_unknown_vehicle_notifies_managers_and_rewards(db, villa, photo_dir):
++async def test_report_preserves_parking_notifies_managers_and_rewards(db, villa, photo_dir):
+     created = await _report(db, villa)
+ 
+     assert (created.slot_label, created.occupant_type, created.reward_tokens) == ("P1", "UNKNOWN", 500)
+     assert created.token_balance == 1500
+-    vehicle = await db.get(Vehicle, created.vehicle_id)
+-    assert (vehicle.plate_no, vehicle.owner_id) == ("45다6789", None)
+-    assignment = await db.get(ParkingAssignment, created.parking_id)
+-    assert (assignment.slot_id, assignment.is_active) == (villa["slots"][0].id, True)
++    assert created.vehicle_id is None
++    assert created.parking_id is None
++    assert await _count(db, Vehicle) == 0
++    assert await _count(db, ParkingAssignment) == 0
+ 
+     report = await db.get(VehicleReport, created.report_id)
+     assert (report.reporter_id, report.plate_no, report.reward_amount) == (villa["me"].id, "45다6789", 500)
++    assert report.slot_id == villa["slots"][0].id
++    assert report.vehicle_id is None and report.parking_assignment_id is None
+     assert (photo_dir / report.photo_key).is_file()
+ 
+     notices = (await db.scalars(select(Notification).order_by(Notification.resident_id))).all()
+@@ -214,3 +216,19 @@ async def test_list_for_building_latest_first(db, villa):
+     assert [r.id for r in page.items] == [second.report_id]
+     rest = await vehicle_reports.list_for_building(db, villa["building"].id, cursor=page.next_cursor)
+     assert [r.id for r in rest.items] == [first.report_id]
++
++
++async def test_reports_share_location_without_occupying_it(db, villa):
++    await _report(db, villa, plate="41다6789")
++    await _report(db, villa, plate="42다6789")
++    assert await _count(db, ParkingAssignment) == 0
++    assert await _count(db, Vehicle) == 0
++    assert await _count(db, VehicleReport) == 2
++
++
++async def test_duplicate_report_cannot_reward_another_user_or_slot(db, villa):
++    await _report(db, villa)
++    with pytest.raises(InvalidInputError):
++        await _report(db, villa, slot_index=1, user=villa["manager"])
++    assert await _count(db, VehicleReport) == 1
++    assert await _count(db, TokenTransfer) == 1
