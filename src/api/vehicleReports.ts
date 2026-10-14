@@ -32,20 +32,18 @@ export async function createVehicleReport(buildingId:number,body:VehicleReportCr
   const plate = normalizePlate(body.plate)
   if ([...vehiclesByUser.values()].flat().some((vehicle)=>normalizePlate(vehicle.plate) === plate) || parkings.some((parking)=>parking.occupant_type !== 'UNKNOWN' && normalizePlate(parking.plate) === plate)) return fail(409,'PLATE_EXISTS','앱에 등록된 차량이에요. 이동 요청을 보내 보세요.')
   if (parkings.some((parking)=>parking.state === 'PARKED' && normalizePlate(parking.plate) === plate)) return fail(409,'VEHICLE_ALREADY_PARKED','이미 다른 칸에 등록된 차량이에요.')
+  if ([...vehicleReports.values()].some((report)=>report.building_id === buildingId && report.status === 'SUBMITTED' && normalizePlate(report.plate) === plate)) return fail(400,'INVALID_INPUT','이미 접수된 차량 제보예요.')
   // 일일 3회는 BE #52의 임시 안. 서버 정책 확정 시 목도 맞춘다.
   if ([...vehicleReports.values()].filter((report)=>report.reporter.id === user.id && day(new Date(report.created_at)) === day()).length >= 3) return fail(409,'REPORT_LIMIT_EXCEEDED','오늘은 더 제보할 수 없어요.')
   const id = Math.max(0,...vehicleReports.keys())+1
-  const parkingId = Math.max(0,...parkings.map((parking)=>parking.id))+1
-  const vehicleId = 100000+id
   const createdAt = new Date().toISOString()
   const formattedPlate = plate.replace(/(\d{2,3}[가-힣])(\d{4})/,'$1 $2')
   vehicleReports.set(id,{id,building_id:buildingId,plate:formattedPlate,slot_label:slot.label,photo_url:`/vehicle-reports/${id}/photo`,reporter:{id:user.id,name:user.name ?? user.nickname},status:'SUBMITTED',created_at:createdAt,photo:body.photo})
-  parkings.push({id:parkingId,slot_id:slot.id,vehicle_id:vehicleId,plate:formattedPlate,occupant_type:'UNKNOWN',state:'PARKED',entered_at:createdAt,expected_exit_at:null,exit_source:'NONE',memo:null})
   for (const account of accounts.values()) if (account.user.building?.building_id === buildingId && account.user.building.role === 'ADMIN') {
     notifications.unshift({id:Math.max(0,...notifications.map((notice)=>notice.id))+1,type:'VEHICLE_REPORT',title:'미등록 차량 제보',body:`${slot.label} · ${formattedPlate}`,link:{screen:'VEHICLE_REPORT',id},photo_url:`/vehicle-reports/${id}/photo`,created_at:createdAt,is_read:false,recipient_id:account.user.id})
   }
   const tokenBalance = creditMockReportReward(500)
-  return {report_id:id,vehicle_id:vehicleId,parking_id:parkingId,slot_label:slot.label,occupant_type:'UNKNOWN',reward_tokens:500,token_balance:tokenBalance}
+  return {report_id:id,vehicle_id:null,parking_id:null,slot_label:slot.label,occupant_type:'UNKNOWN',reward_tokens:500,token_balance:tokenBalance}
 }
 async function mockReport(id:number) {
   const user = await getMe()

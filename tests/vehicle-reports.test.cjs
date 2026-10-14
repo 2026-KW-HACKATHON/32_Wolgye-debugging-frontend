@@ -3,10 +3,12 @@ const assert = require('node:assert/strict')
 const { runtime } = require('./helpers/runtime.cjs')
 const photo = ()=>new File([new Uint8Array([255,216,255,224,0,0,0,0])],'car.jpg',{type:'image/jpeg'})
 
-test('mock report: atomic reward/parking/admin notification; errors grant nothing; photo authorization',async()=> {
+test('mock report: reward/admin notification without changing parking; errors grant nothing; photo authorization',async()=> {
   const rt=runtime(), auth=rt.load('src/api/auth.ts'), api=rt.load('src/api/vehicleReports.ts'), parking=rt.load('src/api/parking.ts'), state=rt.load('src/mocks/parking.ts')
   await auth.login({email:'kim@kw.ac.kr',password:'chagok1234'})
   const reports=rt.load('src/mocks/vehicleReports.ts').vehicleReports
+  const initialStatus=await parking.getBuildingStatus(3), initialSummary=(await parking.getHome()).summary
+  const initialParkings=structuredClone(state.parkings)
   const initial=(await auth.getMe()).token_balance, initialNotices=state.notifications.length
   const submit=(slot,plate='98가 1234',file=photo())=>api.createVehicleReport(3,{slot_id:slot,plate,photo:file})
   const rejected=async(promise,code)=>{await assert.rejects(promise,(e)=>e.code===code);assert.equal((await auth.getMe()).token_balance,initial);assert.equal(reports.size,0);assert.equal(state.notifications.length,initialNotices)}
@@ -22,7 +24,11 @@ test('mock report: atomic reward/parking/admin notification; errors grant nothin
   assert.equal(attempts.filter((result)=>result.status==='fulfilled').length,1)
   const result=attempts.find((result)=>result.status==='fulfilled').value
   assert.equal(result.reward_tokens,500);assert.equal(result.token_balance,initial+500)
-  assert.equal((await parking.getBuildingStatus(3)).slots.find((slot)=>slot.slot_id===1002).parking.occupant_type,'UNKNOWN')
+  assert.equal(result.parking_id,null);assert.equal(result.vehicle_id,null)
+  assert.deepEqual(await parking.getBuildingStatus(3),initialStatus)
+  assert.deepEqual((await parking.getHome()).summary,initialSummary)
+  assert.deepEqual(structuredClone(state.parkings),initialParkings)
+  assert.equal((await api.getVehicleReport(result.report_id)).slot_label,state.findSlot(1002).label)
   assert.equal((await parking.listNotifications()).items.filter((item)=>item.type==='VEHICLE_REPORT').length,0)
   assert.equal((await api.getVehicleReportPhoto(result.report_id)).type,'image/jpeg')
   // Manager sees one thumbnail notification and can read the photo.
@@ -34,11 +40,13 @@ test('mock report: atomic reward/parking/admin notification; errors grant nothin
   await auth.signup({email:'another@test.test',password:'test12345',nickname:'another',agree_terms:true})
   await assert.rejects(api.getVehicleReportPhoto(result.report_id),(e)=>e.status===403)
   await auth.login({email:'kim@kw.ac.kr',password:'chagok1234'})
-  state.parkings.find((parking)=>parking.id===result.parking_id).state='EXITED'
-  await submit(1002,'98가 1235');state.parkings.find((parking)=>parking.slot_id===1002 && parking.state==='PARKED').state='EXITED'
-  await submit(1002,'98가 1236');state.parkings.find((parking)=>parking.slot_id===1002 && parking.state==='PARKED').state='EXITED'
+  await submit(1002,'98가 1235')
+  await submit(1002,'98가 1236')
   await assert.rejects(submit(1002,'98가 1237'),(e)=>e.code==='REPORT_LIMIT_EXCEEDED')
   assert.equal((await auth.getMe()).token_balance,initial+1500)
+  assert.deepEqual(await parking.getBuildingStatus(3),initialStatus)
+  assert.deepEqual((await parking.getHome()).summary,initialSummary)
+  assert.deepEqual(structuredClone(state.parkings),initialParkings)
 })
 
 test('server transport: multipart boundary, auth header, authenticated photo blob',async()=> {
